@@ -8,19 +8,19 @@ __author__ = "Amine Remita"
 
 class VB_LogNormalIndEncoder(nn.Module):
     def __init__(self,
-            in_shape=[2],
+            in_shape,              # [2],
             init_distr=[0.1, 0.1], # list of 2 floats, "uniform",
                                    # "normal" or False
             prior_hp=[0.2, 0.2]):  # prior hyper-parameters
 
         super().__init__()
 
+        self.in_dim = 2
         self.in_shape = in_shape
-        self.in_dim = self.in_shape[-1]
         self.init_distr = init_distr
         self.prior_hp = torch.tensor(prior_hp)
 
-        assert self.in_dim == 2              # last dim must be 2
+        assert self.in_shape[-1] == 2       # last dim must be 2
         assert self.prior_hp.shape[-1] == 2  # for mu and sigma
 
         self.prior_mu = self.prior_hp[0]
@@ -94,7 +94,7 @@ class VB_LogNormalIndEncoder(nn.Module):
 
 class VB_nnLogNormalIndEncoder(nn.Module):
     def __init__(self,
-            in_shape=[2],
+            in_shape,             # [2],
             init_distr="uniform", # list of 2 floats, uniform,
                                   # normal or False
             prior_hp=[0.2, 0.2],
@@ -105,14 +105,14 @@ class VB_nnLogNormalIndEncoder(nn.Module):
 
         super().__init__()
 
+        self.in_dim = 2
+        self.out_dim = 1            # one for mu and one for sigma
         self.in_shape = in_shape
-        self.in_dim = in_dim
-        self.out_dim = 1            # one for alpha and one for rate
         self.init_distr = init_distr
 
         self.prior_hp = torch.tensor(prior_hp)
 
-        assert self.in_dim == 2              # last dim must be 2
+        assert self.in_shape[-1] == 2       # last dim must be 2
         assert self.prior_hp.shape[-1] == 2  # for alpha and rate
 
         self.prior_mu = self.prior_hp[0]

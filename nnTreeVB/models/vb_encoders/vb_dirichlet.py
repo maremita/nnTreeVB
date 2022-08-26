@@ -8,15 +8,16 @@ __author__ = "Amine Remita"
 
 class VB_DirichletIndEncoder(nn.Module):
     def __init__(self,
-            in_shape=[2],
+            in_dim,              # in_shape[-1]
+            in_shape,            # [2],
             init_distr=[1., 1.], # list of floats, "uniform",
                                  # "normal" or False
             prior_hp=[1., 1.]):
 
         super().__init__()
 
+        self.in_dim = in_dim
         self.in_shape = in_shape
-        self.in_dim = self.in_shape[-1]
         self.init_distr = init_distr
         self.prior_hp = torch.tensor(prior_hp)
 
@@ -84,7 +85,8 @@ class VB_DirichletIndEncoder(nn.Module):
 
 class VB_nnDirichletIndEncoder(nn.Module):
     def __init__(self,
-            in_shape=[2],
+            in_dim,               # in_shape[-1]
+            in_shape,             # [2],
             init_distr=[1., 1.],  # list of floats, "uniform",
                                   # "normal" or False
             prior_hp=[1., 1.],
@@ -95,9 +97,9 @@ class VB_nnDirichletIndEncoder(nn.Module):
 
         super().__init__()
 
+        self.in_dim = in_dim 
+        self.out_dim = in_dim
         self.in_shape = in_shape
-        self.in_dim = self.in_shape[-1]
-        self.out_dim = self.in_dim
         self.init_distr = init_distr
  
         self.prior_hp = torch.tensor(prior_hp)
