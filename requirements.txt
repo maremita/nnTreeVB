@@ -1,0 +1,10 @@
+scipy
+numpy
+biopython
+pyvolve
+torch>=1.11.0
+joblib
+pandas
+matplotlib
+seaborn
+logomaker

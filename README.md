@@ -1,2 +1,2 @@
-# evoTreeVB
-Evolutionary-based Variational Bayesian Model using Phylogeny and Multiple Sequence Alignments
+# nnTreeVB
+Neural Network-based Variational Bayesian Model for Phylogenetic Parameter Estimation
