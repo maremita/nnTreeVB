@@ -8,15 +8,15 @@ __author__ = "Amine Remita"
 
 class VB_LogNormalIndEncoder(nn.Module):
     def __init__(self,
-            init_dim=[2],
+            in_shape=[2],
             init_distr=[0.1, 0.1], # list of 2 floats, "uniform",
                                    # "normal" or False
             prior_hp=[0.2, 0.2]):  # prior hyper-parameters
 
         super().__init__()
 
-        self.init_dim = init_dim
-        self.in_dim = self.init_dim[-1]
+        self.in_shape = in_shape
+        self.in_dim = self.in_shape[-1]
         self.init_distr = init_distr
         self.prior_hp = torch.tensor(prior_hp)
 
@@ -39,9 +39,9 @@ class VB_LogNormalIndEncoder(nn.Module):
             self.input = self.input.normal_()
 
         self.init_mu = self.input[0].repeat(
-                [*self.init_dim[:-1], 1])
+                [*self.in_shape[:-1], 1])
         self.init_log_sigma = torch.log(
-                self.input[1].repeat([*self.init_dim[:-1], 1]))
+                self.input[1].repeat([*self.in_shape[:-1], 1]))
 
         # Initialize the parameters of the variational distribution q
         self.mu = nn.Parameter(self.init_mu,
@@ -92,9 +92,9 @@ class VB_LogNormalIndEncoder(nn.Module):
         return logprior, logq, kl, samples
 
 
-class VB_DeepLogNormalIndEncoder(nn.Module):
+class VB_nnLogNormalIndEncoder(nn.Module):
     def __init__(self,
-            init_dim=[2],
+            in_shape=[2],
             init_distr="uniform", # list of 2 floats, uniform,
                                   # normal or False
             prior_hp=[0.2, 0.2],
@@ -105,7 +105,7 @@ class VB_DeepLogNormalIndEncoder(nn.Module):
 
         super().__init__()
 
-        self.init_dim = init_dim
+        self.in_shape = in_shape
         self.in_dim = in_dim
         self.out_dim = 1            # one for alpha and one for rate
         self.init_distr = init_distr
@@ -145,7 +145,7 @@ class VB_DeepLogNormalIndEncoder(nn.Module):
         elif self.init_distr == "normal":
             self.net_input = self.net_input.normal_()
 
-        self.input = self.input.repeat([*self.init_dim[:-1], 1])
+        self.input = self.input.repeat([*self.in_shape[:-1], 1])
 
         # Construct the neural network
         layers = [nn.Linear(self.in_dim, self.h_dim,
