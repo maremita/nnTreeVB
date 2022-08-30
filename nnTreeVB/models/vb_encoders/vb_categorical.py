@@ -64,7 +64,7 @@ class VB_Categorical_NNEncoder(nn.Module):
             self,
             data,
             sample_size=1,
-            sample_temp=1
+            sample_temp=0.1,
             KL_gradient=False,
             min_clamp=False,    # should be <= to 10^-7
             max_clamp=False):

@@ -143,9 +143,11 @@ class VB_nnTree(nn.Module):
             elbo_type="elbo",
             latent_sample_size=10,
             sample_temp=0.1,
-            alpha_kl=0.001,
-            shuffle_sites=True,
-            keep_vars=False):
+            #alpha_kl=0.001,
+            shuffle_sites=True):
+
+        # returned dict
+        ret_values = dict()
 
         elbos = ["elbo", "elbo_iws", "elbo_kl"]
         elbo_type = elbo_type.lower()
@@ -157,22 +159,6 @@ class VB_nnTree(nn.Module):
 
         elbo_kl = elbo_type=="elbo_kl"
         elbo_iws = elbo_type=="elbo_iws"
-
-        ancestors = torch.tensor([]).to(self.device_).detach()
-        branches = torch.tensor([]).to(self.device_).detach()
-        treelens = torch.tensor([]).to(self.device_).detach()
-        gtrrates = torch.tensor([]).to(self.device_).detach()
-        gtrfreqs = torch.tensor([]).to(self.device_).detach()
-        kappas = torch.tensor([]).to(self.device_).detach()
-
-        if keep_vars:
-            ancestors_var = torch.tensor([]).to(self.device_).detach()
-            branches_var = torch.tensor([]).to(self.device_).detach()
-            treelens_var = torch.tensor([]).to(self.device_).detach()
-            gtrrates_var = torch.tensor([]).to(self.device_).detach()
-            gtrfreqs_var = torch.tensor([]).to(self.device_).detach()
-            kappas_var = torch.tensor([]).to(self.device_).detach()
-
 
         tm_args = dict()
 
@@ -187,12 +173,16 @@ class VB_nnTree(nn.Module):
         if self.predict_ancestors: 
             # Sample a from q_d and compute log prior, log q
             a_logprior, a_logq, a_kl, a_samples = self.a_encoder(
+                    sites,
                     sample_size=sample_size,
+                    sample_temp=sample_temp,
                     KL_gradient=elbo_kl)
 
             logprior += a_logprior
             logq += a_logq
             kl_qprior += a_kl
+
+        ret_values["a"] = a_samples.detach().numpy()
 
         # Sample b from q_d and compute log prior, log q
         b_logprior, b_logq, b_kl, b_samples = self.b_encoder(
@@ -202,6 +192,8 @@ class VB_nnTree(nn.Module):
         logprior += b_logprior
         logq += b_logq
         kl_qprior += b_kl
+ 
+        ret_values["b"] = b_samples.detach().numpy()
 
         if b_encoder_type in ["dirichlet", "nndirichlet"]: 
             # Sample t from q_d and compute log prior, log q
@@ -210,15 +202,17 @@ class VB_nnTree(nn.Module):
                     KL_gradient=elbo_kl)
 
             bt_samples = b_samples * t_samples # update view ?
-            tm_args{"b"} = bt_samples
 
             logprior += t_logprior
             logq += t_logq
             kl_qprior += t_kl
 
+            tm_args{"b"} = bt_samples
+            ret_values["t"] = t_samples.detach().numpy()
+            ret_values["bt"] = bt_samples.detach().numpy()
+
         else:
             tm_args{"b"} = b_samples
-
 
         if self.subs_model in ["gtr"]:
             # Sample r from q_r and compute log prior, log q
@@ -226,10 +220,12 @@ class VB_nnTree(nn.Module):
                     sample_size=sample_size,
                     KL_gradient=elbo_kl)
 
-            tm_args{"rates"} = r_samples
             logprior += r_logprior
             logq += r_logq
             kl_qprior += r_kl
+ 
+            tm_args{"rates"} = r_samples
+            ret_values["r"] = r_samples.detach().numpy()
 
         if self.subs_model in ["hky", "gtr"]:
             # Sample f from q_f and compute log prior, log q
@@ -237,10 +233,12 @@ class VB_nnTree(nn.Module):
                     sample_size=sample_size,
                     KL_gradient=elbo_kl)
 
-            tm_args{"freqs"} = f_samples
             logprior += f_logprior
             logq += f_logq
             kl_qprior += f_kl
+
+            tm_args{"freqs"} = f_samples
+            ret_values["f"] = f_samples.detach().numpy()
 
         if self.subs_model in ["k80", "hky"]:
             # Sample k from q_d and compute log prior, log q
@@ -248,12 +246,13 @@ class VB_nnTree(nn.Module):
                     sample_size=sample_size,
                     KL_gradient=elbo_kl)
 
-            tm_args{"kappa"} = k_samples
             logprior += k_logprior
             logq += k_logq
             kl_qprior += k_kl
-
  
+            tm_args{"kappa"} = k_samples
+            ret_values["k"] = k_samples.detach().numpy()
+
         ## Compute logl
         ## ############
         tm = build_transition_matrix(self.subs_model, tm_args)
@@ -284,18 +283,10 @@ class VB_nnTree(nn.Module):
                 elbo = elbo.mean(0)
 
         # returned dict
-        ret_values = dict(
-                elbo=elbo,
-                logl=logl.detach().numpy(),
-                logprior=logprior.detach().numpy(),
-                logq=logq.detach().numpy(),
-                kl_qprior=kl.detach().numpy(),
-                d=d_samples.detach().numpy())
-
-        for ind, rate in enumerate(rates):
-            ret_values[rate] = gr_samples[..., ind].detach().numpy()
-
-        for ind, freq in enumerate(freqs):
-            ret_values[freq] = gf_samples[..., ind].detach().numpy()
+        ret_values["elbo"]=elbo,
+        ret_values["logl"]=logl.detach().numpy(),
+        ret_values["logprior"]=logprior.detach().numpy(),
+        ret_values["logq"]=logq.detach().numpy(),
+        ret_values["kl_qprior"]=kl.detach().numpy(),
 
         return ret_values
