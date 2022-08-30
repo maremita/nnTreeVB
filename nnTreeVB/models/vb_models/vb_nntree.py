@@ -1,3 +1,4 @@
+from nnTreeVB.models.vb_models import BaseTreeVB
 from nnTreeVB.models.vb_encoders import build_vb_encoder
 from nnTreeVB.models.evo_models import build_transition_matrix
 from nnTreeVB.models.evo_models import pruning_known_ancestors
@@ -9,7 +10,7 @@ import torch.nn as nn
 __author__ = "Amine Remita"
 
 
-class VB_nnTree(nn.Module):
+class VB_nnTree(nn.Module, BaseTreeVB):
     def __init__(
             self,
             subs_model="gtr" # jc69 | k80 | hky | gtr
@@ -137,7 +138,8 @@ class VB_nnTree(nn.Module):
                     bias_layers=bias_layers,
                     activ_layers=activ_layers)
 
-    def forward(self, 
+    def forward(self,
+            tree,
             sites, 
             site_counts,
             elbo_type="elbo",
@@ -284,9 +286,9 @@ class VB_nnTree(nn.Module):
 
         # returned dict
         ret_values["elbo"]=elbo,
-        ret_values["logl"]=logl.detach().numpy(),
-        ret_values["logprior"]=logprior.detach().numpy(),
-        ret_values["logq"]=logq.detach().numpy(),
-        ret_values["kl_qprior"]=kl.detach().numpy(),
+        ret_values["logl"]=logl,
+        ret_values["logprior"]=logprior,
+        ret_values["logq"]=logq,
+        ret_values["kl_qprior"]=kl,
 
         return ret_values
