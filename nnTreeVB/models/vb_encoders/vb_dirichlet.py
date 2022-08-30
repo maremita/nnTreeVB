@@ -6,7 +6,7 @@ from torch.distributions.kl import kl_divergence
 __author__ = "Amine Remita"
 
 
-class VB_DirichletIndEncoder(nn.Module):
+class VB_Dirichlet_IndEncoder(nn.Module):
     def __init__(self,
             in_dim,              # in_shape[-1]
             in_shape,            # [2],
@@ -83,7 +83,7 @@ class VB_DirichletIndEncoder(nn.Module):
         return logprior, logq, kl, samples
 
 
-class VB_nnDirichletIndEncoder(nn.Module):
+class VB_Dirichlet_NNIndEncoder(nn.Module):
     def __init__(self,
             in_dim,               # in_shape[-1]
             in_shape,             # [2],
@@ -193,7 +193,7 @@ class VB_nnDirichletIndEncoder(nn.Module):
         return logprior, logq, kl, samples
 
 
-class VB_nnDirichletEncoder(nn.Module):
+class VB_Dirichlet_NNEncoder(nn.Module):
     def __init__(
             self,
             in_dim,

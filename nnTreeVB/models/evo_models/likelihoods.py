@@ -51,19 +51,19 @@ def pruning(arbre, x, tm, pi):
             #                       b        i    j                          b            c       j   k       
             #  pi unseqz(-2)   : [sample_size, 1, x_dim]  root unseqz(-1) : [sample_size, n_dim, x_dim, 1]
 
-            #logll = torch.einsum("bij,bcjk->bcik", (pi.unsqueeze(-2), arbre.state.unsqueeze(-1))).log().mean(0).flatten()
+            #logl = torch.einsum("bij,bcjk->bcik", (pi.unsqueeze(-2), arbre.state.unsqueeze(-1))).log().mean(0).flatten()
 
     scaler_list.append(torch.einsum("bij,bcjk->bcik", (pi.unsqueeze(-2), arbre.state.unsqueeze(-1))).squeeze(-1))
-    #logll = torch.sum(torch.log(torch.stack(scaler_list)))
+    #logl = torch.sum(torch.log(torch.stack(scaler_list)))
     #stack = torch.stack(scaler_list)
     #print("\nstack {}".format(stack.shape)) # [nb_scaler, sample, n_dim, 1]
 
-    logll = torch.sum(torch.log(torch.stack(scaler_list)), dim=0).mean(0).flatten()
-    #print("\nlogll")
-    #print(logll.shape) #[n_dim]
-    #print(logll)
+    logl = torch.sum(torch.log(torch.stack(scaler_list)), dim=0).mean(0).flatten()
+    #print("\nlogl")
+    #print(logl.shape) #[n_dim]
+    #print(logl)
 
-    return logll
+    return logl
 
 def pruning_known_ancestors(arbre, x, a, tm, pi):
 
@@ -108,7 +108,7 @@ def pruning_known_ancestors(arbre, x, a, tm, pi):
                     ll_cumul += torch.log(torch.einsum("bij,bij->bi", (parlial_ll, node.sites))) #.log
                     #print("ll_cumul {}".format(ll_cumul.shape))  # [sample_size, n_dim, x_dim]
 
-        logll = ll_cumul + log_pi_a
-        #print("logll {}".format(logll.shape))
+        logl = ll_cumul + log_pi_a
+        #print("logl {}".format(logl.shape))
 
-        return logll
+        return logl

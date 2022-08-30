@@ -8,7 +8,7 @@ from torch.distributions.kl import kl_divergence
 __author__ = "amine remita"
 
 
-class VB_nnCategoricalEncoder(nn.Module):
+class VB_Categorical_NNEncoder(nn.Module):
     def __init__(self, 
             in_dim,    # x_dim * m_dim
             out_dim,   # x_dim * a_dim

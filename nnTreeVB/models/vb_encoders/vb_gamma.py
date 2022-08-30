@@ -6,7 +6,7 @@ from torch.distributions.kl import kl_divergence
 __author__ = "Amine Remita"
 
 
-class VB_GammaIndEncoder(nn.Module):
+class VB_Gamma_IndEncoder(nn.Module):
     def __init__(self,
             in_shape,            # [2],
             init_distr=[0.1, 0.1], # list of 2 floats, "uniform",
@@ -92,7 +92,7 @@ class VB_GammaIndEncoder(nn.Module):
         return logprior, logq, kl, samples
 
 
-class VB_nnGammaIndEncoder(nn.Module):
+class VB_Gamma_NNIndEncoder(nn.Module):
     def __init__(self,
             in_shape,             # [2],
             init_distr="uniform", # list of 2 floats, uniform,
