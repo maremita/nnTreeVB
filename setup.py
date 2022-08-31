@@ -10,7 +10,7 @@ with open("requirements.txt", "r") as fh:
         INSTALL_REQUIRES.append(line.rstrip())
 
 setup(
-    name='evoVGM',
+    name='nnTreeVB',
     version=_version,
     description='Neural Network-based Variational Bayesian '+\
             'Model for Phylogenetic Parameter Estimation',

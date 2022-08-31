@@ -1,6 +1,19 @@
-from pyvolve import read_tree, Model, Partition, Evolver
+from collections import OrderedDict
 
-def build_star_tree(b_lengths):
+from pyvolve import read_tree, Model, Partition, Evolver
+from ete3 import Tree
+
+__author__ = "amine"
+
+
+__all__ = [
+        "build_nwk_star_tree",
+        "build_tree_from_nwk",
+        "evolve_seqs_full_homogeneity"
+        ]
+
+
+def build_nwk_star_tree(b_lengths):
     bls = b_lengths.split(",")
 
     newick = "("
@@ -10,6 +23,35 @@ def build_star_tree(b_lengths):
     newick += ");"
 
     return newick
+
+
+# inspired from
+# https://github.com/zcrabbit/vbpi-nf/blob/main/code/treeManipulation.py#L10
+def build_tree_from_nwk(nwk_tree):
+
+    tree = Tree(nwk_tree, format=1)
+
+    leaves = OrderedDict()
+    internals = OrderedDict()
+
+    i, j, k= 0, len(tree), 0
+    for node in tree.traverse("postorder"):
+        if node.is_leaf():
+            leaves[node.name] = node.dist
+            node.rank, i = i, i+1
+            node.ancestral_rank = -1
+
+        else:
+            if node.is_root():
+                node.name = "root"
+            else:
+                internals[node.name] = node.dist
+
+            node.rank, j = j, j+1
+            node.ancestral_rank, k = k, k+1
+
+    return tree, leaves, internals
+
 
 def evolve_seqs_full_homogeneity(
         nwk_tree,
@@ -26,7 +68,7 @@ def evolve_seqs_full_homogeneity(
     # Evolve sequences
     if verbose: print("Evolving new sequences with the amazing "\
             "Pyvolve for {}".format(fasta_file))
-    tree = read_tree(tree=nwk_tree)
+    pytree = read_tree(tree=nwk_tree)
 
     parameters = None
     if subst_rates is not None or state_freqs is not None:
@@ -57,12 +99,11 @@ def evolve_seqs_full_homogeneity(
     m = Model("nucleotide", parameters=parameters) 
 
     p = Partition(size=nb_sites, models=m)
-    e = Evolver(partitions=p, tree=tree)
+    e = Evolver(partitions=p, tree=pytree)
 
     e(seqfile=fasta_file, infofile=False, ratefile=False,
             write_anc=True, seed=seed)
 
     seqdict = e.get_sequences(anc=return_anc)
 
-    return seqdict["root"],\
-            [seqdict[s] for s in seqdict if s != "root"]
+    return seqdict

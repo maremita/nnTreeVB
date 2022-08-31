@@ -1,8 +1,9 @@
 scipy
 numpy
 biopython
+ete3
 pyvolve
-torch>=1.11.0
+torch>=1.10.0
 joblib
 pandas
 matplotlib
