@@ -1,15 +1,27 @@
+import torch
+
+__author__ = "amine remita"
+
+__all__ = [
+        "pruning",
+        "pruning_known_ancestors"
+        ]
+
 # EvoTreeVGTRW_KL
 def pruning(arbre, x, tm, pi):
 
-    #print("x shape {}".format(x.shape)) # [sample_size, n_dim, m_dim, x_dim]
+    #print("x shape {}".format(x.shape))
+    # [sample_size, n_dim, m_dim, x_dim]
     #print(x)
     #
     #print("pi")
-    #print("pi shape {}".format(pi.shape)) # [sample_size, x_dim]
+    #print("pi shape {}".format(pi.shape))
+    # [sample_size, x_dim]
     #print(pi)
     #
     #print("tm")
-    #print("tm shape {}".format(tm.shape)) # [sample_size, b_dim, x_dim, x_dim]
+    #print("tm shape {}".format(tm.shape))
+    # [sample_size, b_dim, x_dim, x_dim]
     #print(tm)
 
     # Algorithm from Mol Evolution Book (Yang) page 105
@@ -20,45 +32,67 @@ def pruning(arbre, x, tm, pi):
 
     for node in arbre.traverse("postorder"):
         if node.is_leaf():
-            node.state = x[:, :,node.rank,:] #.detach() # x [sample_size, n_dim, b_dim, x_dim]
-            #print("leaf {}\t{}".format(node.name, node.state.shape)) # [sample_size, n_dim, x_dim]
+            #print("shape x {}".format(x.shape))
+            node.state = x[:, :,node.rank,:].detach() 
+            # x [sample_size, n_dim, b_dim, x_dim]
+            #print("leaf {}\t{}".format(node.name, node.state.shape)) 
+            # [sample_size, n_dim, x_dim]
         else:
             node.state = 1.0
             #print("\nNode {}".format(node.name))
 
             for child in node.children:
                 #print("Child {} {}".format(child.name, child.rank))
-                #print("tm[:, {}].shape {}".format(child.rank, tm[:, child.rank].shape)) # [sample_size, x_dim, x_dim]
-                #print("node.state.shape {}".format(node.state.shape)) # [sample_size, n_dim, x_dim]
-                parlial_ll = torch.einsum("bcij,bjk->bcik", (child.state.unsqueeze(-2), tm[:, child.rank])).squeeze(-2).clamp(min=0., max=1.)
-                #print("parlial_ll {}".format(parlial_ll.shape))  # [sample_size, n_dim, x_dim]
+                #print("tm[:, {}].shape {}".format(child.rank, 
+                #    tm[:, child.rank].shape))
+                # [sample_size, x_dim, x_dim]
+                
+                #print("node.state.shape {}".format(node.state.shape))
+                # [sample_size, n_dim, x_dim]
+
+                parlial_ll = torch.einsum("bcij,bjk->bcik",
+                        (child.state.unsqueeze(-2),
+                            tm[:, child.rank]))\
+                                    .squeeze(-2).clamp(min=0., max=1.)
+                #print("parlial_ll {}".format(parlial_ll.shape)) 
+                # [sample_size, n_dim, x_dim]
 
                 node.state *= parlial_ll
-                #print("node {}\t{}".format(node.name, node.state.shape))  # [sample_size, n_dim, x_dim]
+                #print("node {}\t{}".format(node.name,
+                #    node.state.shape)) 
+                # [sample_size, n_dim, x_dim]
 
             scaler = torch.sum(node.state, -1).unsqueeze(-1)
-            #print("scaler shape {}".format(scaler.shape)) # [9, 7, 1]
+            #print("scaler shape {}".format(scaler.shape))
+            # [9, 7, 1]
             node.state /= scaler
             scaler_list.append(scaler)
             #print()
 
-            #  print("\npi shape {}".format(pi.shape)) # [sample_size, 1, x_dim]
+            #print("\npi shape {}".format(pi.shape))
+            # [sample_size, 1, x_dim]
+            
             #  print(pi)        
 
-            #  print("\nroot shape {}".format( arbre.state.shape)) # [sample_size, n_dim, x_dim, 1]
+            #  print("\nroot shape {}".format( arbre.state.shape))
+            # [sample_size, n_dim, x_dim, 1]
             #  print(arbre.state)
 
-            #                       b        i    j                          b            c       j   k       
+            #b  i  j            b   c   j   k       
             #  pi unseqz(-2)   : [sample_size, 1, x_dim]  root unseqz(-1) : [sample_size, n_dim, x_dim, 1]
 
-            #logl = torch.einsum("bij,bcjk->bcik", (pi.unsqueeze(-2), arbre.state.unsqueeze(-1))).log().mean(0).flatten()
+            #logl = torch.einsum("bij,bcjk->bcik", (pi.unsqueeze(-2),
+            #    arbre.state.unsqueeze(-1))).log().mean(0).flatten()
 
-    scaler_list.append(torch.einsum("bij,bcjk->bcik", (pi.unsqueeze(-2), arbre.state.unsqueeze(-1))).squeeze(-1))
+    scaler_list.append(torch.einsum("bij,bcjk->bcik",
+        (pi.unsqueeze(-2), arbre.state.unsqueeze(-1))).squeeze(-1))
     #logl = torch.sum(torch.log(torch.stack(scaler_list)))
     #stack = torch.stack(scaler_list)
-    #print("\nstack {}".format(stack.shape)) # [nb_scaler, sample, n_dim, 1]
+    #print("\nstack {}".format(stack.shape))
+    # [nb_scaler, sample, n_dim, 1]
 
-    logl = torch.sum(torch.log(torch.stack(scaler_list)), dim=0).mean(0).flatten()
+    logl = torch.sum(torch.log(torch.stack(scaler_list)),
+            dim=0).mean(0).flatten()
     #print("\nlogl")
     #print(logl.shape) #[n_dim]
     #print(logl)

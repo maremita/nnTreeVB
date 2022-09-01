@@ -8,19 +8,28 @@ __author__ = "Amine Remita"
 
 class VB_Gamma_IndEncoder(nn.Module):
     def __init__(self,
-            in_shape,            # [2],
+            in_shape,              # [..., 2]
+            out_shape,             # [..., 1]
             init_distr=[0.1, 0.1], # list of 2 floats, "uniform",
                                    # "normal" or False
-            prior_hp=[0.2, 0.2]):  # prior hyper-parameters
+            prior_hp=[0.2, 0.2],  # prior hyper-parameters
+            device=torch.device("cpu")):
 
         super().__init__()
 
-        self.in_dim = in_dim
         self.in_shape = in_shape
+        self.out_shape = out_shape 
+
+        self.in_dim = self.in_shape[-1]   # 2
+        self.out_dim = self.out_shape[-1] # 1
+
         self.init_distr = init_distr
+
         self.prior_hp = torch.tensor(prior_hp)
+        self.device_ = device
 
         assert self.in_shape[-1] == 2       # last dim must be 2
+        assert self.out_shape[-1] == 1       # last dim must be 2
         assert self.prior_hp.shape[-1] == 2  # for alpha and rate
 
         self.prior_alpha = self.prior_hp[0]
@@ -66,8 +75,9 @@ class VB_Gamma_IndEncoder(nn.Module):
 
         # Sample from approximate distribution q
         samples = self.dist_q.rsample(
-                torch.Size([sample_size])).flatten()
-        # print("samples gamma shape {}".format(samples.shape)) #[sample_size]
+                torch.Size([sample_size]))
+        #print("samples gamma shape {}".format(samples.shape))
+        #[sample_size, b_dim, 1]
 
         if not isinstance(min_clamp, bool):
             if isinstance(min_clamp, (float, int)):
@@ -79,38 +89,48 @@ class VB_Gamma_IndEncoder(nn.Module):
 
         with torch.set_grad_enabled(KL_gradient):
             kl = kl_divergence(self.dist_q, self.dist_p)
+            #print("kl.shape {}".format(kl.shape))
+            #[b_dim, 1]
 
         with torch.set_grad_enabled(not KL_gradient):
             # Compute log prior of samples p(d)
             logprior = self.dist_p.log_prob(samples)
-            # print("logprior.shape {}".format(logprior.shape))
+            #print("logprior.shape {}".format(logprior.shape))
+            #[sample_size, b_dim, 1]
 
             # Compute the log of approximate posteriors q(d)
             logq = self.dist_q.log_prob(samples)
-            # print("logq.shape {}".format(logq.shape))
+            #print("logq.shape {}".format(logq.shape))
+            #[sample_size, b_dim, 1] 
 
         return logprior, logq, kl, samples
 
 
 class VB_Gamma_NNIndEncoder(nn.Module):
     def __init__(self,
-            in_shape,             # [2],
+            in_shape,              # [..., 2],
+            out_shape,             # [..., 1]
             init_distr="uniform", # list of 2 floats, uniform,
                                   # normal or False
             prior_hp=[0.2, 0.2],
             h_dim=16, 
             nb_layers=3,
             bias_layers=True,     # True or False
-            activ_layers="relu"): # relu, tanh, or False
+            activ_layers="relu", # relu, tanh, or False
+            device=torch.device("cpu")):
 
         super().__init__()
 
-        self.in_dim = 2
-        self.out_dim = 1            # one for alpha and one for rate
         self.in_shape = in_shape
+        self.out_shape = out_shape 
+
+        self.in_dim = self.in_shape[-1]   # 2
+        self.out_dim = self.out_shape[-1] # 1
+
         self.init_distr = init_distr
 
         self.prior_hp = torch.tensor(prior_hp)
+        self.device_ = device
 
         assert self.in_shape[-1] == 2       # last dim must be 2
         assert self.prior_hp.shape[-1] == 2 # for alpha and rate
@@ -186,7 +206,7 @@ class VB_Gamma_NNIndEncoder(nn.Module):
 
         # Sample
         samples = self.dist_q.rsample(
-                torch.Size([sample_size])).flatten()
+                torch.Size([sample_size]))
         # print("samples gamma shape {}".format(samples.shape)) #
 
         if not isinstance(min_clamp, bool):

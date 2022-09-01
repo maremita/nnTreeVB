@@ -29,9 +29,8 @@ class BaseTreeVB(ABC):
             sites,
             site_counts,
             latent_sample_size=1,
-            sample_temp=0.1,
-            alpha_kl=0.001,
-            keep_vars=False):
+            sample_temp=0.1):
+            #alpha_kl=0.001,
 
         with torch.no_grad():
             if site_counts == None:
@@ -44,9 +43,8 @@ class BaseTreeVB(ABC):
                     site_counts,
                     latent_sample_size=latent_sample_size,
                     sample_temp=sample_temp, 
-                    alpha_kl=alpha_kl, 
-                    shuffle_sites=False,
-                    keep_vars=keep_vars)
+                    #alpha_kl=alpha_kl, 
+                    shuffle_sites=False)
 
     def fit(self,
             tree,
@@ -54,7 +52,7 @@ class BaseTreeVB(ABC):
             X_train_counts,
             latent_sample_size=1,
             sample_temp=0.1,
-            alpha_kl=0.001,
+            #alpha_kl=0.001,
             max_iter=100,
             optim="adam",
             optim_learning_rate=0.005, 
@@ -123,32 +121,31 @@ class BaseTreeVB(ABC):
 
             fit_time = time.time()
             optimizer.zero_grad()
-            try:
-                fit_dict = self(
-                        tree,
-                        X_train,
-                        X_train_counts,
-                        latent_sample_size=latent_sample_size,
-                        sample_temp=sample_temp,
-                        alpha_kl=alpha_kl,
-                        shuffle_sites=True,
-                        keep_vars=keep_fit_vars)
+            #try:
+            fit_dict = self(
+                    tree,
+                    X_train,
+                    X_train_counts,
+                    latent_sample_size=latent_sample_size,
+                    sample_temp=sample_temp,
+                    #alpha_kl=alpha_kl,
+                    shuffle_sites=True)
 
-                elbos = fit_dict["elbo"]
-                lls = fit_dict["logl"].cpu()
-                lps = fit_dict["logprior"].cpu()
-                lqs = fit_dict["logq"].cpu()
-                kls = fit_dict["kl_qprior"].cpu()
+            elbos = fit_dict["elbo"]
+            lls = fit_dict["logl"].cpu()
+            lps = fit_dict["logprior"].cpu()
+            lqs = fit_dict["logq"].cpu()
+            kls = fit_dict["kl_qprior"].cpu()
 
-                loss = - elbos
-                loss.backward()
-                optimizer.step()
+            loss = - elbos
+            loss.backward()
+            optimizer.step()
             # Catch some exception (Working on it)
-            except Exception as e:
-                print("\nStopping training at epoch {} because"\
-                        " of an exception in fit()".format(epoch))
-                print(e)
-                break
+            #except Exception as e:
+            #    print("\nStopping training at epoch {} because"\
+            #            " of an exception in fit()".format(epoch))
+            #    print(e)
+            #    break
  
             ret["total_fit_time"] += time.time() - fit_time
 
@@ -162,9 +159,8 @@ class BaseTreeVB(ABC):
                                 X_val,
                                 X_val_counts, 
                                 latent_sample_size=latent_sample_size,
-                                sample_temp=sample_temp,
-                                alpha_kl=alpha_kl,
-                                keep_vars=keep_val_vars)
+                                sample_temp=sample_temp)
+                                #alpha_kl=alpha_kl,
 
                         val_dict = dict_to_numpy(val_dict)
                         elbos_val = val_dict["elbo"]
@@ -194,8 +190,8 @@ class BaseTreeVB(ABC):
                                     "{:.3f}".format(
                                             elbos_val.item(),
                                             lls_val.item(), 
-                                            lps_val.item())
-                                            lqs_val.item())
+                                            lps_val.item(),
+                                            lqs_val.item(),
                                             kls_val.item())
                         print(chaine, end="\r")
 
@@ -210,7 +206,7 @@ class BaseTreeVB(ABC):
                     fit_estim = dict()
                     for estim in ["b", "t", "bt,"  "r", "f", "k"]:
                         if estim in fit_dict:
-                            fit_estim[estim] = fit_dict[estim].cpu()
+                            fit_estim[estim] = fit_dict[estim]
                     ret["fit_estimates"].append(fit_estim)
 
                 if X_val is not None:

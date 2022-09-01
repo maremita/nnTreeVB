@@ -10,22 +10,26 @@ __author__ = "amine remita"
 
 class VB_Categorical_NNEncoder(nn.Module):
     def __init__(self, 
-            in_dim,    # x_dim * m_dim
-            out_dim,   # x_dim * a_dim
-            out_shape, # [n_dim, a_dim, x_dim]
+            in_shape,  # [n_dim, x_dim , m_dim]
+            #in_dim,   # x_dim * m_dim
+            #out_dim,  # x_dim * a_dim
+            out_shape, # [n_dim, x_dim, a_dim]
             prior_hp=[1., 1.],
             h_dim=16,
             nb_layers=3,
             bias_layers=True,     # True or False
-            activ_layers="relu"): # relu, tanh, or False
+            activ_layers="relu", # relu, tanh, or False
+            device=torch.device("cpu")):
 
         super().__init__()
 
-        self.in_dim = in_dim
-        self.out_dim = out_dim
-        self.out_shape = out_shape
+        self.in_shape = in_shape
+        self.out_shape = out_shape 
+        self.in_dim = self.in_shape[-1] * self.in_shape[-2] 
+        self.out_dim = self.out_shape[-1] * self.out_shape[-2]
 
         self.prior_hp = torch.tensor(prior_hp)
+        self.device_ = device
 
         self.h_dim = h_dim  # hidden layer size
         self.n_layers = n_layers
@@ -69,8 +73,8 @@ class VB_Categorical_NNEncoder(nn.Module):
             min_clamp=False,    # should be <= to 10^-7
             max_clamp=False):
  
-        # Flatten the data when passing it to this function
-        #data = data.flatten(1)
+        # Flatten the data
+        data = data.flatten(-2)
         #print("data shape {}".format(data.shape))
         # [n_dim, m_dim * x_dim]
 

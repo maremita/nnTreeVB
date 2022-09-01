@@ -36,24 +36,30 @@ def build_JC69_transition_matrix(b=1.):
 # K80 matrices
 # #############
 def build_K80_matrix(kappa):
+    #print("kappa shape {}".format(kappa.shape))
+    #[sample_size, 1]
     sample_size = kappa.shape[0]
     freqs = torch.ones(4)/4
-	pA, pG, pC, pT = freqs
+    pA, pG, pC, pT = freqs
 
     rate_matrix = torch.zeros((sample_size, 4, 4))
+    
+    #print(kappa[...,0])
 
     for i in range(4):
         for j in range(4):
             if j!=i:
                 rate_matrix[..., i,j] = freqs[..., j]
             if i+j == 1 or i+j == 5:
-                rate_matrix[..., i,j] *= kappa
+                rate_matrix[..., i,j] *= kappa[..., 0]
 
     for i in range(4):
         rate_matrix[..., i,i] = - rate_matrix.sum(dim=-1)[..., i]
  
     # Scaling factor
-    beta = 1.0/(2*(pA+pG)*(pC+pT) + 2*kappa*(pA*pG+pC*pT))
+    beta = 1.0/(2*(pA+pG)*(pC+pT) + 2*kappa.flatten()*(pA*pG+pC*pT))
+    #print("beta shape {}".format(beta.shape))
+    #[sample_size]
 
     # Multiply the rate matrix by beta so that the average 
     # substitution ate is 1. Time will be the distance : b = d/1
@@ -66,14 +72,16 @@ def build_K80_matrix(kappa):
 
 def build_K80_transition_matrix(b=1., kappa=1.):
     rateM = build_K80_matrix(kappa)
-    # print("rateM shape {}".format(rateM.shape)) #[sample_size, x_dim, x_dim]
+    #print("rateM shape {}".format(rateM.shape))
+    #[sample_size, x_dim, x_dim]
     # print(rateM)
 
     tm = torch.matrix_exp(
             torch.einsum("bij,bck->bcij", (rateM, b))).clamp(
                     min=0.0, max=1.0)
 
-    # print("\ntm sahpe {}".format(tm.shape)) # [sample_size, x_dim, x_dim]
+    #print("\ntm sahpe {}".format(tm.shape))
+    # [sample_size, x_dim, x_dim]
     #print(tm)
 
     return tm
@@ -83,8 +91,17 @@ def build_K80_transition_matrix(b=1., kappa=1.):
 # HKY matrices
 # #############
 def build_HKY_matrix(freqs, kappa):
+    #print("kappa shape {}".format(kappa.shape))
+    #[sample_size, 1]
+
     sample_size = kappa.shape[0]
-	pA, pG, pC, pT = freqs
+
+    pA = freqs[...,0]
+    pG = freqs[...,1]
+    pC = freqs[...,2]
+    pT = freqs[...,3]
+    #print("pA shape {}".format(pA.shape))
+    # [sample_size]
 
     rate_matrix = torch.zeros((sample_size, 4, 4))
 
@@ -93,13 +110,15 @@ def build_HKY_matrix(freqs, kappa):
             if j!=i:
                 rate_matrix[..., i,j] = freqs[..., j]
             if i+j == 1 or i+j == 5:
-                rate_matrix[..., i,j] *= kappa
+                rate_matrix[..., i,j] *= kappa[..., 0]
 
     for i in range(4):
         rate_matrix[..., i,i] = - rate_matrix.sum(dim=-1)[..., i]
  
     # Scaling factor
-    beta = 1.0/(2*(pA+pG)*(pC+pT) + 2*kappa*(pA*pG+pC*pT))
+    beta = 1.0/(2*(pA+pG)*(pC+pT) + 2*kappa.flatten()*(pA*pG+pC*pT))
+    #print("beta shape {}".format(beta.shape))
+    #[sample_size]
 
     # Multiply the rate matrix by beta so that the average 
     # substitution ate is 1. Time will be the distance : b = d/1
@@ -112,14 +131,16 @@ def build_HKY_matrix(freqs, kappa):
 
 def build_HKY_transition_matrix(b=1., freqs=0.25, kappa=1.):
     rateM = build_HKY_matrix(freqs, kappa)
-    # print("rateM shape {}".format(rateM.shape)) #[sample_size, x_dim, x_dim]
+    #print("rateM shape {}".format(rateM.shape))
+    #[sample_size, x_dim, x_dim]
     # print(rateM)
 
     tm = torch.matrix_exp(
             torch.einsum("bij,bck->bcij", (rateM, b))).clamp(
                     min=0.0, max=1.0)
 
-    # print("\ntm sahpe {}".format(tm.shape)) # [sample_size, x_dim, x_dim]
+    #print("\ntm sahpe {}".format(tm.shape))
+    # [sample_size, x_dim, x_dim]
     #print(tm)
 
     return tm
@@ -205,8 +226,8 @@ def build_GTR_transition_matrix(b, rates=0.16, freqs=0.25):
 
     return tm
 
-def build_transition_matrix(subs_model="jc69", args):
- 
+def build_transition_matrix(subs_model, args):
+
     if subs_model == "jc69":
         # args = {b}
         tm = build_JC69_transition_matrix(**args)

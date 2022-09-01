@@ -8,19 +8,28 @@ __author__ = "Amine Remita"
 
 class VB_LogNormal_IndEncoder(nn.Module):
     def __init__(self,
-            in_shape,              # [2],
+            in_shape,              # [..., 2],
+            out_shape,             # [..., 1]
             init_distr=[0.1, 0.1], # list of 2 floats, "uniform",
                                    # "normal" or False
-            prior_hp=[0.2, 0.2]):  # prior hyper-parameters
+            prior_hp=[0.2, 0.2],  # prior hyper-parameters
+            device=torch.device("cpu")):
 
         super().__init__()
 
-        self.in_dim = 2
         self.in_shape = in_shape
+        self.out_shape = out_shape 
+
+        self.in_dim = self.in_shape[-1]   # 2
+        self.out_dim = self.out_shape[-1] # 1
+
         self.init_distr = init_distr
+
         self.prior_hp = torch.tensor(prior_hp)
+        self.device_ = device
 
         assert self.in_shape[-1] == 2       # last dim must be 2
+        assert self.out_shape[-1] == 1       # last dim must be 2
         assert self.prior_hp.shape[-1] == 2  # for mu and sigma
 
         self.prior_mu = self.prior_hp[0]
@@ -66,7 +75,7 @@ class VB_LogNormal_IndEncoder(nn.Module):
 
         # Sample from approximate distribution q
         samples = self.dist_q.rsample(
-                torch.Size([sample_size])).flatten()
+                torch.Size([sample_size]))
         # print("samples shape {}".format(samples.shape)) # [sample_size]
 
         if not isinstance(min_clamp, bool):
@@ -94,25 +103,35 @@ class VB_LogNormal_IndEncoder(nn.Module):
 
 class VB_LogNormal_NNIndEncoder(nn.Module):
     def __init__(self,
-            in_shape,             # [2],
+            in_shape,              # [..., 2],
+            out_shape,             # [..., 1]
             init_distr="uniform", # list of 2 floats, uniform,
                                   # normal or False
             prior_hp=[0.2, 0.2],
             h_dim=16, 
             nb_layers=3,
             bias_layers=True,     # True or False
-            activ_layers="relu"): # relu, tanh, or False
+            activ_layers="relu", # relu, tanh, or False
+            device=torch.device("cpu")):
 
         super().__init__()
 
-        self.in_dim = 2
-        self.out_dim = 1            # one for mu and one for sigma
         self.in_shape = in_shape
+        self.out_shape = out_shape 
+
+        self.in_dim = self.in_shape[-1]   # 2
+        self.out_dim = self.out_shape[-1] # 1
+
+        #self.in_dim = 2
+        #self.out_dim = 1            # one for mu and one for sigma
+ 
         self.init_distr = init_distr
 
         self.prior_hp = torch.tensor(prior_hp)
+        self.device_ = device
 
         assert self.in_shape[-1] == 2       # last dim must be 2
+        assert self.out_shape[-1] == 1       # last dim must be 2
         assert self.prior_hp.shape[-1] == 2  # for alpha and rate
 
         self.prior_mu = self.prior_hp[0]
@@ -186,7 +205,7 @@ class VB_LogNormal_NNIndEncoder(nn.Module):
         # Sample
         #samples = sample_logNormal(mu, sigma, sample_size)
         samples = self.dist_q.rsample(
-                torch.Size([sample_size])).flatten()
+                torch.Size([sample_size]))
         # print("samples shape {}".format(samples.shape)) #
 
         if not isinstance(min_clamp, bool):
