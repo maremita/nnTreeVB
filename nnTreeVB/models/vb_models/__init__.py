@@ -204,7 +204,7 @@ class BaseTreeVB(ABC):
 
                 if keep_fit_history:
                     fit_estim = dict()
-                    for estim in ["b", "t", "bt,"  "r", "f", "k"]:
+                    for estim in ["b", "t", "bt"  "r", "f", "k"]:
                         if estim in fit_dict:
                             fit_estim[estim] = fit_dict[estim]
                     ret["fit_estimates"].append(fit_estim)
@@ -218,7 +218,7 @@ class BaseTreeVB(ABC):
 
                     if keep_val_history:
                         val_estim = dict()
-                        for estim in ["b", "t", "bt,"  "r", "f", "k"]:
+                        for estim in ["b", "t", "bt"  "r", "f", "k"]:
                             if estim in val_dict:
                                 val_estim[estim]=val_dict[estim]
 

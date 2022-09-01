@@ -22,6 +22,8 @@ def build_JC69_transition_matrix(b=1.):
     # print("rateM shape {}".format(rateM.shape)) #[x_dim, x_dim]
     # print(rateM)
 
+    #print(torch.matrix_exp(torch.einsum("ij,bck->bcij", (rateM, b))).shape)
+
     tm = torch.matrix_exp(
             torch.einsum("ij,bck->bcij", (rateM, b))).clamp(
                     min=0.0, max=1.0)
@@ -130,10 +132,13 @@ def build_HKY_matrix(freqs, kappa):
 
 
 def build_HKY_transition_matrix(b=1., freqs=0.25, kappa=1.):
+    #print("b.shape {}".format(b.shape))
     rateM = build_HKY_matrix(freqs, kappa)
     #print("rateM shape {}".format(rateM.shape))
     #[sample_size, x_dim, x_dim]
     # print(rateM)
+    
+    #print(torch.einsum("bij,bck->bcij", (rateM, b)).shape)
 
     tm = torch.matrix_exp(
             torch.einsum("bij,bck->bcij", (rateM, b))).clamp(
