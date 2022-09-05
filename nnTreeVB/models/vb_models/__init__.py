@@ -28,6 +28,7 @@ class BaseTreeVB(ABC):
             tree,
             sites,
             site_counts,
+            elbo_type="elbo",
             latent_sample_size=1,
             sample_temp=0.1):
             #alpha_kl=0.001,
@@ -41,6 +42,7 @@ class BaseTreeVB(ABC):
                     tree,
                     sites,
                     site_counts,
+                    elbo_type=elbo_type,
                     latent_sample_size=latent_sample_size,
                     sample_temp=sample_temp, 
                     #alpha_kl=alpha_kl, 
@@ -50,6 +52,7 @@ class BaseTreeVB(ABC):
             tree,
             X_train,
             X_train_counts,
+            elbo_type="elbo",
             latent_sample_size=1,
             sample_temp=0.1,
             #alpha_kl=0.001,
@@ -126,6 +129,7 @@ class BaseTreeVB(ABC):
                     tree,
                     X_train,
                     X_train_counts,
+                    elbo_type=elbo_type,
                     latent_sample_size=latent_sample_size,
                     sample_temp=sample_temp,
                     #alpha_kl=alpha_kl,
@@ -158,6 +162,7 @@ class BaseTreeVB(ABC):
                                 tree,
                                 X_val,
                                 X_val_counts, 
+                                elbo_type=elbo_type,
                                 latent_sample_size=latent_sample_size,
                                 sample_temp=sample_temp)
                                 #alpha_kl=alpha_kl,
@@ -204,7 +209,7 @@ class BaseTreeVB(ABC):
 
                 if keep_fit_history:
                     fit_estim = dict()
-                    for estim in ["b", "t", "bt"  "r", "f", "k"]:
+                    for estim in ["b", "t", "b1"  "r", "f", "k"]:
                         if estim in fit_dict:
                             fit_estim[estim] = fit_dict[estim]
                     ret["fit_estimates"].append(fit_estim)
@@ -218,7 +223,7 @@ class BaseTreeVB(ABC):
 
                     if keep_val_history:
                         val_estim = dict()
-                        for estim in ["b", "t", "bt"  "r", "f", "k"]:
+                        for estim in ["b", "t", "b1"  "r", "f", "k"]:
                             if estim in val_dict:
                                 val_estim[estim]=val_dict[estim]
 

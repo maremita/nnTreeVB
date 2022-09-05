@@ -4,6 +4,8 @@ from nnTreeVB.models.evo_models import build_transition_matrix
 from nnTreeVB.models.evo_models import pruning_known_ancestors
 from nnTreeVB.models.evo_models import pruning
 
+import math
+
 import torch
 import torch.nn as nn
 
@@ -248,6 +250,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         kl_qprior += b_kl.sum(0) * N
  
         ret_values["b"] = b_samples.detach().numpy()
+        tm_args["b"] = b_samples
         #print("b_samples.shape {}".format(b_samples.shape))
 
         if self.b_compound:
@@ -264,12 +267,10 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             logq += t_logq.mean(0).sum(0)
             kl_qprior += t_kl * N
 
-            tm_args["b"] = bt_samples
             ret_values["t"] = t_samples.detach().numpy()
-            ret_values["bt"] = bt_samples.detach().numpy()
-
-        else:
-            tm_args["b"] = b_samples
+            ret_values["b1"] = b_samples.detach().numpy()
+            ret_values["b"] = bt_samples.detach().numpy()
+            tm_args["b"] = bt_samples
 
         if self.subs_model in ["gtr"]:
             # Sample r from q_r and compute log prior, log q
@@ -281,8 +282,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             logq += r_logq.mean(0).sum(0)
             kl_qprior += r_kl * N
  
-            tm_args["rates"] = r_samples
             ret_values["r"] = r_samples.detach().numpy()
+            tm_args["rates"] = r_samples
 
         if self.subs_model in ["hky", "gtr"]:
             # Sample f from q_f and compute log prior, log q
@@ -294,9 +295,9 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             logq += f_logq.mean(0).sum(0)
             kl_qprior += f_kl * N
 
-            tm_args["freqs"] = f_samples
             ret_values["f"] = f_samples.detach().numpy()
             pi = f_samples
+            tm_args["freqs"] = f_samples
 
         if self.subs_model in ["k80", "hky"]:
             # Sample k from q_d and compute log prior, log q
@@ -308,8 +309,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             logq += k_logq.mean(0).flatten()
             kl_qprior += k_kl.flatten() * N
  
-            tm_args["kappa"] = k_samples
             ret_values["k"] = k_samples.detach().numpy()
+            tm_args["kappa"] = k_samples
 
         ## Compute logl
         ## ############
