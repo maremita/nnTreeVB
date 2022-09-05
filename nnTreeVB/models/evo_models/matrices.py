@@ -215,18 +215,18 @@ def build_GTR_matrix(rates, freqs):
     return rate_matrix
 
 def build_GTR_transition_matrix(b, rates=0.16, freqs=0.25):
-    # print("b shape {}".format(b.shape)) # [sample_size]
+    #print("\nb shape {}".format(b.shape)) # [sample_size, b_dim, 1]
     # print(b)
 
     rateM = build_GTR_matrix(rates, freqs)
-    # print("rateM shape {}".format(rateM.shape)) #[sample_size, x_dim, x_dim]
+    #print("rateM shape {}".format(rateM.shape)) #[sample_size, x_dim, x_dim]
     # print(rateM)
 
     tm = torch.matrix_exp(
             torch.einsum("bij,bck->bcij", (rateM, b))).clamp(
                     min=0.0, max=1.0)
 
-    # print("\ntm sahpe {}".format(tm.shape)) # [sample_size, x_dim, x_dim]
+    #print("tm sahpe {}".format(tm.shape)) # [sample_size, b_dim, x_dim, x_dim]
     #print(tm)
 
     return tm

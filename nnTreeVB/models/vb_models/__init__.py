@@ -81,7 +81,7 @@ class BaseTreeVB(ABC):
                     lr=optim_learning_rate,
                     weight_decay=optim_weight_decay)
         else:
-            optimizer = torch.optim.SGD(evoModel.parameters(),
+            optimizer = torch.optim.SGD(self.parameters(),
                     lr=optim_learning_rate,
                     weight_decay=optim_weight_decay)
 

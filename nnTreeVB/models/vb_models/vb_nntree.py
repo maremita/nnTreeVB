@@ -20,56 +20,63 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             a_dim, # number of internal nodes
             #
             subs_model="gtr", # jc69 | k80 | hky | gtr
-            # #####################################################
+            # #################################################
             # ancestor encoder
             predict_ancestors=False,
-            # categorical
+            # fixed | categorical
             a_encoder_type="categorical_nn",
             a_init_distr=[1., 1., 1., 1.], 
             # if not nn: list of 4 floats
             # if nn: list of 4 floats, uniform, normal or False
+            # if fixed: tensor
             a_hp=[1., 1., 1., 1.],
-            # #####################################################
+            # #################################################
             # branch lengths
             # fixed | gamma | explogn | lognormal | dirichlet
             b_encoder_type="gamma_ind", 
             b_init_distr=[0.1, 0.1], 
             # if not nn: list of 2 floats
             # if nn: list of 2 floats, uniform, normal or False
+            # if fixed: tensor
             b_hp=[0.2, 0.2],
-            # #####################################################
+            # #################################################
             # Total tree length
             # fixed | gamma | explogn | lognormal
             t_encoder_type="gamma_ind", 
             t_init_distr=[0.1, 0.1],
             # if not nn: list of 2 floats
             # if nn: list of 2 floats, uniform, normal or False
+            # if fixed: tensor
             t_hp=[0.2, 0.2],
-            # #####################################################
+            # #################################################
             # gtr rates encoder args
             # fixed | dirichlet | nndirichlet
             r_encoder_type="dirichlet_ind",
             r_init_distr=[1., 1., 1., 1., 1., 1.], 
             # if not nn: list of 6 floats
             # if nn: list of 6 floats, uniform, normal or False
+            # if fixed: tensor
             r_hp=[1., 1., 1., 1., 1., 1.],
-            # #####################################################
+            # #################################################
             # gtr frequencies encoder args
             # fixed | dirichlet | nndirichlet
             f_encoder_type="dirichlet_ind",  # 
             f_init_distr=[1., 1., 1., 1.], 
             # if not nn: list of 6 floats
             # if nn: list of 6 floats, uniform, normal or False
+            # if fixed: tensor
             f_hp=[1., 1., 1., 1.],
-            # #####################################################
+            # #################################################
             # k encoder args
+            # fixed | gamma | lognormal
             k_encoder_type="gamma_ind",
             k_init_distr=[0.1, 0.1], 
-            # if not deep: list of 2 floats
-            # if deep: list of 2 floats, uniform, normal or False
+            # if not nn: list of 2 floats
+            # if nn: list of 2 floats, uniform, normal or False
+            # if fixed: tensor
             k_hp=[0.1, 0.1],
-            # #####################################################
-            # Following parameters are needed id deep_encoder is True
+            # #################################################
+            # Following parameters are needed if nn
             h_dim=16,
             nb_layers=3,
             bias_layers=True,     # True or False
@@ -196,8 +203,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         elbos = ["elbo", "elbo_iws", "elbo_kl"]
         elbo_type = elbo_type.lower()
         if elbo_type not in elbos:
-            print("Warning {} is not a valid type for elbo".format(
-                elbo_type))
+            print("Warning {} is not a valid type for"\
+                    " elbo".format(elbo_type))
             print("elbo_type is set to elbo")
             elbo_type = "elbo"
 

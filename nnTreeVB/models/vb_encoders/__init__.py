@@ -10,6 +10,7 @@ from .vb_dirichlet import *
 from .vb_categorical import *
 from .vb_gamma import *
 from .vb_logNormal import *
+from .vb_fixed import *
 
 import torch
 
@@ -49,10 +50,13 @@ def get_vb_encoder_type(encoder_type="gamma"):
     elif encoder_type == "categorical_nn":
         encoder = VB_Categorical_NNEncoder
 
+    elif encoder_type == "fixed":
+        encoder = VB_FixedEncoder
+
     else:
         print("warning encoder type")
-        encoder = VB_Gamma_IndEncoder
-    
+        encoder = VB_FixedEncoder
+
     return encoder
 
 
@@ -64,9 +68,10 @@ def build_vb_encoder(
         # if not deep: list of 2 floats
         # if deep: list of 2 floats, uniform, normal for nnInd
         # or False for nn encoders
+        # or tensor for fixed encoder
         prior_hp=[0.2, 0.2],
-        # Following parameters are needed id deep_encoder is True
-        h_dim=16, 
+        # Following parameters are needed if nn
+        h_dim=16,
         nb_layers=3,
         bias_layers=True,     # True or False
         activ_layers="relu",  # relu, tanh, or False
@@ -75,10 +80,15 @@ def build_vb_encoder(
     encoder = get_vb_encoder_type(encoder_type)
 
     encoder_args = dict(
-            prior_hp=prior_hp,
             device=device)
 
-    if init_distr:
+    if encoder_type != "fixed":
+        encoder_args.update(
+            prior_hp=prior_hp)
+    else:
+        assert isinstance(init_distr, torch.Tensor)
+
+    if init_distr is not False:
         encoder_args.update(
             init_distr=init_distr)
 
