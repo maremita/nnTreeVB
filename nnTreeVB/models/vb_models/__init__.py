@@ -9,6 +9,10 @@
 # https://github.com/maremita/evoVGM/blob/main/evoVGM/models/evoABCmodels.py
 
 from nnTreeVB.utils import timeSince, dict_to_numpy
+from nnTreeVB.utils import check_finite_grads
+from nnTreeVB.utils import get_grad_stats
+from nnTreeVB.utils import get_weight_stats
+from nnTreeVB.utils import apply_on_submodules
 
 from abc import ABC 
 import time
@@ -69,14 +73,18 @@ class BaseTreeVB(ABC):
             # to report its distance with the inferred ancestral
             # sequence during calidation
             # It is not used during the inference.
-            keep_fit_history=False,
+            save_fit_history=False,
             # Save estimates for each epoch of fitting step
-            keep_val_history=False,
+            save_val_history=False,
             # Save estimates for each epoch of validation step
-            keep_fit_vars=False,
+            #keep_fit_vars=False,
             # Save estimate variances from fitting step
-            keep_val_vars=False,
+            #keep_val_vars=False,
             # Save estimate variances from validation step
+            save_grad_stats=False,
+            # Save statistics of gradients
+            save_weight_stats=False,
+            # Save statistics of weights
             verbose=None):
 
         if optim == 'adam':
@@ -99,6 +107,7 @@ class BaseTreeVB(ABC):
         # without pre/post processing tasks
         ret["total_fit_time"] = 0
         ret["total_val_time"] = 0
+        ret["optimized"] = []
 
         if X_val_counts is not None: N_val_dim = X_val_counts.sum()
         elif X_val is not None: N_val_dim = X_val.shape[0]
@@ -109,8 +118,10 @@ class BaseTreeVB(ABC):
         ret["lqs_list"] = []
         ret["kls_list"] = []
 
-        if keep_fit_history: ret["fit_estimates"] = []
-        if keep_val_history: ret["val_estimates"] = []
+        if save_fit_history: ret["fit_estimates"] = []
+        if save_val_history: ret["val_estimates"] = []
+        if save_grad_stats: ret["grad_stats"] = []
+        if save_weight_stats: ret["weight_stats"] = []
 
         if X_val is not None:
             np_X_val = X_val.cpu().numpy()
@@ -120,41 +131,54 @@ class BaseTreeVB(ABC):
             ret["lqs_val_list"] = []
             ret["kls_val_list"] = []
 
+        optim_nb = 0
         for epoch in range(1, max_iter + 1):
 
             fit_time = time.time()
             optimizer.zero_grad()
-            #try:
-            fit_dict = self(
-                    tree,
-                    X_train,
-                    X_train_counts,
-                    elbo_type=elbo_type,
-                    latent_sample_size=latent_sample_size,
-                    sample_temp=sample_temp,
-                    #alpha_kl=alpha_kl,
-                    shuffle_sites=True)
+            try:
+                fit_dict = self(
+                        tree,
+                        X_train,
+                        X_train_counts,
+                        elbo_type=elbo_type,
+                        latent_sample_size=latent_sample_size,
+                        sample_temp=sample_temp,
+                        #alpha_kl=alpha_kl,
+                        shuffle_sites=True)
 
-            elbos = fit_dict["elbo"]
-            lls = fit_dict["logl"].cpu()
-            lps = fit_dict["logprior"].cpu()
-            lqs = fit_dict["logq"].cpu()
-            kls = fit_dict["kl_qprior"].cpu()
+                elbo = fit_dict["elbo"]
+                lls = fit_dict["logl"].cpu()
+                lps = fit_dict["logprior"].cpu()
+                lqs = fit_dict["logq"].cpu()
+                kls = fit_dict["kl_qprior"].cpu()
 
-            loss = - elbos
-            loss.backward()
-            optimizer.step()
-            # Catch some exception (Working on it)
-            #except Exception as e:
-            #    print("\nStopping training at epoch {} because"\
-            #            " of an exception in fit()".format(epoch))
-            #    print(e)
-            #    break
- 
+                loss = - elbo
+                loss.backward()
+
+                f = check_finite_grads(self, epoch, verbose=False)
+
+                # Optimize if gradients do not have nan values
+                if f and torch.isfinite(elbo):
+                    optimizer.step()
+                    ret["optimized"].append(1.)
+                    optim_nb += 1
+
+                else:
+                    ret["optimized"].append(0.)
+
+            except Exception as e:
+                print("\nStopping training at epoch {}"\
+                        " because of an exception in"\
+                        " fit()\n".format(epoch))
+                print(e)
+                #TODO not break if there is an exception
+                break
+
             ret["total_fit_time"] += time.time() - fit_time
 
-            # Validation and printing
             with torch.no_grad():
+                ## Validation
                 if X_val is not None:
                     val_time = time.time()
                     try:
@@ -168,7 +192,7 @@ class BaseTreeVB(ABC):
                                 #alpha_kl=alpha_kl,
 
                         val_dict = dict_to_numpy(val_dict)
-                        elbos_val = val_dict["elbo"]
+                        elbo_val = val_dict["elbo"]
                         lls_val = val_dict["logl"]
                         lps_val = val_dict["logprior"]
                         lqs_val = val_dict["logq"]
@@ -177,53 +201,67 @@ class BaseTreeVB(ABC):
                     except Exception as e:
                         print("\nStopping training at epoch {}"\
                                 " because of an exception in"\
-                                " sample()".format(epoch))
+                                " sample()\n".format(epoch))
                         print(e)
+                        #TODO not break if there is an exception
                         break
+
                     ret["total_val_time"] += time.time() - val_time
 
+                ## printing
                 if verbose:
                     if epoch % 10 == 0:
                         chaine = "{}\t Train Epoch: {} \t"\
                                 " ELBO: {:.3f}\t Lls {:.3f}\t KLs "\
                                 "{:.3f}".format(timeSince(start),
-                                        epoch, elbos.item(), 
+                                        epoch, elbo.item(), 
                                         lls.item(), kls.item())
+
                         if X_val is not None:
                             chaine += "\nELBO_Val: {:.3f}\t"\
                                     " Lls_Val {:.3f}\t KLs "\
                                     "{:.3f}".format(
-                                            elbos_val.item(),
+                                            elbo_val.item(),
                                             lls_val.item(), 
                                             lps_val.item(),
                                             lqs_val.item(),
                                             kls_val.item())
                         print(chaine, end="\r")
 
-                # Add measure values to lists if all is alright
-                ret["elbos_list"].append(elbos.item())
+                ## Adding measure values to lists if all is OK
+                ret["elbos_list"].append(elbo.item())
                 ret["lls_list"].append(lls.item())
                 ret["lps_list"].append(lps.item())
                 ret["lqs_list"].append(lqs.item())
                 ret["kls_list"].append(kls.item())
 
-                if keep_fit_history:
+                if save_fit_history:
                     fit_estim = dict()
-                    for estim in ["b", "t", "b1"  "r", "f", "k"]:
+                    for estim in ["b", "t", "b1", "r", "f", "k"]:
                         if estim in fit_dict:
                             fit_estim[estim] = fit_dict[estim]
                     ret["fit_estimates"].append(fit_estim)
 
+                if save_grad_stats:
+                    ret["grad_stats"].append(
+                            apply_on_submodules(
+                                get_grad_stats, self))
+
+                if save_weight_stats:
+                    ret["weight_stats"].append(
+                            apply_on_submodules(
+                                get_weight_stats, self))
+
                 if X_val is not None:
-                    ret["elbos_val_list"].append(elbos_val.item())
+                    ret["elbos_val_list"].append(elbo_val.item())
                     ret["lls_val_list"].append(lls_val.item())
                     ret["lps_val_list"].append(lps_val.item())
                     ret["lqs_val_list"].append(lqs_val.item())
                     ret["kls_val_list"].append(kls_val.item())
 
-                    if keep_val_history:
+                    if save_val_history:
                         val_estim = dict()
-                        for estim in ["b", "t", "b1"  "r", "f", "k"]:
+                        for estim in ["b", "t", "b1", "r", "f", "k"]:
                             if estim in val_dict:
                                 val_estim[estim]=val_dict[estim]
 
@@ -280,5 +318,10 @@ class BaseTreeVB(ABC):
                 ret["lps_val_list"] = np.array(ret["lps_val_list"])
                 ret["lqs_val_list"] = np.array(ret["lqs_val_list"])
                 ret["kls_val_list"] = np.array(ret["kls_val_list"])
+
+        optim_rate = optim_nb/max_iter
+
+        if verbose >= 2:
+            print("\nOptimization rate {}".format(optim_rate))
 
         return ret

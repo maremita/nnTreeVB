@@ -4,6 +4,7 @@ import time
 import math
 import platform
 import importlib
+import configparser
 from pprint import pformat
 
 import numpy as np
@@ -13,6 +14,9 @@ from scipy.stats.stats import pearsonr#, spearmanr
 
 __author__ = "amine remita"
 
+
+def getboolean(value):
+    return configparser.RawConfigParser()._convert_to_boolean(value)
 
 def timeSince(since):
     now = time.time()
@@ -98,35 +102,63 @@ def str_to_values(chaine, nb_repeat=1, sep=",", cast=None):
 
     return values
 
-def write_conf_packages(args, out_file):
 
-    with open(out_file, "wt") as f:
-        f.write("\n# Program arguments\n# #################\n\n")
-        args.write(f)
+def get_lognorm_params(m, s):
+    # to produce a distribution with desired mean m
+    # and standard deviation s
+    mu = np.log(m**2) - np.log(m) - ((np.log(s**2 + m**2)\
+            + np.log(m**2))/2)
+    std = np.sqrt(np.log(s**2 + m**2) - np.log(m**2))
+    return [mu, std]
 
-        f.write("\n# Package versions\n# ################\n\n")
-        modules = pformat(get_modules_versions())
-        f.write( "#" + modules.replace("\n", "\n#"))
+def get_grad_stats(module):
+    grads = []
+    for param in module.parameters():
+        if param.grad is not None:
+            grads.append(param.grad.view(-1))
+    grads = torch.cat(grads).detach().cpu().numpy()
+    return {"mean":np.nanmean(grads), 
+            "var": np.nanvar(grads),
+            "min": np.nanmin(grads),
+            "max": np.nanmax(grads)}
 
-def get_modules_versions():
-    versions = dict()
+def get_grad_list(module):
+    grads = []
+    for param in module.parameters():
+        if param.grad is not None:
+            grads.append(param.grad.view(-1))
 
-    versions["python"] = platform.python_version()
+    if len(grads) > 0:
+        grads = torch.cat(grads)
 
-    module_names = ["evoVGM", "numpy", "scipy", "pandas",
-            "torch", "Bio", "joblib", "matplotlib", "pyvolve",
-            "seaborn"]
+    return grads
 
-    for module_name in module_names:
-        found = importlib.util.find_spec(module_name)
-        if found:
-            module = importlib.import_module(module_name)
-            versions[module_name] = module.__version__
-        else:
-            versions[module_name] = "Not found"
+def get_weight_stats(module):
+    poids = []
+    for param in module.parameters():
+        poids.append(param.data.view(-1))
+    poids = torch.cat(poids).detach().cpu().numpy()
+    return {"mean": np.nanmean(poids),
+            "var": np.nanvar(poids),
+            "min": np.nanmin(poids),
+            "max": np.nanmax(poids)}
 
-    return versions
+def get_weight_list(module):
+    poids = []
+    for param in module.parameters():
+        poids.append(param.data.view(-1))
 
+    if len(poids) > 0:
+        poids = torch.cat(poids)
+    return poids
+
+def apply_on_submodules(func, nn_module):
+    ret = dict()
+    for name, sub_module in nn_module.named_children():
+        if len(get_weight_list(sub_module))>0:
+            ret[name]=func(sub_module)
+
+    return ret
 
 def compute_corr(main, batch, verbose=False):
 
@@ -146,7 +178,6 @@ def compute_corr(main, batch, verbose=False):
         corrs[i] = np.array(pears)
 
     return corrs
-
 
 def check_finite_grads(model, epoch, verbose=False):
 
@@ -189,3 +220,33 @@ def dict_to_numpy(some_dict):
                     " tensor, array, list, int or float")
 
     return new_dict
+
+def write_conf_packages(args, out_file):
+
+    with open(out_file, "wt") as f:
+        f.write("\n# Program arguments\n# #################\n\n")
+        args.write(f)
+
+        f.write("\n# Package versions\n# ################\n\n")
+        modules = pformat(get_modules_versions())
+        f.write( "#" + modules.replace("\n", "\n#"))
+
+def get_modules_versions():
+    versions = dict()
+
+    versions["python"] = platform.python_version()
+
+    module_names = ["nnTreeVB", "numpy", "scipy", "pandas",
+            "torch", "Bio", "joblib", "matplotlib", "pyvolve",
+            "seaborn", "ete3"]
+
+    for module_name in module_names:
+        found = importlib.util.find_spec(module_name)
+        if found:
+            module = importlib.import_module(module_name)
+            versions[module_name] = module.__version__
+        else:
+            versions[module_name] = "Not found"
+
+    return versions
+
