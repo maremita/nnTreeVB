@@ -33,7 +33,7 @@ def pruning(arbre, x, tm, pi):
     for node in arbre.traverse("postorder"):
         if node.is_leaf():
             #print("shape x {}".format(x.shape))
-            node.state = x[:, :,node.rank,:].detach() 
+            node.state = x[:, :,node.postrank,:].detach() 
             # x [sample_size, n_dim, b_dim, x_dim]
             #print("leaf {}\t{}".format(node.name, node.state.shape)) 
             # [sample_size, n_dim, x_dim]
@@ -42,9 +42,9 @@ def pruning(arbre, x, tm, pi):
             #print("\nNode {}".format(node.name))
 
             for child in node.children:
-                #print("Child {} {}".format(child.name, child.rank))
-                #print("tm[:, {}].shape {}".format(child.rank, 
-                #    tm[:, child.rank].shape))
+                #print("Child {} {}".format(child.name, child.postrank))
+                #print("tm[:, {}].shape {}".format(child.postrank, 
+                #    tm[:, child.postrank].shape))
                 # [sample_size, x_dim, x_dim]
                 
                 #print("node.state.shape {}".format(node.state.shape))
@@ -52,7 +52,7 @@ def pruning(arbre, x, tm, pi):
 
                 parlial_ll = torch.einsum("bcij,bjk->bcik",
                         (child.state.unsqueeze(-2),
-                            tm[:, child.rank]))\
+                            tm[:, child.postrank]))\
                                     .squeeze(-2).clamp(min=0., max=1.)
                 #print("parlial_ll {}".format(parlial_ll.shape)) 
                 # [sample_size, n_dim, x_dim]
@@ -104,9 +104,9 @@ def pruning_known_ancestors(arbre, x, a, tm, pi):
         # Assign each node its sites
         for node in arbre.traverse("postorder"):
             if node.is_leaf():
-                node.sites = x[:, :, node.rank, :] #.detach() # [sample_size, n_dim, x_dim]
+                node.sites = x[:, :, node.postrank, :] #.detach() # [sample_size, n_dim, x_dim]
             else:
-                node.sites = a[:, :, node.ancestral_rank, :]
+                node.sites = a[:, :, node.ancestral_postrank, :]
                 # node.sites = 1.0
 
         log_pi_a = torch.einsum("bij,bcjk->bcik", (pi.unsqueeze(-2), arbre.sites.unsqueeze(-1))).log().squeeze(-1).squeeze(-1)
@@ -128,10 +128,10 @@ def pruning_known_ancestors(arbre, x, a, tm, pi):
 
                 for child in node.children:
                     #print("Child {}".format(child.name))
-                    #print("tm[:, {}].shape {}".format(child.rank, tm[:, child.rank].shape)) # [sample_size, x_dim, x_dim]
+                    #print("tm[:, {}].shape {}".format(child.postrank, tm[:, child.postrank].shape)) # [sample_size, x_dim, x_dim]
                     #print("child.sites.shape {}".format(child.sites.shape)) # [sample_size, n_dim, x_dim]
                     
-                    parlial_ll = torch.einsum("bcij,bjk->bcik", (child.sites.unsqueeze(-2), tm[:, child.rank])).squeeze(-2).clamp(min=0., max=1.)
+                    parlial_ll = torch.einsum("bcij,bjk->bcik", (child.sites.unsqueeze(-2), tm[:, child.postrank])).squeeze(-2).clamp(min=0., max=1.)
                     #print("parlial_ll {}".format(parlial_ll.shape))  # [sample_size, n_dim, x_dim]
                     #print(parlial_ll)
                     #print()

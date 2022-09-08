@@ -4,14 +4,101 @@ import copy
 import random
 from collections import UserList, defaultdict
 
+from .utils import build_tree_from_nwk
+
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 
-__all__ = ['SeqCollection']
+__all__ = [
+        "SeqCollection",
+        "TreeSeqCollection",
+        "LabeledSeqCollection"]
 
-__author__ = "ar"
+__author__ = "amine"
+
 
 class SeqCollection(UserList):
+    def __init__(self):
+        super().__init__()
+
+        self.data = []
+
+    def __getitem__(self, ind):
+        # TODO
+        # Give more details about this exception
+        if not isinstance(ind, (int, list, slice)):
+            raise TypeError("The argument must be int, list or slice")
+
+        # shallow copy 
+        #if the argument is an integer
+        if isinstance(ind, int):
+            return self.data[ind]
+
+        # With instantiation, data will be deep copied  
+        # If the argument is a list of indices
+        elif isinstance(ind, list):
+
+            tmp = [self.data[i] for i in ind if i>= 0 and i<len(self.data)]
+            return self.__class__(tmp)
+
+        return self.__class__(self.data[ind])
+
+    @classmethod
+    def read_bio_file(cls, my_file):
+        path, ext = splitext(my_file)
+        ext = ext.lstrip(".")
+
+        if ext == "fa" : ext = "fasta"
+
+        return list(seqRec for seqRec in SeqIO.parse(my_file, ext))
+
+    @classmethod
+    def read_class_file(cls, my_file):
+
+        with open(my_file, "r") as fh:
+            #return dict(map(lambda x: (x[0], x[1]), (line.rstrip("\n").split(sep)
+            return dict(map(lambda x: (x[0], x[1]), (re.split(r'[\t,;\s]', line.rstrip("\n"))
+                        for line in fh if not line.startswith("#"))))
+
+    @classmethod
+    def write_fasta(cls, data, out_fasta):
+        SeqIO.write(data, out_fasta, "fasta")
+
+    @classmethod
+    def write_classes(cls, classes, file_class):
+        with open(file_class, "w") as fh:
+            for entry in classes:
+                fh.write(entry+","+classes[entry]+"\n")
+
+
+class TreeSeqCollection(SeqCollection):
+    def __init__(self,
+            fasta_file,
+            tree_file):
+
+        super().__init__()
+
+        data = self.read_bio_file(fasta_file)
+        self.tree, _, _ = build_tree_from_nwk(tree_file)
+
+        # Get post ranks of taxa
+        self.name_postrank = {}
+        for node in self.tree.traverse("postorder"):
+            if node.is_leaf():
+                self.name_postrank[node.name] = node.postrank
+
+        # Sort seqRecord by their postorder ranks
+        self.data = sorted(data,
+                key=lambda x:self.name_postrank[x.name])
+
+        # Add post_rank attributes to seqRecord
+        for ind, seqRecord in enumerate(self.data):
+            seqRecord.postrank =\
+                    self.name_postrank[seqRecord.name]
+
+
+# Old SeqCollection from previous project
+class LabeledSeqCollection(SeqCollection):
 
     """
     Attributes
@@ -35,8 +122,8 @@ class SeqCollection(UserList):
     """
 
     def __init__(self, arg):
+        super().__init__()
  
-        self.data = []
         self.labels = []
         self.label_map = {}
         self.label_ind = defaultdict(list)
@@ -87,52 +174,6 @@ class SeqCollection(UserList):
         for ind, seqRecord in enumerate(self.data):
             self.label_ind[seqRecord.label].append(ind)
 
-    def __getitem__(self, ind):
-        # TODO
-        # Give more details about this exception
-        if not isinstance(ind, (int, list, slice)):
-            raise TypeError("The argument must be int, list or slice")
-
-        # shallow copy 
-        #if the argument is an integer
-        if isinstance(ind, int):
-            return self.data[ind]
-
-        # With instantiation, data will be deep copied  
-        # If the argument is a list of indices
-        elif isinstance(ind, list):
-
-            tmp = [self.data[i] for i in ind if i>= 0 and i<len(self.data)]
-            return self.__class__(tmp)
-
-        return self.__class__(self.data[ind])
-
-    @classmethod
-    def read_bio_file(cls, my_file):
-        path, ext = splitext(my_file)
-        ext = ext.lstrip(".")
-
-        if ext == "fa" : ext = "fasta"
-
-        return list(seqRec for seqRec in SeqIO.parse(my_file, ext))
-
-    @classmethod
-    def read_class_file(cls, my_file):
-
-        with open(my_file, "r") as fh:
-            #return dict(map(lambda x: (x[0], x[1]), (line.rstrip("\n").split(sep)
-            return dict(map(lambda x: (x[0], x[1]), (re.split(r'[\t,;\s]', line.rstrip("\n"))
-                        for line in fh if not line.startswith("#"))))
-
-    @classmethod
-    def write_fasta(cls, data, out_fasta):
-        SeqIO.write(data, out_fasta, "fasta")
-
-    @classmethod
-    def write_classes(cls, classes, file_class):
-        with open(file_class, "w") as fh:
-            for entry in classes:
-                fh.write(entry+","+classes[entry]+"\n")
 
     def extract_fragments(self, size, stride=1):
 

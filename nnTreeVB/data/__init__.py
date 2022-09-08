@@ -8,6 +8,7 @@
 from .seq_collections import *
 from .categorical_collections import *
 from .simulations import *
+from .utils import *
 
 __author__ = "amine remita"
 
@@ -20,6 +21,8 @@ __all__ = [
         "build_msa_categorical",
         #"seq_collections", 
         "SeqCollection",
+        "TreeSeqCollection",
+        "LabeledSeqCollection",
         "build_nwk_star_tree",
         "build_tree_from_nwk",
         "evolve_seqs_full_homogeneity"

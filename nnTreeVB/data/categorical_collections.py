@@ -48,7 +48,7 @@ class BaseCollection(ABC):
 
     def __compute_rep_from_collection(self, sequences):
         for i, seq in enumerate(sequences):
-            self._compute_rep_of_sequence(seq.seq._data, i)
+            self._compute_rep_of_sequence(str(seq.seq), i)
             self.ids.append(seq.id)
 
         return self
@@ -75,21 +75,29 @@ class BaseCollection(ABC):
     # TODO Check for list of SeqCollection
     def check_sequences(self, seqs):
         sequences = []
+
         if isinstance(seqs, str):
             sequences = [seqs]
+
+        elif isinstance(seqs, SeqCollection):
+            for ind, seqRecord in enumerate(seqs.data):
+                    sequences.append(str(seqRecord.seq))
+
         elif isinstance(seqs, list):
             for seq in seqs:
                 if isinstance(seq, str):
                     sequences.append(seq)
-                else: print("Input object {} is not a string".format(seq))
-        elif not isinstance(seqs, SeqCollection):
-            raise("Input sequences should be string, list of string or SeqCollection")
+                else: print("Input object {} is not a""\
+                        string".format(seq))
 
-        else : sequences = seqs
+        else:
+            raise Exception("Input sequences should be"\
+                    " string list of string or SeqCollection")
 
         return sequences
 
 
+# For variable lengh sequences (unaligned)
 class FullNucCatCollection(BaseCollection):
 
     def __init__(self, sequences, nuc_cat=True, dtype=np.float32):
@@ -119,10 +127,12 @@ class FullNucCatCollection(BaseCollection):
         return self
 
 
+# For aligned sequences (same length)
 class MSANucCatCollection(BaseCollection):
 
-    def __init__(self, sequences, nuc_cat=True, dtype=np.float32):
- 
+    def __init__(self, sequences, nuc_cat=True,
+            dtype=np.float32):
+
         if nuc_cat: 
             self.nuc2rep = nuc2cat
         else:
@@ -130,16 +140,18 @@ class MSANucCatCollection(BaseCollection):
 
         self.dtype = dtype
         self.alphabet = "".join(self.nuc2rep.keys())
+        # sequences will be a list of strings
         sequences = self.check_sequences(sequences)
         #
         self.msa_len = len(sequences[0])
         self.nbseqs = len(sequences)
         self.ids = []
-        self.data = np.zeros((self.msa_len, self.nbseqs,4 ), dtype=self.dtype)
+        self.data = np.zeros((self.msa_len, self.nbseqs,4 ),
+                dtype=self.dtype)
         self._compute_representations(sequences)
 
     def _compute_rep_of_sequence(self, sequence, ind):
-        sequence = sequence.upper()
+        sequence = str(sequence).upper()
         seq_array = list(re.sub(r'[^'+self.alphabet+']', 'N',
             sequence, flags=re.IGNORECASE))
 

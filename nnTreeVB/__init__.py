@@ -8,6 +8,6 @@
 #################################
 
 __author__ = "amine remita"
-__date__ = "20220906"
-__version__ = "0.2.2"
+__date__ = "20220907"
+__version__ = "0.2.3"
 __all__ = ["data", "models", "utils"]
