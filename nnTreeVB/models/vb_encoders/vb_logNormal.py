@@ -155,14 +155,14 @@ class VB_LogNormal_NNIndEncoder(nn.Module):
         # Input of the variational neural network
         if isinstance(self.init_distr, (list)):
             assert len(self.init_distr) == self.in_dim
-            self.net_input = torch.tensor(self.init_distr)
+            self.input = torch.tensor(self.init_distr)
         else:
-            self.net_input = torch.ones(self.in_dim)
+            self.input = torch.ones(self.in_dim)
 
         if self.init_distr == "uniform":
-            self.net_input = self.net_input.uniform_()
+            self.input = self.input.uniform_()
         elif self.init_distr == "normal":
-            self.net_input = self.net_input.normal_()
+            self.input = self.input.normal_()
 
         self.input = self.input.repeat([*self.in_shape[:-1], 1])
 
@@ -195,7 +195,7 @@ class VB_LogNormal_NNIndEncoder(nn.Module):
             min_clamp=False,
             max_clamp=False):
 
-        enc = self.net(self.net_input)
+        enc = self.net(self.input)
         mu = self.net_mu(enc) #.clamp(max=10.)
         sigma = self.net_sigma(enc) #.clamp(max=100.)
 

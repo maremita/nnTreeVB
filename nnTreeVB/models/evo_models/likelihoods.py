@@ -33,7 +33,7 @@ def pruning(arbre, x, tm, pi):
     for node in arbre.traverse("postorder"):
         if node.is_leaf():
             #print("shape x {}".format(x.shape))
-            node.state = x[:, :,node.postrank,:].detach() 
+            node.state = x[:, :, node.postrank, :].detach()
             # x [sample_size, n_dim, b_dim, x_dim]
             #print("leaf {}\t{}".format(node.name, node.state.shape)) 
             # [sample_size, n_dim, x_dim]
@@ -63,6 +63,7 @@ def pruning(arbre, x, tm, pi):
                 # [sample_size, n_dim, x_dim]
 
             scaler = torch.sum(node.state, -1).unsqueeze(-1)
+            #scaler = torch.max(node.state, -1).values.unsqueeze(-1)
             #print("scaler shape {}".format(scaler.shape))
             # [9, 7, 1]
             node.state /= scaler
@@ -104,7 +105,7 @@ def pruning_known_ancestors(arbre, x, a, tm, pi):
         # Assign each node its sites
         for node in arbre.traverse("postorder"):
             if node.is_leaf():
-                node.sites = x[:, :, node.postrank, :] #.detach() # [sample_size, n_dim, x_dim]
+                node.sites = x[:, :, node.postrank, :].detach() # [sample_size, n_dim, x_dim]
             else:
                 node.sites = a[:, :, node.ancestral_postrank, :]
                 # node.sites = 1.0

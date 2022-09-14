@@ -211,11 +211,19 @@ class BaseTreeVB(ABC):
                 ## printing
                 if verbose:
                     if epoch % 10 == 0:
-                        chaine = "{}\t Train Epoch: {} \t"\
-                                " ELBO: {:.3f}\t Lls {:.3f}\t KLs "\
-                                "{:.3f}".format(timeSince(start),
-                                        epoch, elbo.item(), 
-                                        lls.item(), kls.item())
+                        chaine = "{}\tEpoch: {}"\
+                                "\tELBO: {:.3f}"\
+                                "\tLogl: {:.3f}"\
+                                "\tLogp: {:.3f}"\
+                                "\tLogq: {:.3f}"\
+                                "\tKL: {:.3f}".format(
+                                        timeSince(start),
+                                        epoch, 
+                                        elbo.item(), 
+                                        lls.item(),
+                                        lps.item(),
+                                        lqs.item(),
+                                        kls.item())
 
                         if X_val is not None:
                             chaine += "\nELBO_Val: {:.3f}\t"\
@@ -226,7 +234,7 @@ class BaseTreeVB(ABC):
                                             lps_val.item(),
                                             lqs_val.item(),
                                             kls_val.item())
-                        print(chaine, end="\r")
+                        print(chaine, end="\n")
 
                 ## Adding measure values to lists if all is OK
                 ret["elbos_list"].append(elbo.item())

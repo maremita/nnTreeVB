@@ -332,7 +332,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
         # Compute the Elbo
         if elbo_kl:
-            elbo = torch.mean(logl[finit_inds], 0) - kl_qprior
+            elbo = torch.mean(logl[finit_inds], 0)\
+                    - (1. * kl_qprior[finit_inds])
         else:
             elbo = logl[finit_inds] + logprior[finit_inds]\
                     - logq[finit_inds]

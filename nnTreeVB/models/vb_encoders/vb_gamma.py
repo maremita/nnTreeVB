@@ -32,8 +32,8 @@ class VB_Gamma_IndEncoder(nn.Module):
         assert self.out_shape[-1] == 1       # last dim must be 2
         assert self.prior_hp.shape[-1] == 2  # for alpha and rate
 
-        self.prior_alpha = self.prior_hp[0]
-        self.prior_rate = self.prior_hp[1]
+        self.prior_alpha = self.prior_hp[0].detach()
+        self.prior_rate = self.prior_hp[1].detach()
 
         # init parameters initialization
         if isinstance(self.init_distr, (list)):
@@ -58,15 +58,15 @@ class VB_Gamma_IndEncoder(nn.Module):
         self.log_rate = nn.Parameter(self.init_log_rate,
                 requires_grad=True)
 
-        # Prior distribution
-        self.dist_p = Gamma(self.prior_alpha, self.prior_rate)
-
     def forward(
             self, 
             sample_size=1,
             KL_gradient=False,
             min_clamp=0.000001,
             max_clamp=False):
+
+        # Prior distribution
+        self.dist_p = Gamma(self.prior_alpha, self.prior_rate)
 
         # Approximate distribution
         self.dist_q = Gamma(
@@ -135,8 +135,8 @@ class VB_Gamma_NNIndEncoder(nn.Module):
         assert self.in_shape[-1] == 2       # last dim must be 2
         assert self.prior_hp.shape[-1] == 2 # for alpha and rate
 
-        self.prior_alpha = self.prior_hp[0]
-        self.prior_rate = self.prior_hp[1]
+        self.prior_alpha = self.prior_hp[0].detach()
+        self.prior_rate = self.prior_hp[1].detach()
 
         self.h_dim = h_dim          # hidden layer size
         self.nb_layers = nb_layers
@@ -166,6 +166,7 @@ class VB_Gamma_NNIndEncoder(nn.Module):
             self.input = self.input.normal_()
 
         self.input = self.input.repeat([*self.in_shape[:-1], 1])
+        # TODO repeter avant de transfoer en uniform/normal
 
         # Construct the neural network
         layers = [nn.Linear(self.in_dim, self.h_dim, 
@@ -187,9 +188,6 @@ class VB_Gamma_NNIndEncoder(nn.Module):
             nn.Linear(self.h_dim, self.out_dim),
             nn.Softplus()) 
 
-        # Prior distribution
-        self.dist_p = Gamma(self.prior_alpha, self.prior_rate)
-
     def forward(
             self, 
             sample_size=1,
@@ -200,6 +198,9 @@ class VB_Gamma_NNIndEncoder(nn.Module):
         enc = self.net(self.input)
         alpha = self.net_alpha(enc) #.clamp(max=10.)
         rate = self.net_rate(enc) #.clamp(max=100.)
+
+        # Prior distribution
+        self.dist_p = Gamma(self.prior_alpha, self.prior_rate)
 
         # Approximate distribution
         self.dist_q = Gamma(alpha, rate)
