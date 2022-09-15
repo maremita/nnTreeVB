@@ -161,14 +161,14 @@ class VB_Gamma_NNIndEncoder(nn.Module):
             self.input = torch.ones(self.nb_params)
         #print("self.input.shape {}".format(self.input.shape))
 
-        self.input = self.input.repeat([*self.in_shape, 1])
-        #print("self.input.shape {}".format(self.input.shape))
-
         if self.init_distr == "uniform":
             self.input = self.input.uniform_()
         elif self.init_distr == "normal":
             self.input = self.input.normal_()
  
+        self.input = self.input.repeat([*self.in_shape, 1])
+        #print("self.input.shape {}".format(self.input.shape))
+
         # Construct the neural network
         self.net_in_alpha = nn.Linear(self.in_shape[-1],
                 h_dim, bias=self.bias_layers)

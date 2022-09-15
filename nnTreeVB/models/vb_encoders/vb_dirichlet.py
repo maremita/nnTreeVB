@@ -19,21 +19,22 @@ class VB_Dirichlet_IndEncoder(nn.Module):
 
         self.in_shape = in_shape
         self.out_shape = out_shape 
-        self.in_dim = self.in_shape[-1]
-        self.out_dim = self.out_shape[-1]
- 
+        
+        # Concentration
+        self.nb_params = self.in_shape[-1]
+
         self.init_distr = init_distr
-        self.prior_hp = torch.tensor(prior_hp)
+        self.prior_hp = torch.tensor(prior_hp).detach()
         self.device_ = device
 
-        assert self.prior_hp.shape[-1] == self.in_dim
+        assert self.prior_hp.shape[-1] == self.nb_params
 
         # init parameters initialization
         if isinstance(self.init_distr, (list)):
-            assert len(self.init_distr) == self.in_dim
+            assert len(self.init_distr) == self.nb_params
             self.input = torch.tensor(self.init_distr)
         else:
-            self.input = torch.ones(self.in_dim)
+            self.input = torch.ones(self.nb_params)
 
         if self.init_distr == "uniform":
             self.input = self.input.uniform_()
@@ -44,12 +45,11 @@ class VB_Dirichlet_IndEncoder(nn.Module):
 
         self.init_log_alphas = torch.log(self.input)
 
-        # Initialize the parameters of the variational distribution q
+        # Initialize the parameters of the variational
+        # distribution q
         self.log_alphas = nn.Parameter(self.init_log_alphas,
                 requires_grad=True)
-
-        # Prior distribution
-        self.dist_p = Dirichlet(self.prior_hp)
+        #print(self.log_alphas)
 
     def forward(
             self, 
@@ -57,6 +57,9 @@ class VB_Dirichlet_IndEncoder(nn.Module):
             KL_gradient=False,
             min_clamp=False,    # should be <= to 10^-7
             max_clamp=False):
+
+        # Prior distribution
+        self.dist_p = Dirichlet(self.prior_hp)
 
         # Approximate distribution
         self.dist_q = Dirichlet(torch.exp(self.log_alphas))
@@ -108,19 +111,21 @@ class VB_Dirichlet_NNIndEncoder(nn.Module):
         self.in_shape = in_shape
         self.out_shape = out_shape 
         self.in_dim = self.in_shape[-1]
-        self.out_dim = self.out_shape[-1]      #in_dim
 
+        # Concentration
+        self.nb_params = self.in_shape[-1]
         self.init_distr = init_distr
  
-        self.prior_hp = torch.tensor(prior_hp)
+        self.prior_hp = torch.tensor(prior_hp).detach()
         self.device_ = device
 
-        assert len(self.prior_hp) == self.in_dim
+        assert self.prior_hp.shape[-1] == self.nb_params
 
         self.h_dim = h_dim          # hidden layer size
         self.nb_layers = nb_layers
         self.bias_layers = bias_layers
         self.activ_layers = activ_layers
+        self.dropout = dropout_layers
 
         if self.activ_layers == "relu":
             activation = nn.ReLU
@@ -129,15 +134,15 @@ class VB_Dirichlet_NNIndEncoder(nn.Module):
 
         if self.nb_layers < 2:
             self.nb_layers = 2
-            print("The number of layers in {} should be >= 2."+\
-                    " It's set set to 2".format(self))
+            print("The number of layers in {} should"\
+                    " be >= 2. It's set set to 2".format(self))
 
         # Input of the variational neural network
         if isinstance(self.init_distr, (list)):
-            assert len(self.init_distr) == self.in_dim
+            assert len(self.init_distr) == self.nb_params
             self.input = torch.tensor(self.init_distr)
         else:
-            self.input = torch.ones(self.in_dim)
+            self.input = torch.ones(self.nb_params)
 
         if self.init_distr == "uniform":
             self.input = self.input.uniform_()
@@ -147,31 +152,35 @@ class VB_Dirichlet_NNIndEncoder(nn.Module):
         self.input = self.input.repeat([*self.in_shape[:-1], 1])
 
         # Construct the neural network
-        layers = [nn.Linear(self.in_dim, self.h_dim,
+        layers = [nn.Linear(self.in_shape[-1], self.h_dim,
             bias=self.bias_layers)]
         if self.activ_layers: layers.append(activation())
+        if self.dropout: layers.append(
+                nn.Dropout(p=self.dropout))
 
         for i in range(1, self.nb_layers-1):
             layers.extend([nn.Linear(self.h_dim, self.h_dim,
                 bias=self.bias_layers)])
             if self.activ_layers: layers.append(activation())
+            if self.dropout: layers.append(
+                    nn.Dropout(p=self.dropout))
 
-        layers.extend([nn.Linear(self.h_dim, self.out_dim,
+        layers.extend([nn.Linear(self.h_dim,self.out_shape[-1],
             bias=self.bias_layers), nn.Softplus()])
 
         self.net = nn.Sequential(*layers)
-
-        # Prior distribution
-        self.dist_p = Dirichlet(self.prior_hp)
 
     def forward(
             self, 
             sample_size=1,
             KL_gradient=False,
-            min_clamp=False,    # should be <= to 10^-7
+            min_clamp=0.000001,
             max_clamp=False):
 
         alphas = self.net(self.input)
+
+        # Prior distribution
+        self.dist_p = Dirichlet(self.prior_hp)
 
         # Approximate distribution
         # no need to reparameterize alpha
@@ -179,7 +188,8 @@ class VB_Dirichlet_NNIndEncoder(nn.Module):
 
         # Sample
         samples = self.dist_q.rsample(torch.Size([sample_size]))
-        # print("samples dirichlet deep shape {}".format(samples.shape)) # [sample_size, 6]
+        # print("samples dirichlet deep shape {}".format(samples.shape))
+        # [sample_size, 6]
  
         if not isinstance(min_clamp, bool):
             if isinstance(min_clamp, (float, int)):
@@ -240,8 +250,8 @@ class VB_Dirichlet_NNEncoder(nn.Module):
 
         if self.nb_layers < 2:
             self.nb_layers = 2
-            print("The number of layers in {} should be >= 2."+\
-                    " It's set set to 2".format(self))
+            print("The number of layers in {} should"\
+                    " be >= 2. It's set set to 2".format(self))
 
         # Construct the neural network
         layers = [nn.Linear(self.in_dim, self.h_dim,

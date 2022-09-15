@@ -92,6 +92,11 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         self.m_dim = m_dim
         self.b_dim = b_dim
         self.a_dim = a_dim
+        
+        self.t_dim = 1
+        self.r_dim = 6
+        self.f_dim = 4
+        self.k_dim = 1
 
         self.predict_ancestors = predict_ancestors
         self.subs_model = subs_model
@@ -112,16 +117,11 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     device=self.device_)
 
         self.b_compound = False
-        #b_in_shape = [self.b_dim, 2]
-        #b_out_shape = [self.b_dim, 1]
-
         b_in_shape = [self.b_dim]
         b_out_shape = [self.b_dim]
 
         if "dirichlet" in b_encoder_type:
             self.b_compound = True
-            #b_in_shape = [self.b_dim]
-            #b_out_shape = [self.b_dim]
 
         # Initialize branch length encoder
         self.b_encoder = build_vb_encoder(
@@ -141,8 +141,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             # Initialize tree length encoder
             # Using a Compound Dirichlet Gamma distribution
             self.t_encoder = build_vb_encoder(
-                    [2],
-                    [1],
+                    [self.t_dim],
+                    [self.t_dim],
                     encoder_type=t_encoder_type,
                     init_distr=t_init_distr,
                     prior_hp=t_hp,
@@ -155,8 +155,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         if self.subs_model in ["gtr"]:
             # Initialize rates encoder
             self.r_encoder = build_vb_encoder(
-                    [6],
-                    [6],
+                    [self.r_dim],
+                    [self.r_dim],
                     encoder_type=r_encoder_type,
                     init_distr=r_init_distr,
                     prior_hp=r_hp,
@@ -169,8 +169,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         if self.subs_model in ["hky", "gtr"]:
             # Initialize frequencies encoder
             self.f_encoder = build_vb_encoder(
-                    [4],
-                    [4],
+                    [self.f_dim],
+                    [self.f_dim],
                     encoder_type=f_encoder_type,
                     init_distr=f_init_distr,
                     prior_hp=f_hp,
@@ -183,8 +183,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         if self.subs_model in ["k80", "hky"]:
             # Initialize kappa encoder
             self.k_encoder = build_vb_encoder(
-                    [2],
-                    [1],
+                    [self.k_dim],
+                    [self.k_dim],
                     encoder_type=k_encoder_type,
                     init_distr=k_init_distr,
                     prior_hp=k_hp,

@@ -154,12 +154,12 @@ class VB_LogNormal_NNIndEncoder(nn.Module):
         else:
             self.input = torch.ones(self.nb_params)
 
-        self.input = self.input.repeat([*self.in_shape, 1])
-
         if self.init_distr == "uniform":
             self.input = self.input.uniform_()
         elif self.init_distr == "normal":
             self.input = self.input.normal_()
+
+        self.input = self.input.repeat([*self.in_shape, 1])
 
         # Construct the neural network
         self.net_in_mu = nn.Linear(self.in_shape[-1],
@@ -184,7 +184,9 @@ class VB_LogNormal_NNIndEncoder(nn.Module):
         self.net_h = nn.Sequential(*layers)
 
         self.net_out_mu = nn.Sequential(
-            nn.Linear(self.h_dim, self.out_shape[-1]))
+            #nn.Linear(self.h_dim, self.out_shape[-1]))
+            nn.Linear(self.h_dim, self.out_shape[-1]),
+            nn.Softplus()) 
 
         self.net_out_sigma = nn.Sequential(
             nn.Linear(self.h_dim, self.out_shape[-1]),
