@@ -104,6 +104,7 @@ class VB_Dirichlet_NNIndEncoder(nn.Module):
             nb_layers=3,
             bias_layers=True,     # True or False
             activ_layers="relu", # relu, tanh, or False
+            dropout_layers=0.,
             device=torch.device("cpu")):
 
         super().__init__()
@@ -174,7 +175,7 @@ class VB_Dirichlet_NNIndEncoder(nn.Module):
             self, 
             sample_size=1,
             KL_gradient=False,
-            min_clamp=0.000001,
+            min_clamp=False,
             max_clamp=False):
 
         alphas = self.net(self.input)
@@ -225,6 +226,7 @@ class VB_Dirichlet_NNEncoder(nn.Module):
             nb_layers=3,
             bias_layers=True,     # True or False
             activ_layers="relu", # relu, tanh, or False
+            dropout_layers=0.,
             device=torch.device("cpu")):
 
         super().__init__()
@@ -241,6 +243,7 @@ class VB_Dirichlet_NNEncoder(nn.Module):
         self.n_layers = n_layers
         self.bias_layers = bias_layers
         self.activ_layers = activ_layers
+        self.dropout = dropout_layers
         self.device_ = device
 
         if self.activ_layers == "relu":
@@ -257,11 +260,15 @@ class VB_Dirichlet_NNEncoder(nn.Module):
         layers = [nn.Linear(self.in_dim, self.h_dim,
             bias=self.bias_layers)]
         if self.activ_layers: layers.append(activation())
+        if self.dropout: layers.append(
+                nn.Dropout(p=self.dropout))
 
         for i in range(1, self.nb_layers-1):
             layers.extend([nn.Linear(self.h_dim, self.h_dim,
                 bias=self.bias_layers)])
             if self.activ_layers: layers.append(activation())
+            if self.dropout: layers.append(
+                    nn.Dropout(p=self.dropout))
 
         layers.extend([nn.Linear(self.h_dim, self.out_dim,
             bias=self.bias_layers), nn.Softplus()])
