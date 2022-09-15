@@ -83,6 +83,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             nb_layers=3,
             bias_layers=True,     # True or False
             activ_layers="relu",  # relu, tanh, or False
+            dropout_layers=0.,
             device=torch.device("cpu")):
  
         super().__init__()
@@ -111,13 +112,16 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     device=self.device_)
 
         self.b_compound = False
-        b_in_shape = [self.b_dim, 2]
-        b_out_shape = [self.b_dim, 1]
+        #b_in_shape = [self.b_dim, 2]
+        #b_out_shape = [self.b_dim, 1]
+
+        b_in_shape = [self.b_dim]
+        b_out_shape = [self.b_dim]
 
         if "dirichlet" in b_encoder_type:
             self.b_compound = True
-            b_in_shape = [self.b_dim]
-            b_out_shape = [self.b_dim]
+            #b_in_shape = [self.b_dim]
+            #b_out_shape = [self.b_dim]
 
         # Initialize branch length encoder
         self.b_encoder = build_vb_encoder(
@@ -130,6 +134,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                 nb_layers=nb_layers,
                 bias_layers=bias_layers,
                 activ_layers=activ_layers,
+                dropout_layers=dropout_layers,
                 device=self.device_)
 
         if self.b_compound:
@@ -228,11 +233,12 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         ## ######################
         if self.predict_ancestors: 
             # Sample a from q_d and compute log prior, log q
-            a_logprior, a_logq, a_kl, a_samples = self.a_encoder(
-                    sites,
-                    sample_size=latent_sample_size,
-                    sample_temp=sample_temp,
-                    KL_gradient=elbo_kl)
+            a_logprior, a_logq, a_kl, a_samples =\
+                    self.a_encoder(
+                            sites,
+                            sample_size=latent_sample_size,
+                            sample_temp=sample_temp,
+                            KL_gradient=elbo_kl)
 
             logprior += a_logprior
             logq += a_logq
@@ -255,9 +261,10 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
         if self.b_compound:
             # Sample t from q_d and compute log prior, log q
-            t_logprior, t_logq, t_kl, t_samples = self.t_encoder(
-                    sample_size=latent_sample_size,
-                    KL_gradient=elbo_kl)
+            t_logprior, t_logq, t_kl, t_samples =\
+                    self.t_encoder(
+                            sample_size=latent_sample_size,
+                            KL_gradient=elbo_kl)
 
             #print("t_samples.shape {}".format(t_samples.shape))
             bt_samples = (b_samples * t_samples).unsqueeze(-1)
@@ -274,9 +281,10 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
         if self.subs_model in ["gtr"]:
             # Sample r from q_r and compute log prior, log q
-            r_logprior, r_logq, r_kl, r_samples = self.r_encoder(
-                    sample_size=latent_sample_size,
-                    KL_gradient=elbo_kl)
+            r_logprior, r_logq, r_kl, r_samples =\
+                    self.r_encoder(
+                            sample_size=latent_sample_size,
+                            KL_gradient=elbo_kl)
 
             logprior += r_logprior.mean(0).sum(0)
             logq += r_logq.mean(0).sum(0)
@@ -287,9 +295,10 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
         if self.subs_model in ["hky", "gtr"]:
             # Sample f from q_f and compute log prior, log q
-            f_logprior, f_logq, f_kl, f_samples = self.f_encoder(
-                    sample_size=latent_sample_size,
-                    KL_gradient=elbo_kl)
+            f_logprior, f_logq, f_kl, f_samples =\
+                    self.f_encoder(
+                            sample_size=latent_sample_size,
+                            KL_gradient=elbo_kl)
 
             logprior += f_logprior.mean(0).sum(0)
             logq += f_logq.mean(0).sum(0)
@@ -301,9 +310,10 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
         if self.subs_model in ["k80", "hky"]:
             # Sample k from q_d and compute log prior, log q
-            k_logprior, k_logq, k_kl, k_samples = self.k_encoder(
-                    sample_size=latent_sample_size,
-                    KL_gradient=elbo_kl)
+            k_logprior, k_logq, k_kl, k_samples =\
+                    self.k_encoder(
+                            sample_size=latent_sample_size,
+                            KL_gradient=elbo_kl)
 
             logprior += k_logprior.mean(0).flatten()
             logq += k_logq.mean(0).flatten()
@@ -322,7 +332,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         if self.predict_ancestors:
             logl = pruning_known_ancestors(tree, sites_expanded,
                     a_samples, tm, pi)
-            logl = (logl * site_counts).mean(0).sum(0, keepdim=True)
+            logl = (logl * site_counts).mean(0).sum(0,
+                    keepdim=True)
 
         else:
             logl = pruning(tree, sites_expanded, tm, pi)
@@ -333,15 +344,15 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         # Compute the Elbo
         if elbo_kl:
             elbo = torch.mean(logl[finit_inds], 0)\
-                    - (1. * kl_qprior[finit_inds])
+                    - (0.01 * kl_qprior[finit_inds])
         else:
             elbo = logl[finit_inds] + logprior[finit_inds]\
                     - logq[finit_inds]
 
             if elbo_iws:
                 nb_sample = logl[finit_inds].shape[0]
-                elbo = torch.logsumexp(elbo, dim=0, keepdim=True) -\
-                        math.log(nb_sample)
+                elbo = torch.logsumexp(elbo, dim=0,
+                        keepdim=True) - math.log(nb_sample)
             else:
                 elbo = elbo.mean(0)
 

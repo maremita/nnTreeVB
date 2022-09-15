@@ -156,7 +156,8 @@ class BaseTreeVB(ABC):
                 loss = - elbo
                 loss.backward()
 
-                f = check_finite_grads(self, epoch, verbose=False)
+                f = check_finite_grads(self, epoch,
+                        verbose=False)
 
                 # Optimize if gradients do not have nan values
                 if f and torch.isfinite(elbo):

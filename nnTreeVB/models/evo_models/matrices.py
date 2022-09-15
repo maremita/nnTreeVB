@@ -22,10 +22,10 @@ def build_JC69_transition_matrix(b=1.):
     # print("rateM shape {}".format(rateM.shape)) #[x_dim, x_dim]
     # print(rateM)
 
-    #print(torch.matrix_exp(torch.einsum("ij,bck->bcij", (rateM, b))).shape)
+    #print(torch.matrix_exp(torch.einsum("ij,bc->bcij", (rateM, b))).shape)
 
     tm = torch.matrix_exp(
-            torch.einsum("ij,bck->bcij", (rateM, b))).clamp(
+            torch.einsum("ij,bc->bcij", (rateM, b))).clamp(
                     min=0.0, max=1.0)
 
     # print("\ntm sahpe {}".format(tm.shape)) # [sample_size, x_dim, x_dim]
@@ -79,7 +79,7 @@ def build_K80_transition_matrix(b=1., kappa=1.):
     # print(rateM)
 
     tm = torch.matrix_exp(
-            torch.einsum("bij,bck->bcij", (rateM, b))).clamp(
+            torch.einsum("bij,bc->bcij", (rateM, b))).clamp(
                     min=0.0, max=1.0)
 
     #print("\ntm sahpe {}".format(tm.shape))
@@ -138,10 +138,10 @@ def build_HKY_transition_matrix(b=1., freqs=0.25, kappa=1.):
     #[sample_size, x_dim, x_dim]
     # print(rateM)
     
-    #print(torch.einsum("bij,bck->bcij", (rateM, b)).shape)
+    #print(torch.einsum("bij,bc->bcij", (rateM, b)).shape)
 
     tm = torch.matrix_exp(
-            torch.einsum("bij,bck->bcij", (rateM, b))).clamp(
+            torch.einsum("bij,bc->bcij", (rateM, b))).clamp(
                     min=0.0, max=1.0)
 
     #print("\ntm sahpe {}".format(tm.shape))
@@ -223,7 +223,7 @@ def build_GTR_transition_matrix(b, rates=0.16, freqs=0.25):
     # print(rateM)
 
     tm = torch.matrix_exp(
-            torch.einsum("bij,bck->bcij", (rateM, b))).clamp(
+            torch.einsum("bij,bc->bcij", (rateM, b))).clamp(
                     min=0.0, max=1.0)
 
     #print("tm sahpe {}".format(tm.shape)) # [sample_size, b_dim, x_dim, x_dim]

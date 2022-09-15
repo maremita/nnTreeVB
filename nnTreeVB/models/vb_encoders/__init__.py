@@ -75,6 +75,7 @@ def build_vb_encoder(
         nb_layers=3,
         bias_layers=True,     # True or False
         activ_layers="relu",  # relu, tanh, or False
+        dropout_layers=0.,
         device=torch.device("cpu")):
 
     encoder = get_vb_encoder_type(encoder_type)
@@ -97,6 +98,7 @@ def build_vb_encoder(
                 h_dim=h_dim,
                 nb_layers=nb_layers,
                 bias_layers=bias_layers,
-                activ_layers=activ_layers)
+                activ_layers=activ_layers,
+                dropout_layers=dropout_layers)
 
     return encoder(in_shape, out_shape, **encoder_args)
