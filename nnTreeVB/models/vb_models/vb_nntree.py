@@ -201,7 +201,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             elbo_type="elbo",
             latent_sample_size=10,
             sample_temp=0.1,
-            #alpha_kl=0.001,
+            alpha_kl=1.,
             shuffle_sites=True):
 
         # returned dict
@@ -253,8 +253,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
         logprior += b_logprior.mean(0).sum(0)
         logq += b_logq.mean(0).sum(0)
-        kl_qprior += b_kl.sum(0) * N
- 
+        kl_qprior += b_kl.sum(0) #* N
+
         ret_values["b"] = b_samples.detach().numpy()
         tm_args["b"] = b_samples
         #print("b_samples.shape {}".format(b_samples.shape))
@@ -272,7 +272,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
             logprior += t_logprior.mean(0).sum(0)
             logq += t_logq.mean(0).sum(0)
-            kl_qprior += t_kl * N
+            kl_qprior += t_kl #* N
 
             ret_values["t"] = t_samples.detach().numpy()
             ret_values["b1"] = b_samples.detach().numpy()
@@ -288,7 +288,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
             logprior += r_logprior.mean(0).sum(0)
             logq += r_logq.mean(0).sum(0)
-            kl_qprior += r_kl * N
+            kl_qprior += r_kl #* N
  
             ret_values["r"] = r_samples.detach().numpy()
             tm_args["rates"] = r_samples
@@ -302,7 +302,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
             logprior += f_logprior.mean(0).sum(0)
             logq += f_logq.mean(0).sum(0)
-            kl_qprior += f_kl * N
+            kl_qprior += f_kl #* N
 
             ret_values["f"] = f_samples.detach().numpy()
             pi = f_samples
@@ -317,7 +317,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
             logprior += k_logprior.mean(0).flatten()
             logq += k_logq.mean(0).flatten()
-            kl_qprior += k_kl.flatten() * N
+            kl_qprior += k_kl.flatten() #* N
  
             ret_values["k"] = k_samples.detach().numpy()
             tm_args["kappa"] = k_samples
@@ -344,7 +344,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         # Compute the Elbo
         if elbo_kl:
             elbo = torch.mean(logl[finit_inds], 0)\
-                    - (0.01 * kl_qprior[finit_inds])
+                    - (alpha_kl * kl_qprior[finit_inds])
         else:
             elbo = logl[finit_inds] + logprior[finit_inds]\
                     - logq[finit_inds]

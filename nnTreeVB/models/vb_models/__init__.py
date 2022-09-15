@@ -34,8 +34,8 @@ class BaseTreeVB(ABC):
             site_counts,
             elbo_type="elbo",
             latent_sample_size=1,
+            alpha_kl=1.,
             sample_temp=0.1):
-            #alpha_kl=0.001,
 
         with torch.no_grad():
             if site_counts == None:
@@ -49,7 +49,7 @@ class BaseTreeVB(ABC):
                     elbo_type=elbo_type,
                     latent_sample_size=latent_sample_size,
                     sample_temp=sample_temp, 
-                    #alpha_kl=alpha_kl, 
+                    alpha_kl=alpha_kl, 
                     shuffle_sites=False)
 
     def fit(self,
@@ -59,7 +59,7 @@ class BaseTreeVB(ABC):
             elbo_type="elbo",
             latent_sample_size=1,
             sample_temp=0.1,
-            #alpha_kl=0.001,
+            alpha_kl=1.,
             max_iter=100,
             optim="adam",
             optim_learning_rate=0.005, 
@@ -144,7 +144,7 @@ class BaseTreeVB(ABC):
                         elbo_type=elbo_type,
                         latent_sample_size=latent_sample_size,
                         sample_temp=sample_temp,
-                        #alpha_kl=alpha_kl,
+                        alpha_kl=alpha_kl,
                         shuffle_sites=True)
 
                 elbo = fit_dict["elbo"]
