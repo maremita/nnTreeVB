@@ -43,8 +43,8 @@ class VB_Categorical_NNEncoder(nn.Module):
 
         if self.nb_layers < 2:
             self.nb_layers = 2
-            print("The number of layers in {} should be >= 2."+\
-                    " It's set set to 2".format(self))
+            print("The number of layers in {} should"\
+                    " be >= 2. It's set set to 2".format(self))
 
         # Construct the neural network
         layers = [nn.Linear(self.in_dim, self.h_dim,
@@ -85,7 +85,8 @@ class VB_Categorical_NNEncoder(nn.Module):
 
         # Sample
         samples = self.rsample(logit.expand(
-            [sample_size, *self.out_shape]), temperature=sample_temp)
+            [sample_size, *self.out_shape]),
+            temperature=sample_temp)
         #print("samples shape {}".format(samples.shape))
         # [sample_size, n_dim, a_dim, x_dim]
 
@@ -113,7 +114,7 @@ class VB_Categorical_NNEncoder(nn.Module):
 
     #def sample_gs(self, logits, temperature=1, hard=False):
     #    # reparameterized sampling of categorical distribution
-    #    return gumbel_softmax_sample(logits, temperature, hard)
+    #    return gumbel_softmax_sample(logits, temperature,hard)
 
     def rsample(self, logits, temperature=1):
         # Reparameterized sampling of discrete distribution

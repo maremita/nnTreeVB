@@ -8,8 +8,8 @@ __author__ = "Amine Remita"
 
 class VB_Dirichlet_IndEncoder(nn.Module):
     def __init__(self,
-            in_shape,              # [..., 6]
-            out_shape,             # [..., 6]
+            in_shape,            # [..., 6]
+            out_shape,           # [..., 6]
             init_distr=[1., 1.], # list of floats, "uniform",
                                  # "normal" or False
             prior_hp=[1., 1.],
@@ -41,7 +41,7 @@ class VB_Dirichlet_IndEncoder(nn.Module):
         elif self.init_distr == "normal":
             self.input = self.input.normal_()
 
-        self.input = self.input.repeat([*self.in_shape[:-1], 1])
+        self.input = self.input.repeat([*self.in_shape[:-1],1])
 
         self.init_log_alphas = torch.log(self.input)
 
@@ -51,6 +51,9 @@ class VB_Dirichlet_IndEncoder(nn.Module):
                 requires_grad=True)
         #print(self.log_alphas)
 
+        # Prior distribution
+        self.dist_p = Dirichlet(self.prior_hp)
+
     def forward(
             self, 
             sample_size=1,
@@ -58,16 +61,14 @@ class VB_Dirichlet_IndEncoder(nn.Module):
             min_clamp=False,    # should be <= to 10^-7
             max_clamp=False):
 
-        # Prior distribution
-        self.dist_p = Dirichlet(self.prior_hp)
-
         # Approximate distribution
         self.dist_q = Dirichlet(torch.exp(self.log_alphas))
 
         # Sample from approximate distribution q
-        samples = self.dist_q.rsample(torch.Size([sample_size]))
-        #print("samples dirichlet shape {}".format(samples.shape)) 
-        # [sample_size, 6]
+        samples = self.dist_q.rsample(
+                torch.Size([sample_size]))
+        #print("samples dirichlet shape {}".format(
+        #    samples.shape)) # [sample_size, 6]
 
         if not isinstance(min_clamp, bool):
             if isinstance(min_clamp, (float, int)):
@@ -95,15 +96,15 @@ class VB_Dirichlet_IndEncoder(nn.Module):
 
 class VB_Dirichlet_NNIndEncoder(nn.Module):
     def __init__(self,
-            in_shape,              # [..., 6]
-            out_shape,             # [..., 6]
+            in_shape,             # [..., 6]
+            out_shape,            # [..., 6]
             init_distr=[1., 1.],  # list of floats, "uniform",
                                   # "normal" or False
             prior_hp=[1., 1.],
             h_dim=16, 
             nb_layers=3,
             bias_layers=True,     # True or False
-            activ_layers="relu", # relu, tanh, or False
+            activ_layers="relu",  # relu, tanh, or False
             dropout_layers=0.,
             device=torch.device("cpu")):
 
@@ -150,7 +151,7 @@ class VB_Dirichlet_NNIndEncoder(nn.Module):
         elif self.init_distr == "normal":
             self.input = self.input.normal_()
 
-        self.input = self.input.repeat([*self.in_shape[:-1], 1])
+        self.input = self.input.repeat([*self.in_shape[:-1],1])
 
         # Construct the neural network
         layers = [nn.Linear(self.in_shape[-1], self.h_dim,
@@ -171,6 +172,9 @@ class VB_Dirichlet_NNIndEncoder(nn.Module):
 
         self.net = nn.Sequential(*layers)
 
+        # Prior distribution
+        self.dist_p = Dirichlet(self.prior_hp)
+
     def forward(
             self, 
             sample_size=1,
@@ -180,18 +184,16 @@ class VB_Dirichlet_NNIndEncoder(nn.Module):
 
         alphas = self.net(self.input)
 
-        # Prior distribution
-        self.dist_p = Dirichlet(self.prior_hp)
-
         # Approximate distribution
         # no need to reparameterize alpha
         self.dist_q = Dirichlet(alphas)
 
         # Sample
-        samples = self.dist_q.rsample(torch.Size([sample_size]))
-        # print("samples dirichlet deep shape {}".format(samples.shape))
-        # [sample_size, 6]
- 
+        samples = self.dist_q.rsample(
+                torch.Size([sample_size]))
+        #print("samples dirichlet deep shape {}".format(
+        #    samples.shape)) # [sample_size, 6]
+
         if not isinstance(min_clamp, bool):
             if isinstance(min_clamp, (float, int)):
                 samples = samples.clamp(min=min_clamp)
@@ -217,10 +219,10 @@ class VB_Dirichlet_NNIndEncoder(nn.Module):
 
 class VB_Dirichlet_NNEncoder(nn.Module):
     def __init__(self,
-            in_shape,  # [n_dim, x_dim , m_dim]
+            in_shape,   # [n_dim, x_dim , m_dim]
             #in_dim,    # x_dim * m_dim
             #out_dim,   # x_dim * a_dim
-            out_shape, # [n_dim, a_dim, x_dim]
+            out_shape,  # [n_dim, a_dim, x_dim]
             prior_hp=[1., 1.],
             h_dim=16,
             nb_layers=3,
@@ -303,8 +305,10 @@ class VB_Dirichlet_NNEncoder(nn.Module):
         self.dist_q = Dirichlet(alphas) 
 
         # Sample
-        samples = self.dist_q.rsample(torch.Size([sample_size]))
-        # print("samples dirichlet deep shape {}".format(samples.shape)) # [sample_size, 6]
+        samples = self.dist_q.rsample(
+                torch.Size([sample_size]))
+        #print("samples dirichlet deep shape {}".format(
+        #    samples.shape)) # [sample_size, 6]
  
         if not isinstance(min_clamp, bool):
             if isinstance(min_clamp, (float, int)):

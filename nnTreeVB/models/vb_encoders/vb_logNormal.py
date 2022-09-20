@@ -56,16 +56,16 @@ class VB_LogNormal_IndEncoder(nn.Module):
         self.log_sigma = nn.Parameter(self.init_log_sigma,
                 requires_grad=True)
 
+        # Prior distribution
+        self.dist_p = LogNormal(self.prior_mu,
+                self.prior_sigma)
+
     def forward(
             self, 
             sample_size=1,
             KL_gradient=False,
             min_clamp=0.000001,
             max_clamp=False):
-
-        # Prior distribution
-        self.dist_p = LogNormal(self.prior_mu,
-                self.prior_sigma)
 
         # Approximate distribution
         self.dist_q = LogNormal(
@@ -192,6 +192,10 @@ class VB_LogNormal_NNIndEncoder(nn.Module):
             nn.Linear(self.h_dim, self.out_shape[-1]),
             nn.Softplus()) 
 
+        # Prior distribution
+        self.dist_p = LogNormal(self.prior_mu,
+                self.prior_sigma)
+
     def forward(
             self, 
             sample_size=1,
@@ -207,10 +211,6 @@ class VB_LogNormal_NNIndEncoder(nn.Module):
 
         mu = self.net_out_mu(h_ms)
         sigma = self.net_out_sigma(h_ms).clamp(min=0.+eps)
-
-        # Prior distribution
-        self.dist_p = LogNormal(self.prior_mu,
-                self.prior_sigma)
 
         # Approximate distribution
         self.dist_q = LogNormal(mu, sigma)

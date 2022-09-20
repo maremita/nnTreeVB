@@ -56,15 +56,15 @@ class VB_Gamma_IndEncoder(nn.Module):
         self.log_beta = nn.Parameter(self.init_log_beta,
                 requires_grad=True)
 
+        # Prior distribution
+        self.dist_p = Gamma(self.prior_alpha, self.prior_beta)
+
     def forward(
             self, 
             sample_size=1,
             KL_gradient=False,
             min_clamp=0.000001,
             max_clamp=False):
-
-        # Prior distribution
-        self.dist_p = Gamma(self.prior_alpha, self.prior_beta)
 
         # Approximate distribution
         self.dist_q = Gamma(
@@ -199,6 +199,9 @@ class VB_Gamma_NNIndEncoder(nn.Module):
             nn.Linear(self.h_dim, self.out_shape[-1]),
             nn.Softplus())
 
+        # Prior distribution
+        self.dist_p = Gamma(self.prior_alpha, self.prior_beta)
+
     def forward(
             self, 
             sample_size=1,
@@ -214,9 +217,6 @@ class VB_Gamma_NNIndEncoder(nn.Module):
         
         alpha = self.net_out_alpha(h_ab).clamp(min=0.+eps)
         beta = self.net_out_beta(h_ab).clamp(min=0.+eps)
-
-        # Prior distribution
-        self.dist_p = Gamma(self.prior_alpha, self.prior_beta)
 
         # Approximate distribution
         self.dist_q = Gamma(alpha, beta)

@@ -64,19 +64,21 @@ class BaseTreeVB(ABC):
             optim="adam",
             optim_learning_rate=0.005, 
             optim_weight_decay=0.1,
+            scheduler_lambda=lambda e:1.,
             X_val=None,
             # If not None, a validation stpe will be done
             X_val_counts=None,
             A_val=None, 
-            # (np.ndarray) Embedded ancestral sequence which was used
-            # to sample the estimates. If not None, it will be used only
-            # to report its distance with the inferred ancestral
+            # (np.ndarray) Embedded ancestral sequence which
+            # was used to sample the estimates.
+            # If not None, it will be used only to report its
+            # distance with the inferred ancestral
             # sequence during calidation
             # It is not used during the inference.
             save_fit_history=False,
             # Save estimates for each epoch of fitting step
             save_val_history=False,
-            # Save estimates for each epoch of validation step
+            #Save estimates for each epoch of validation step
             #keep_fit_vars=False,
             # Save estimate variances from fitting step
             #keep_val_vars=False,
@@ -86,15 +88,40 @@ class BaseTreeVB(ABC):
             save_weight_stats=False,
             # Save statistics of weights
             verbose=None):
-
+ 
+        # Optimizer configuration
+        optim_algo = torch.optim.SGD
         if optim == 'adam':
-            optimizer = torch.optim.Adam(self.parameters(), 
-                    lr=optim_learning_rate,
-                    weight_decay=optim_weight_decay)
-        else:
-            optimizer = torch.optim.SGD(self.parameters(),
-                    lr=optim_learning_rate,
-                    weight_decay=optim_weight_decay)
+            optim_algo = torch.optim.Adam
+
+        optim_params = self.parameters()
+        lr_default = 0.01
+
+        if isinstance(optim_learning_rate, dict):
+            optim_params = []
+
+            for name, encoder in self.named_children():
+                if name in optim_learning_rate:
+                    ps = {'params': encoder.parameters(),
+                            'lr': optim_learning_rate[name]}
+                    optim_params.append(ps)
+
+            if 'default' in optim_learning_rate:
+                lr_default = optim_learning_rate['default']
+
+        elif isinstance(optim_learning_rate, (int, float)):
+            lr_default = optim_learning_rate
+
+        optimizer = optim_algo(
+                optim_params, 
+                lr=lr_default,
+                weight_decay=optim_weight_decay)
+
+        
+        # Scheduler configuration
+        scheduler = torch.optim.lr_scheduler.LambdaLR(
+                optimizer,
+                lr_lambda=scheduler_lambda)
 
         # dict to be returned
         # it will contain the results of fit/val
@@ -109,7 +136,8 @@ class BaseTreeVB(ABC):
         ret["total_val_time"] = 0
         ret["optimized"] = []
 
-        if X_val_counts is not None: N_val_dim = X_val_counts.sum()
+        if X_val_counts is not None:
+            N_val_dim = X_val_counts.sum()
         elif X_val is not None: N_val_dim = X_val.shape[0]
  
         ret["elbos_list"] = []
@@ -159,9 +187,10 @@ class BaseTreeVB(ABC):
                 f = check_finite_grads(self, epoch,
                         verbose=False)
 
-                # Optimize if gradients do not have nan values
+                # Optimize if gradients don't have nan values
                 if f and torch.isfinite(elbo):
                     optimizer.step()
+                    scheduler.step()
                     ret["optimized"].append(1.)
                     optim_nb += 1
 
@@ -235,6 +264,17 @@ class BaseTreeVB(ABC):
                                             lps_val.item(),
                                             lqs_val.item(),
                                             kls_val.item())
+                        if verbose >= 2:
+                            chaine += "\n"
+                            for estim in ["b", "t", "b1",\
+                                    "r", "f", "k"]:
+                                if estim in fit_dict:
+                                    estim_vals = fit_dict[estim].mean(0).squeeze() 
+                                    chaine += estim + ": "\
+                                            +str(estim_vals)
+                                    if estim == "b" and "t" not in fit_dict:
+                                        chaine += "\nt: "+ str(estim_vals.sum()) 
+                                    chaine += "\n"
                         print(chaine, end="\n")
 
                 ## Adding measure values to lists if all is OK
@@ -274,13 +314,14 @@ class BaseTreeVB(ABC):
                             if estim in val_dict:
                                 val_estim[estim]=val_dict[estim]
 
-                        # Generated sequences and inferred ancestral
-                        # sequences are not saved for each epoch
-                        # because they consume a lot of space.
-                        # Instead of that, we report their distances
-                        # with actual sequences.
+                        # Generated sequences and inferred 
+                        # ancestral sequences are not saved 
+                        # for each epoch because they consume
+                        # a lot of space.
+                        # Instead of that, we report their
+                        # distances with actual sequences.
  
-                        # Compute Hamming and average Euclidean 
+                        # Compute Hamming and average Euclidean
                         # distances
                         # between X_val and generated sequences
                         if "x" in val_dict:
@@ -296,7 +337,7 @@ class BaseTreeVB(ABC):
                             val_estim['x_hamming'] = x_ham_dist
                             val_estim['x_euclidean'] = x_euc_dist
  
-                        # Compute Hamming and average Euclidean 
+                        # Compute Hamming and average Euclidea 
                         # distances
                         # between actual ancestral sequence and
                         # inferred ancestral sequence
