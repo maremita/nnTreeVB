@@ -1,4 +1,5 @@
 from nnTreeVB.utils import min_max_clamp
+from torch.distributions import transform_to
 
 import torch
 import torch.nn as nn
@@ -10,24 +11,32 @@ __author__ = "Amine Remita"
 
 class VB_Normal_IndEncoder(nn.Module):
     def __init__(self,
-            in_shape,              # [..., 2],
-            out_shape,             # [..., 1]
+            in_shape,              # [..., b_dim]
+            out_shape,             # [..., b_dim]
             init_distr=[0.1, 0.1], # list of 2 floats, uniform,
                                    # normal or False
             prior_hp=[0.2, 0.2],   # prior hyper-parameters
+            transform=None,
             device=torch.device("cpu")):
 
         super().__init__()
 
         self.in_shape = in_shape
         self.out_shape = out_shape 
-        
+ 
         # loc (mu) and scale (sigma) 
         self.nb_params = 2
         self.init_distr = init_distr
 
         self.prior_hp = torch.tensor(prior_hp)
+        self.transform = transform
         self.device_ = device
+
+        # in_shape will be updated if the sample transform 
+        # is to a simplex
+        if isinstance(self.transform,
+                torch.distributions.StickBreakingTransform):
+            self.in_shape[-1] -= 1
 
         assert self.prior_hp.shape[-1] == self.nb_params
 
@@ -60,7 +69,7 @@ class VB_Normal_IndEncoder(nn.Module):
 
         # Initialize the parameters of the variational
         # distribution q
-        self.mu = nn.Parameter(self.init_mu,
+        self.mu = nn.Parameter(init_mu,
                 requires_grad=True)
         self.sigma_unconst = nn.Parameter(init_sigma_unconst,
                 requires_grad=True)
@@ -85,11 +94,21 @@ class VB_Normal_IndEncoder(nn.Module):
         self.dist_q = Normal(self.mu, self.sigma)
 
         # Sample from approximate distribution q
-        samples = self.dist_q.rsample(
+        # in the unconstrained space
+        samples_unconst = self.dist_q.rsample(
                 torch.Size([sample_size]))
         #print("samples N shape {}".format(samples.shape))
 
-        samples = min_max_clamp(samples, min_clamp, max_clamp)
+        samples_unconst = min_max_clamp(
+                samples_unconst, 
+                min_clamp, 
+                max_clamp)
+
+        # Transform samples_unconst to constrained space
+        if self.transform is not None:
+            samples = self.transform(samples_unconst)
+        else:
+            samples = samples_unconst
 
         with torch.set_grad_enabled(KL_gradient):
             kl = kl_divergence(self.dist_q, self.dist_p)
@@ -101,7 +120,7 @@ class VB_Normal_IndEncoder(nn.Module):
             #print("logprior.shape {}".format(logprior.shape))
 
             # Compute the log of approximate posteriors q(d)
-            logq = self.dist_q.log_prob(samples)
+            logq = self.dist_q.log_prob(samples_unconst)
             #print("logq.shape {}".format(logq.shape))
 
         return logprior, logq, kl, samples
@@ -109,8 +128,8 @@ class VB_Normal_IndEncoder(nn.Module):
 
 class VB_Normal_NNIndEncoder(nn.Module):
     def __init__(self,
-            in_shape,              # [..., 2],
-            out_shape,             # [..., 1]
+            in_shape,              # [..., b_dim]
+            out_shape,             # [..., b_dim]
             init_distr="uniform", # list of 2 floats, uniform,
                                   # normal or False
             prior_hp=[0.2, 0.2],

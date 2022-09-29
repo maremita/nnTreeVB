@@ -32,6 +32,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             # if nn: list of 4 floats, uniform, normal or False
             # if fixed: tensor
             a_hp=[1., 1., 1., 1.],
+            a_transform=None,
             # #################################################
             # branch lengths
             # fixed | gamma | explogn | lognormal | dirichlet
@@ -41,6 +42,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             # if nn: list of 2 floats, uniform, normal or False
             # if fixed: tensor
             b_hp=[0.2, 0.2],
+            b_transform=None,
             # #################################################
             # Total tree length
             # fixed | gamma | explogn | lognormal
@@ -50,6 +52,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             # if nn: list of 2 floats, uniform, normal or False
             # if fixed: tensor
             t_hp=[0.2, 0.2],
+            t_transform=None,
             # #################################################
             # gtr rates encoder args
             # fixed | dirichlet | nndirichlet
@@ -59,6 +62,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             # if nn: list of 6 floats, uniform, normal or False
             # if fixed: tensor
             r_hp=[1., 1., 1., 1., 1., 1.],
+            r_transform=None,
             # #################################################
             # gtr frequencies encoder args
             # fixed | dirichlet | nndirichlet
@@ -68,6 +72,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             # if nn: list of 6 floats, uniform, normal or False
             # if fixed: tensor
             f_hp=[1., 1., 1., 1.],
+            f_transform=None,
             # #################################################
             # k encoder args
             # fixed | gamma | lognormal
@@ -77,6 +82,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             # if nn: list of 2 floats, uniform, normal or False
             # if fixed: tensor
             k_hp=[0.1, 0.1],
+            k_transform=None,
             # #################################################
             # Following parameters are needed if nn
             h_dim=16,
@@ -110,6 +116,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     encoder_type=a_encoder_type,
                     init_distr=a_init_distr,
                     prior_hp=a_hp,
+                    transform=a_transform,
                     h_dim=h_dim,
                     nb_layers=nb_layers,
                     bias_layers=bias_layers,
@@ -117,19 +124,18 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     device=self.device_)
 
         self.b_compound = False
-        b_in_shape = [self.b_dim]
-        b_out_shape = [self.b_dim]
 
         if "dirichlet" in b_encoder_type:
             self.b_compound = True
 
         # Initialize branch length encoder
         self.b_encoder = build_vb_encoder(
-                b_in_shape,
-                b_out_shape,
+                [self.b_dim],
+                [self.b_dim],
                 encoder_type=b_encoder_type,
                 init_distr=b_init_distr,
                 prior_hp=b_hp,
+                transform=b_transform,
                 h_dim=h_dim,
                 nb_layers=nb_layers,
                 bias_layers=bias_layers,
@@ -146,6 +152,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     encoder_type=t_encoder_type,
                     init_distr=t_init_distr,
                     prior_hp=t_hp,
+                    transform=t_transform,
                     h_dim=h_dim,
                     nb_layers=nb_layers,
                     bias_layers=bias_layers,
@@ -160,6 +167,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     encoder_type=r_encoder_type,
                     init_distr=r_init_distr,
                     prior_hp=r_hp,
+                    transform=r_transform,
                     h_dim=h_dim,
                     nb_layers=nb_layers,
                     bias_layers=bias_layers,
@@ -174,6 +182,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     encoder_type=f_encoder_type,
                     init_distr=f_init_distr,
                     prior_hp=f_hp,
+                    transform=f_transform,
                     h_dim=h_dim,
                     nb_layers=nb_layers,
                     bias_layers=bias_layers,
@@ -188,6 +197,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     encoder_type=k_encoder_type,
                     init_distr=k_init_distr,
                     prior_hp=k_hp,
+                    transform=k_transform,
                     h_dim=h_dim,
                     nb_layers=nb_layers,
                     bias_layers=bias_layers,

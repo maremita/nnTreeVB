@@ -10,8 +10,8 @@ __author__ = "Amine Remita"
 
 class VB_LogNormal_IndEncoder(nn.Module):
     def __init__(self,
-            in_shape,              # [..., 2],
-            out_shape,             # [..., 1]
+            in_shape,              # [..., b_dim]
+            out_shape,             # [..., b_dim]
             init_distr=[0.1, 0.1], # list of 2 floats, uniform,
                                    # normal or False
             prior_hp=[0.2, 0.2],   # prior hyper-parameters
@@ -109,8 +109,8 @@ class VB_LogNormal_IndEncoder(nn.Module):
 
 class VB_LogNormal_NNIndEncoder(nn.Module):
     def __init__(self,
-            in_shape,              # [..., 2],
-            out_shape,             # [..., 1]
+            in_shape,              # [..., b_dim]
+            out_shape,             # [..., b_dim]
             init_distr="uniform", # list of 2 floats, uniform,
                                   # normal or False
             prior_hp=[0.2, 0.2],

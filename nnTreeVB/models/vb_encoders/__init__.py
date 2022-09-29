@@ -10,6 +10,7 @@ from .vb_dirichlet import *
 from .vb_categorical import *
 from .vb_gamma import *
 from .vb_logNormal import *
+from .vb_normal import *
 from .vb_fixed import *
 
 import torch
@@ -50,6 +51,12 @@ def get_vb_encoder_type(encoder_type="gamma"):
     elif encoder_type == "categorical_nn":
         encoder = VB_Categorical_NNEncoder
 
+    elif encoder_type == "normal_ind":
+        encoder = VB_Normal_IndEncoder
+
+    elif encoder_type == "normal_nn_ind":
+        encoder = VB_Normal_NNIndEncoder
+
     elif encoder_type == "fixed":
         encoder = VB_FixedEncoder
 
@@ -70,6 +77,7 @@ def build_vb_encoder(
         # or False for nn encoders
         # or tensor for fixed encoder
         prior_hp=[0.2, 0.2],
+        transform=None,
         # Following parameters are needed if nn
         h_dim=16,
         nb_layers=3,
@@ -92,6 +100,10 @@ def build_vb_encoder(
     if init_distr is not False:
         encoder_args.update(
             init_distr=init_distr)
+
+    if transform is not None:
+        encoder_args.update(
+            transform=transform)
 
     if "nn" in encoder_type:
         encoder_args.update(
