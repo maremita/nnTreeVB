@@ -1,7 +1,10 @@
+from nnTreeVB.utils import min_max_clamp
+
 import torch
 import torch.nn as nn
 from torch.distributions.dirichlet import Dirichlet
 from torch.distributions.kl import kl_divergence
+from torch.distributions import transform_to
 
 __author__ = "Amine Remita"
 
@@ -20,7 +23,7 @@ class VB_Dirichlet_IndEncoder(nn.Module):
         self.in_shape = in_shape
         self.out_shape = out_shape 
         
-        # Concentration
+        # Concentrations
         self.nb_params = self.in_shape[-1]
 
         self.init_distr = init_distr
@@ -41,15 +44,20 @@ class VB_Dirichlet_IndEncoder(nn.Module):
         elif self.init_distr == "normal":
             self.input = self.input.normal_()
 
-        self.input = self.input.repeat([*self.in_shape[:-1],1])
+        # Distr parameters transforms
+        self.tr_to_alphas_const = transform_to(
+                Dirichlet.arg_constraints['concentration'])
 
-        self.init_log_alphas = torch.log(self.input)
+        # Pay attention here, we use inverse transforms to 
+        # transform the initial values from constrained to
+        # unconstrained space
+        init_alphas_unconst = self.tr_to_alphas_const.inv(
+                self.input.repeat([*self.in_shape[:-1],1]))
 
         # Initialize the parameters of the variational
         # distribution q
-        self.log_alphas = nn.Parameter(self.init_log_alphas,
+        self.alphas_unconst = nn.Parameter(init_alphas_unconst,
                 requires_grad=True)
-        #print(self.log_alphas)
 
         # Prior distribution
         self.dist_p = Dirichlet(self.prior_hp)
@@ -61,8 +69,13 @@ class VB_Dirichlet_IndEncoder(nn.Module):
             min_clamp=False,    # should be <= to 10^-7
             max_clamp=False):
 
-        # Approximate distribution
-        self.dist_q = Dirichlet(torch.exp(self.log_alphas))
+        # Transform params from unconstrained to
+        # constrained space
+        self.alphas = self.tr_to_alphas_const(
+                self.alphas_unconst)
+
+        # Approximate distribution 
+        self.dist_q = Dirichlet(self.alphas)
 
         # Sample from approximate distribution q
         samples = self.dist_q.rsample(
@@ -70,13 +83,7 @@ class VB_Dirichlet_IndEncoder(nn.Module):
         #print("samples dirichlet shape {}".format(
         #    samples.shape)) # [sample_size, 6]
 
-        if not isinstance(min_clamp, bool):
-            if isinstance(min_clamp, (float, int)):
-                samples = samples.clamp(min=min_clamp)
-
-        if not isinstance(max_clamp, bool):
-            if isinstance(max_clamp, (float, int)):
-                samples = samples.clamp(max=max_clamp)
+        samples = min_max_clamp(samples, min_clamp, max_clamp)
 
         with torch.set_grad_enabled(KL_gradient):
             kl = kl_divergence(self.dist_q, self.dist_p)
@@ -182,11 +189,10 @@ class VB_Dirichlet_NNIndEncoder(nn.Module):
             min_clamp=False,
             max_clamp=False):
 
-        alphas = self.net(self.input)
+        self.alphas = self.net(self.input)
 
         # Approximate distribution
-        # no need to reparameterize alpha
-        self.dist_q = Dirichlet(alphas)
+        self.dist_q = Dirichlet(self.alphas)
 
         # Sample
         samples = self.dist_q.rsample(
@@ -194,13 +200,7 @@ class VB_Dirichlet_NNIndEncoder(nn.Module):
         #print("samples dirichlet deep shape {}".format(
         #    samples.shape)) # [sample_size, 6]
 
-        if not isinstance(min_clamp, bool):
-            if isinstance(min_clamp, (float, int)):
-                samples = samples.clamp(min=min_clamp)
-
-        if not isinstance(max_clamp, bool):
-            if isinstance(max_clamp, (float, int)):
-                samples = samples.clamp(max=max_clamp)
+        samples = min_max_clamp(samples, min_clamp, max_clamp)
  
         with torch.set_grad_enabled(KL_gradient):
             kl = kl_divergence(self.dist_q, self.dist_p)
@@ -295,14 +295,13 @@ class VB_Dirichlet_NNEncoder(nn.Module):
         #print(data.shape)
         # [n_dim, m_dim * x_dim]
 
-        alphas = self.net(data).view(*self.out_shape)
+        self.alphas = self.net(data).view(*self.out_shape)
         #print("alphas")
         #print(alphas.shape)
         #print(alphas)
 
         # Approximate distribution
-        # no need to reparameterize alpha
-        self.dist_q = Dirichlet(alphas) 
+        self.dist_q = Dirichlet(self.alphas)
 
         # Sample
         samples = self.dist_q.rsample(
@@ -310,13 +309,7 @@ class VB_Dirichlet_NNEncoder(nn.Module):
         #print("samples dirichlet deep shape {}".format(
         #    samples.shape)) # [sample_size, 6]
  
-        if not isinstance(min_clamp, bool):
-            if isinstance(min_clamp, (float, int)):
-                samples = samples.clamp(min=min_clamp)
-
-        if not isinstance(max_clamp, bool):
-            if isinstance(max_clamp, (float, int)):
-                samples = samples.clamp(max=max_clamp)
+        samples = min_max_clamp(samples, min_clamp, max_clamp)
  
         with torch.set_grad_enabled(KL_gradient):
             kl = kl_divergence(self.dist_q, self.dist_p)

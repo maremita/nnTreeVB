@@ -29,9 +29,8 @@ class VB_FixedEncoder(nn.Module):
                 [sample_size, *self.out_shape])
         #print("samples fixed shape {}".format(samples.shape))
 
-        with torch.no_grad():
-            logprior = torch.zeros(1).to(self.device_)
-            logq = torch.zeros(1).to(self.device_)
-            kl = torch.zeros(1).to(self.device_)
+        logprior = torch.zeros(1).to(self.device_)
+        logq = torch.zeros(1).to(self.device_)
+        kl = torch.zeros(1).to(self.device_)
 
         return logprior, logq, kl, samples

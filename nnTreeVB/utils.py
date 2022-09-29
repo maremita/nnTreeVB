@@ -15,8 +15,22 @@ from scipy.stats.stats import pearsonr#, spearmanr
 __author__ = "amine remita"
 
 
+def min_max_clamp(x, min_clamp=False, max_clamp=False):
+    if not isinstance(min_clamp, bool):
+        if isinstance(min_clamp, (float, int)):
+            x = x.clamp(min=min_clamp)
+
+    if not isinstance(max_clamp, bool):
+        if isinstance(max_clamp, (float, int)):
+            x = x.clamp(max=max_clamp)
+
+    return x
+
+
 def getboolean(value):
-    return configparser.RawConfigParser()._convert_to_boolean(value)
+    return configparser.RawConfigParser()._convert_to_boolean(
+            value)
+
 
 def timeSince(since):
     now = time.time()

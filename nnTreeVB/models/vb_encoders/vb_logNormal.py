@@ -1,3 +1,5 @@
+from nnTreeVB.utils import min_max_clamp
+
 import torch
 import torch.nn as nn
 from torch.distributions.log_normal import LogNormal
@@ -44,16 +46,23 @@ class VB_LogNormal_IndEncoder(nn.Module):
         elif self.init_distr == "normal":
             self.input = self.input.normal_()
 
-        self.init_mu = self.input[0].repeat(
+        # Distr parameters transforms
+        self.tr_to_sigma_const = transform_to(
+                LogNormal.arg_constraints['scale'])
+
+        init_mu = self.input[0].repeat(
                 [*self.in_shape])
-        self.init_log_sigma = torch.log(
+        # Pay attention here, we use inverse transforms to 
+        # transform the initial values from constrained to
+        # unconstrained space
+        init_sigma_unconst = self.tr_to_sigma_const.inv(
                 self.input[1].repeat([*self.in_shape]))
 
         # Initialize the parameters of the variational
         # distribution q
-        self.mu = nn.Parameter(self.init_mu,
+        self.mu = nn.Parameter(init_mu,
                 requires_grad=True)
-        self.log_sigma = nn.Parameter(self.init_log_sigma,
+        self.sigma_unconst = nn.Parameter(init_sigma_unconst,
                 requires_grad=True)
 
         # Prior distribution
@@ -67,23 +76,20 @@ class VB_LogNormal_IndEncoder(nn.Module):
             min_clamp=0.000001,
             max_clamp=False):
 
+        # Transform sigma from unconstrained to
+        # constrained space
+        self.sigma = self.tr_to_sigma_const(
+                self.sigma_unconst)
+
         # Approximate distribution
-        self.dist_q = LogNormal(
-                self.mu, 
-                torch.exp(self.log_sigma))
+        self.dist_q = LogNormal(self.mu, self.sigma)
 
         # Sample from approximate distribution q
         samples = self.dist_q.rsample(
                 torch.Size([sample_size]))
         #print("samples logN shape {}".format(samples.shape))
 
-        if not isinstance(min_clamp, bool):
-            if isinstance(min_clamp, (float, int)):
-                samples = samples.clamp(min=min_clamp)
-
-        if not isinstance(max_clamp, bool):
-            if isinstance(max_clamp, (float, int)):
-                samples = samples.clamp(max=max_clamp)
+        samples = min_max_clamp(samples, min_clamp, max_clamp)
 
         with torch.set_grad_enabled(KL_gradient):
             kl = kl_divergence(self.dist_q, self.dist_p)
@@ -184,9 +190,7 @@ class VB_LogNormal_NNIndEncoder(nn.Module):
         self.net_h = nn.Sequential(*layers)
 
         self.net_out_mu = nn.Sequential(
-            #nn.Linear(self.h_dim, self.out_shape[-1]))
-            nn.Linear(self.h_dim, self.out_shape[-1]),
-            nn.Softplus()) 
+            nn.Linear(self.h_dim, self.out_shape[-1]))
 
         self.net_out_sigma = nn.Sequential(
             nn.Linear(self.h_dim, self.out_shape[-1]),
@@ -209,24 +213,18 @@ class VB_LogNormal_NNIndEncoder(nn.Module):
         out_s = self.net_in_sigma(self.input[...,1])
         h_ms = self.net_h(torch.cat([out_m, out_s]))
 
-        mu = self.net_out_mu(h_ms)
-        sigma = self.net_out_sigma(h_ms).clamp(min=0.+eps)
+        self.mu = self.net_out_mu(h_ms)
+        self.sigma = self.net_out_sigma(h_ms).clamp(min=0.+eps)
 
         # Approximate distribution
-        self.dist_q = LogNormal(mu, sigma)
+        self.dist_q = LogNormal(self.mu, self.sigma)
 
         # Sample
         samples = self.dist_q.rsample(
                 torch.Size([sample_size]))
         # print("samples shape {}".format(samples.shape)) #
 
-        if not isinstance(min_clamp, bool):
-            if isinstance(min_clamp, (float, int)):
-                samples = samples.clamp(min=min_clamp)
-
-        if not isinstance(max_clamp, bool):
-            if isinstance(max_clamp, (float, int)):
-                samples = samples.clamp(max=max_clamp)
+        samples = min_max_clamp(samples, min_clamp, max_clamp)
  
         with torch.set_grad_enabled(KL_gradient):
             kl = kl_divergence(self.dist_q, self.dist_p)

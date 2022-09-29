@@ -1,3 +1,5 @@
+from nnTreeVB.utils import min_max_clamp
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -28,7 +30,7 @@ class VB_Categorical_NNEncoder(nn.Module):
         self.in_dim = self.in_shape[-1] * self.in_shape[-2] 
         self.out_dim = self.out_shape[-1] * self.out_shape[-2]
 
-        self.prior_hp = torch.tensor(prior_hp)
+        self.prior_hp = torch.tensor(prior_hp).detach()
         self.device_ = device
 
         self.h_dim = h_dim  # hidden layer size
@@ -78,25 +80,19 @@ class VB_Categorical_NNEncoder(nn.Module):
         #print("data shape {}".format(data.shape))
         # [n_dim, m_dim * x_dim]
 
-        logit = self.net(data).view(*self.out_shape)
+        self.logit = self.net(data).view(*self.out_shape)
 
         # Approximate distribution
-        self.dist_q = Categorical(logits=logit)
+        self.dist_q = Categorical(logits=self.logit)
 
         # Sample
-        samples = self.rsample(logit.expand(
+        samples = self.rsample(self.logit.expand(
             [sample_size, *self.out_shape]),
             temperature=sample_temp)
         #print("samples shape {}".format(samples.shape))
         # [sample_size, n_dim, a_dim, x_dim]
 
-        if not isinstance(min_clamp, bool):
-            if isinstance(min_clamp, (float, int)):
-                samples = samples.clamp(min=min_clamp)
-
-        if not isinstance(max_clamp, bool):
-            if isinstance(max_clamp, (float, int)):
-                samples = samples.clamp(max=max_clamp)
+        samples = min_max_clamp(samples, min_clamp, max_clamp)
  
         with torch.set_grad_enabled(KL_gradient):
             kl = kl_divergence(self.dist_q, self.dist_p)
