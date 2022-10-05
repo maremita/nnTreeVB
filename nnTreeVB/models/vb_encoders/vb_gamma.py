@@ -1,4 +1,5 @@
 from nnTreeVB.utils import min_max_clamp
+from nnTreeVB.typing import *
 
 import torch
 import torch.nn as nn
@@ -11,11 +12,12 @@ __author__ = "Amine Remita"
 
 class VB_Gamma_IndEncoder(nn.Module):
     def __init__(self,
-            in_shape,              # [..., b_dim]
-            out_shape,             # [..., b_dim]
-            init_distr=[0.1, 0.1], # list of 2 floats, uniform,
-                                   # normal or False
-            prior_hp=[0.2, 0.2],   # prior hyper-parameters
+            in_shape: list,         # [..., b_dim]
+            out_shape: list,        # [..., b_dim]
+            # list of 2 floats, uniform, normal or False
+            init_distr: list = [0.1, 0.1],
+            # initialized prior distribution
+            prior_dist: TorchDistribution = None,
             device=torch.device("cpu")):
 
         super().__init__()
@@ -27,13 +29,10 @@ class VB_Gamma_IndEncoder(nn.Module):
         self.nb_params = 2
         self.init_distr = init_distr
 
-        self.prior_hp = torch.tensor(prior_hp).detach()
+        # Prior distribution
+        self.dist_p = prior_dist
+        
         self.device_ = device
-
-        assert self.prior_hp.shape[-1] == self.nb_params
-
-        self.prior_alpha = self.prior_hp[0]
-        self.prior_beta = self.prior_hp[1]
 
         # init parameters initialization
         if isinstance(self.init_distr, (list)):
@@ -69,14 +68,11 @@ class VB_Gamma_IndEncoder(nn.Module):
         self.beta_unconst = nn.Parameter(init_beta_unconst,
                 requires_grad=True)
 
-        # Prior distribution
-        self.dist_p = Gamma(self.prior_alpha, self.prior_beta)
-
     def forward(
             self, 
             sample_size=1,
             KL_gradient=False,
-            min_clamp=0.000001,
+            min_clamp=0.0000001,
             max_clamp=False):
  
         # Transform params from unconstrained to
@@ -121,8 +117,8 @@ class VB_Gamma_IndEncoder(nn.Module):
 
 class VB_Gamma_NNIndEncoder(nn.Module):
     def __init__(self,
-            in_shape,              # [..., 2],
-            out_shape,             # [..., 1]
+            in_shape,             # [..., b_dim]
+            out_shape,            # [..., b_dim]
             init_distr="uniform", # list of 2 floats, uniform,
                                   # normal or False
             prior_hp=[0.2, 0.2],
@@ -142,7 +138,7 @@ class VB_Gamma_NNIndEncoder(nn.Module):
         self.nb_params = 2
         self.init_distr = init_distr
 
-        self.prior_hp = torch.tensor(prior_hp).detach()
+        self.prior_hp = torch.tensor(prior_hp)
         self.device_ = device
 
         assert self.prior_hp.shape[-1] == self.nb_params
@@ -221,7 +217,7 @@ class VB_Gamma_NNIndEncoder(nn.Module):
             self, 
             sample_size=1,
             KL_gradient=False,
-            min_clamp=0.000001,
+            min_clamp=0.0000001,
             max_clamp=False):
 
         eps = torch.finfo().eps

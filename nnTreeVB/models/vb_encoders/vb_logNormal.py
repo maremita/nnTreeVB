@@ -1,4 +1,5 @@
 from nnTreeVB.utils import min_max_clamp
+from nnTreeVB.typing import *
 
 import torch
 import torch.nn as nn
@@ -10,11 +11,12 @@ __author__ = "Amine Remita"
 
 class VB_LogNormal_IndEncoder(nn.Module):
     def __init__(self,
-            in_shape,              # [..., b_dim]
-            out_shape,             # [..., b_dim]
-            init_distr=[0.1, 0.1], # list of 2 floats, uniform,
-                                   # normal or False
-            prior_hp=[0.2, 0.2],   # prior hyper-parameters
+            in_shape: list,         # [..., b_dim]
+            out_shape: list,        # [..., b_dim]
+            # list of 2 floats, uniform, normal or False
+            init_distr: list = [0.1, 0.1],
+            # initialized prior distribution
+            prior_dist: TorchDistribution = None,
             device=torch.device("cpu")):
 
         super().__init__()
@@ -26,13 +28,10 @@ class VB_LogNormal_IndEncoder(nn.Module):
         self.nb_params = 2
         self.init_distr = init_distr
 
-        self.prior_hp = torch.tensor(prior_hp)
+        # Prior distribution
+        self.dist_p = prior_dist
+
         self.device_ = device
-
-        assert self.prior_hp.shape[-1] == self.nb_params
-
-        self.prior_mu = self.prior_hp[0].detach()
-        self.prior_sigma = self.prior_hp[1].detach()
 
         # init parameters initialization
         if isinstance(self.init_distr, (list)):
@@ -65,15 +64,11 @@ class VB_LogNormal_IndEncoder(nn.Module):
         self.sigma_unconst = nn.Parameter(init_sigma_unconst,
                 requires_grad=True)
 
-        # Prior distribution
-        self.dist_p = LogNormal(self.prior_mu,
-                self.prior_sigma)
-
     def forward(
             self, 
             sample_size=1,
             KL_gradient=False,
-            min_clamp=0.000001,
+            min_clamp=0.0000001,
             max_clamp=False):
 
         # Transform sigma from unconstrained to
@@ -134,8 +129,8 @@ class VB_LogNormal_NNIndEncoder(nn.Module):
 
         assert self.prior_hp.shape[-1] == self.nb_params
 
-        self.prior_mu = self.prior_hp[0].detach()
-        self.prior_sigma = self.prior_hp[1].detach()
+        self.prior_mu = self.prior_hp[0]
+        self.prior_sigma = self.prior_hp[1]
  
         self.h_dim = h_dim          # hidden layer size
         self.nb_layers = nb_layers
@@ -204,7 +199,7 @@ class VB_LogNormal_NNIndEncoder(nn.Module):
             self, 
             sample_size=1,
             KL_gradient=False,
-            min_clamp=0.000001,
+            min_clamp=0.0000001,
             max_clamp=False):
 
         eps = torch.finfo().eps

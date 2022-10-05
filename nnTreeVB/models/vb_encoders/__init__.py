@@ -12,6 +12,9 @@ from .vb_gamma import *
 from .vb_logNormal import *
 from .vb_normal import *
 from .vb_fixed import *
+from .build_distributions import build_distribution 
+
+from nnTreeVB.typing import *
 
 import torch
 
@@ -19,12 +22,12 @@ __author__ = "amine remita"
 
 
 __all__ = [
-        "get_vb_encoder_type",
+        "get_vb_encoder",
         "build_vb_encoder"
+        "build_distribution"
         ]
 
-
-def get_vb_encoder_type(encoder_type="gamma"):
+def get_vb_encoder(encoder_type="gamma"):
     encoder_type = encoder_type.lower()
 
     if encoder_type == "gamma_ind":
@@ -68,32 +71,32 @@ def get_vb_encoder_type(encoder_type="gamma"):
 
 
 def build_vb_encoder(
-        in_shape,
-        out_shape,
-        encoder_type="gamma",  # gamma_ind|lognormal_nnind
-        init_distr=[0.1, 0.1], 
+        in_shape: list,
+        out_shape: list,
+        encoder_type: str = "gamma", # gamma_ind
+        init_distr: list = [0.1, 0.1], 
         # if not deep: list of 2 floats
         # if deep: list of 2 floats, uniform, normal for nnInd
         # or False for nn encoders
         # or tensor for fixed encoder
-        prior_hp=[0.2, 0.2],
-        transform=None,
+        prior_dist: TorchDistribution = None,
+        transform: TorchTransform = None,
         # Following parameters are needed if nn
-        h_dim=16,
-        nb_layers=3,
-        bias_layers=True,     # True or False
-        activ_layers="relu",  # relu, tanh, or False
-        dropout_layers=0.,
-        device=torch.device("cpu")):
+        h_dim: int = 16,
+        nb_layers: int = 3,
+        bias_layers: bool = True,     # True or False
+        activ_layers: str = "relu",  # relu, tanh, or False
+        dropout_layers:float = 0.,
+        device: torch.device = torch.device("cpu")):
 
-    encoder = get_vb_encoder_type(encoder_type)
+    encoder = get_vb_encoder(encoder_type)
 
     encoder_args = dict(
             device=device)
 
     if encoder_type != "fixed":
         encoder_args.update(
-            prior_hp=prior_hp)
+            prior_dist=prior_dist)
     else:
         assert isinstance(init_distr, torch.Tensor)
 

@@ -1,4 +1,5 @@
 from nnTreeVB.utils import min_max_clamp
+from nnTreeVB.typing import *
 
 import torch
 import torch.nn as nn
@@ -12,15 +13,15 @@ __author__ = "amine remita"
 
 class VB_Categorical_NNEncoder(nn.Module):
     def __init__(self, 
-            in_shape,  # [n_dim, x_dim , m_dim]
+            in_shape: list,  # [n_dim, x_dim , m_dim]
             #in_dim,   # x_dim * m_dim
             #out_dim,  # x_dim * a_dim
-            out_shape, # [n_dim, x_dim, a_dim]
-            prior_hp=[1., 1.],
-            h_dim=16,
-            nb_layers=3,
-            bias_layers=True,     # True or False
-            activ_layers="relu", # relu, tanh, or False
+            out_shape: list, # [n_dim, x_dim, a_dim]
+            prior_dist: TorchDistribution = None,
+            h_dim: int = 16,
+            nb_layers: int = 3,
+            bias_layers: bool = True,     # True or False
+            activ_layers: str = "relu", # relu, tanh, or False
             device=torch.device("cpu")):
 
         super().__init__()
@@ -30,7 +31,9 @@ class VB_Categorical_NNEncoder(nn.Module):
         self.in_dim = self.in_shape[-1] * self.in_shape[-2] 
         self.out_dim = self.out_shape[-1] * self.out_shape[-2]
 
-        self.prior_hp = torch.tensor(prior_hp).detach()
+        # Prior distribution
+        self.dist_p = prior_dist
+
         self.device_ = device
 
         self.h_dim = h_dim  # hidden layer size
@@ -62,9 +65,6 @@ class VB_Categorical_NNEncoder(nn.Module):
             bias=self.bias_layers), nn.LogSoftmax(-1)])
 
         self.net = nn.Sequential(*layers)
-        
-        # Prior distribution
-        self.dist_p = Categorical(probs=self.prior_hp)
 
     def forward(
             self,
@@ -72,7 +72,7 @@ class VB_Categorical_NNEncoder(nn.Module):
             sample_size=1,
             sample_temp=0.1,
             KL_gradient=False,
-            min_clamp=False,    # should be <= to 10^-7
+            min_clamp=0.0000001,
             max_clamp=False):
  
         # Flatten the data

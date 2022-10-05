@@ -1,22 +1,25 @@
 from nnTreeVB.utils import min_max_clamp
-from torch.distributions import transform_to
+from nnTreeVB.typing import *
 
 import torch
 import torch.nn as nn
 from torch.distributions.normal import Normal
 from torch.distributions.kl import kl_divergence
+from torch.distributions import transform_to
 
 __author__ = "Amine Remita"
 
 
 class VB_Normal_IndEncoder(nn.Module):
     def __init__(self,
-            in_shape,              # [..., b_dim]
-            out_shape,             # [..., b_dim]
-            init_distr=[0.1, 0.1], # list of 2 floats, uniform,
-                                   # normal or False
-            prior_hp=[0.2, 0.2],   # prior hyper-parameters
-            transform=None,
+            in_shape: list,         # [..., b_dim]
+            out_shape: list,        # [..., b_dim]
+            # list of 2 floats, uniform, normal or False
+            init_distr: list = [0.1, 0.1],
+            # initialized prior distribution
+            prior_dist: TorchDistribution = None,
+            # sample biject transformation
+            transform: TorchTransform = None,
             device=torch.device("cpu")):
 
         super().__init__()
@@ -27,8 +30,10 @@ class VB_Normal_IndEncoder(nn.Module):
         # loc (mu) and scale (sigma) 
         self.nb_params = 2
         self.init_distr = init_distr
+ 
+        # Prior distribution
+        self.dist_p = prior_dist
 
-        self.prior_hp = torch.tensor(prior_hp)
         self.transform = transform
         self.device_ = device
 
@@ -37,11 +42,6 @@ class VB_Normal_IndEncoder(nn.Module):
         if isinstance(self.transform,
                 torch.distributions.StickBreakingTransform):
             self.in_shape[-1] -= 1
-
-        assert self.prior_hp.shape[-1] == self.nb_params
-
-        self.prior_mu = self.prior_hp[0].detach()
-        self.prior_sigma = self.prior_hp[1].detach()
 
         # init parameters initialization
         if isinstance(self.init_distr, (list)):
@@ -73,10 +73,6 @@ class VB_Normal_IndEncoder(nn.Module):
                 requires_grad=True)
         self.sigma_unconst = nn.Parameter(init_sigma_unconst,
                 requires_grad=True)
-
-        # Prior distribution
-        self.dist_p = Normal(self.prior_mu,
-                self.prior_sigma)
 
     def forward(
             self, 
@@ -111,8 +107,12 @@ class VB_Normal_IndEncoder(nn.Module):
             samples = samples_unconst
 
         with torch.set_grad_enabled(KL_gradient):
-            kl = kl_divergence(self.dist_q, self.dist_p)
-            #print("kl.shape {}".format(kl.shape))
+            try:
+                kl = kl_divergence(self.dist_q, self.dist_p)
+                #print("kl.shape {}".format(kl.shape))
+            except Exception as e:
+                # TODO: use Monte Carlo to compute the kl_div
+                kl = torch.tensor(torch.inf)
 
         with torch.set_grad_enabled(not KL_gradient):
             # Compute log prior of samples p(d)
@@ -153,8 +153,8 @@ class VB_Normal_NNIndEncoder(nn.Module):
 
         assert self.prior_hp.shape[-1] == self.nb_params
 
-        self.prior_mu = self.prior_hp[0].detach()
-        self.prior_sigma = self.prior_hp[1].detach()
+        self.prior_mu = self.prior_hp[0]
+        self.prior_sigma = self.prior_hp[1]
  
         self.h_dim = h_dim          # hidden layer size
         self.nb_layers = nb_layers

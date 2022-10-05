@@ -217,7 +217,8 @@ class BaseTreeVB(ABC):
                                 X_val,
                                 X_val_counts, 
                                 elbo_type=elbo_type,
-                                latent_sample_size=latent_sample_size,
+                                latent_sample_size=\
+                                        latent_sample_size,
                                 sample_temp=sample_temp)
                                 #alpha_kl=alpha_kl,
 
@@ -229,14 +230,16 @@ class BaseTreeVB(ABC):
                         kls_val = val_dict["kl_qprior"]
 
                     except Exception as e:
-                        print("\nStopping training at epoch {}"\
+                        print("\nStopping training at epoch ""\
+                                {}"\
                                 " because of an exception in"\
                                 " sample()\n".format(epoch))
                         print(e)
-                        #TODO not break if there is an exception
+                        #TODO not break if there is exception
                         break
 
-                    ret["total_val_time"] += time.time() - val_time
+                    ret["total_val_time"] +=\
+                            time.time() - val_time
 
                 ## printing
                 if verbose:

@@ -1,4 +1,5 @@
 from nnTreeVB.utils import min_max_clamp
+from nnTreeVB.typing import *
 
 import torch
 import torch.nn as nn
@@ -11,11 +12,12 @@ __author__ = "Amine Remita"
 
 class VB_Dirichlet_IndEncoder(nn.Module):
     def __init__(self,
-            in_shape,            # [..., 6]
-            out_shape,           # [..., 6]
-            init_distr=[1., 1.], # list of floats, "uniform",
-                                 # "normal" or False
-            prior_hp=[1., 1.],
+            in_shape: list,            # [..., 6]
+            out_shape: list,           # [..., 6]
+            init_distr: list = [1., 1.], 
+            # list of floats, "uniform", "normal" or False
+            # initialized prior distribution
+            prior_dist: TorchDistribution = None,
             device=torch.device("cpu")):
 
         super().__init__()
@@ -27,10 +29,11 @@ class VB_Dirichlet_IndEncoder(nn.Module):
         self.nb_params = self.in_shape[-1]
 
         self.init_distr = init_distr
-        self.prior_hp = torch.tensor(prior_hp).detach()
-        self.device_ = device
 
-        assert self.prior_hp.shape[-1] == self.nb_params
+        # Prior distribution
+        self.dist_p = prior_dist
+
+        self.device_ = device
 
         # init parameters initialization
         if isinstance(self.init_distr, (list)):
@@ -59,14 +62,11 @@ class VB_Dirichlet_IndEncoder(nn.Module):
         self.alphas_unconst = nn.Parameter(init_alphas_unconst,
                 requires_grad=True)
 
-        # Prior distribution
-        self.dist_p = Dirichlet(self.prior_hp)
-
     def forward(
             self, 
             sample_size=1,
             KL_gradient=False,
-            min_clamp=False,    # should be <= to 10^-7
+            min_clamp=0.0000001,    # should be <= to 10^-7
             max_clamp=False):
 
         # Transform params from unconstrained to
@@ -83,7 +83,10 @@ class VB_Dirichlet_IndEncoder(nn.Module):
         #print("samples dirichlet shape {}".format(
         #    samples.shape)) # [sample_size, 6]
 
-        samples = min_max_clamp(samples, min_clamp, max_clamp)
+        samples = min_max_clamp(
+                samples,
+                min_clamp,
+                max_clamp)
 
         with torch.set_grad_enabled(KL_gradient):
             kl = kl_divergence(self.dist_q, self.dist_p)
@@ -125,7 +128,7 @@ class VB_Dirichlet_NNIndEncoder(nn.Module):
         self.nb_params = self.in_shape[-1]
         self.init_distr = init_distr
  
-        self.prior_hp = torch.tensor(prior_hp).detach()
+        self.prior_hp = torch.tensor(prior_hp)
         self.device_ = device
 
         assert self.prior_hp.shape[-1] == self.nb_params
@@ -186,7 +189,7 @@ class VB_Dirichlet_NNIndEncoder(nn.Module):
             self, 
             sample_size=1,
             KL_gradient=False,
-            min_clamp=False,
+            min_clamp=0.0000001,    # should be <= to 10^-7
             max_clamp=False):
 
         self.alphas = self.net(self.input)
@@ -285,7 +288,7 @@ class VB_Dirichlet_NNEncoder(nn.Module):
             data,
             sample_size=1,
             KL_gradient=False,
-            min_clamp=False,    # should be <= to 10^-7
+            min_clamp=0.0000001,    # should be <= to 10^-7
             max_clamp=False):
 
         # Flatten the data

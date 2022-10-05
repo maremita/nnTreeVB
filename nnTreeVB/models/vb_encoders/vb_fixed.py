@@ -23,11 +23,15 @@ class VB_FixedEncoder(nn.Module):
     def forward(
             self, 
             sample_size=1,
-            KL_gradient=False):
+            KL_gradient=False,
+            min_clamp=False,
+            max_clamp=False):
 
         samples = self.data.expand(
                 [sample_size, *self.out_shape])
         #print("samples fixed shape {}".format(samples.shape))
+
+        samples = min_max_clamp(samples, min_clamp, max_clamp)
 
         logprior = torch.zeros(1).to(self.device_)
         logq = torch.zeros(1).to(self.device_)

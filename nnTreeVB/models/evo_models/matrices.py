@@ -19,7 +19,8 @@ def build_JC69_matrix(rate=1.0/3):
 def build_JC69_transition_matrix(b=1.):
 
     rateM = build_JC69_matrix()
-    # print("rateM shape {}".format(rateM.shape)) #[x_dim, x_dim]
+    # print("rateM shape {}".format(rateM.shape))
+    #[x_dim, x_dim]
     # print(rateM)
 
     #print(torch.matrix_exp(torch.einsum("ij,bc->bcij", (rateM, b))).shape)
@@ -56,18 +57,20 @@ def build_K80_matrix(kappa):
                 rate_matrix[..., i,j] *= kappa[..., 0]
 
     for i in range(4):
-        rate_matrix[..., i,i] = - rate_matrix.sum(dim=-1)[..., i]
+        rate_matrix[..., i,i]= -rate_matrix.sum(dim=-1)[..., i]
  
     # Scaling factor
-    beta = 1.0/(2*(pA+pG)*(pC+pT) + 2*kappa.flatten()*(pA*pG+pC*pT))
+    beta = 1.0/(
+            2*(pA+pG)*(pC+pT)+2*kappa.flatten()*(pA*pG+pC*pT))
     #print("beta shape {}".format(beta.shape))
     #[sample_size]
 
     # Multiply the rate matrix by beta so that the average 
-    # substitution ate is 1. Time will be the distance : b = d/1
+    # substitution ate is 1. Time will be the distance: b = d/1
     # and measured as susbtitution per site
     # See page 30 in MESA Book (Yang 2014)
-    rate_matrix = torch.einsum("b,bij->bij", (beta, rate_matrix))
+    rate_matrix = torch.einsum("b,bij->bij",
+            (beta, rate_matrix))
 
     return rate_matrix
 
@@ -115,10 +118,11 @@ def build_HKY_matrix(freqs, kappa):
                 rate_matrix[..., i,j] *= kappa[..., 0]
 
     for i in range(4):
-        rate_matrix[..., i,i] = - rate_matrix.sum(dim=-1)[..., i]
+        rate_matrix[..., i,i]= -rate_matrix.sum(dim=-1)[..., i]
  
     # Scaling factor
-    beta = 1.0/(2*(pA+pG)*(pC+pT) + 2*kappa.flatten()*(pA*pG+pC*pT))
+    beta = 1.0/(
+            2*(pA+pG)*(pC+pT)+2*kappa.flatten()*(pA*pG+pC*pT))
     #print("beta shape {}".format(beta.shape))
     #[sample_size]
 
@@ -126,7 +130,8 @@ def build_HKY_matrix(freqs, kappa):
     # substitution ate is 1. Time will be the distance : b = d/1
     # and measured as susbtitution per site
     # See page 30 in MESA Book (Yang 2014)
-    rate_matrix = torch.einsum("b,bij->bij", (beta, rate_matrix))
+    rate_matrix = torch.einsum("b,bij->bij",
+            (beta, rate_matrix))
 
     return rate_matrix
 
@@ -154,10 +159,14 @@ def build_HKY_transition_matrix(b=1., freqs=0.25, kappa=1.):
 # #############
 # GTR matrices
 # #############
+# Adapted from VBPI
+# https://github.com/zcrabbit/vbpi-nf/blob/main/code/rateMatrix.py
 def build_GTR_matrix(rates, freqs):
 
-    # print("rates {}".format(rates.shape)) # [sample_size, r_dim]
-    # print("freqs {}".format(freqs.shape)) # [sample_size, f_dim]
+    # print("rates {}".format(rates.shape))
+    # [sample_size, r_dim]
+    # print("freqs {}".format(freqs.shape))
+    # [sample_size, f_dim]
     #print(freqs)
 
     sample_size = rates.shape[0]
@@ -194,39 +203,47 @@ def build_GTR_matrix(rates, freqs):
                     rate_matrix[..., i,j] *= CT
 
     for i in range(4):
-        rate_matrix[..., i,i] = - rate_matrix.sum(dim=-1)[..., i]
+        rate_matrix[..., i,i]= -rate_matrix.sum(dim=-1)[..., i]
 
     # Scaling factor
-    beta = (1.0/(
-        2*(AG*pA*pG+AC*pA*pC+AT*pA*pT+GC*pG*pC+GT*pG*pT+CT*pC*pT)))
+    beta = (1.0/(2*(AG * pA * pG+\
+                AC * pA * pC+\
+                AT * pA * pT+\
+                GC * pG * pC+\
+                GT * pG * pT+\
+                CT * pC * pT)))
     # print("\nbeta")
     # print(beta.shape) #[sample_size]
     # print(beta)
 
     # Multiply the rate matrix by beta so that the average 
-    # substitution ate is 1. Time will be the distance : b = d/1
+    # substitution ate is 1. Time will be the distance: b = d/1
     # and measured as susbtitution per site
     # See page 30 in MESA Book (Yang 2014)
-    rate_matrix = torch.einsum("b,bij->bij", (beta, rate_matrix))
+    rate_matrix = torch.einsum("b,bij->bij",
+            (beta, rate_matrix))
     # print("\nrate_matrix * beta")
     # print(rate_matrix.shape) # [sample_size, x_dim, x_dim]
     # print(rate_matrix)
- 
+
     return rate_matrix
 
 def build_GTR_transition_matrix(b, rates=0.16, freqs=0.25):
-    #print("\nb shape {}".format(b.shape)) # [sample_size, b_dim, 1]
+    #print("\nb shape {}".format(b.shape))
+    # [sample_size, b_dim, 1]
     # print(b)
 
     rateM = build_GTR_matrix(rates, freqs)
-    #print("rateM shape {}".format(rateM.shape)) #[sample_size, x_dim, x_dim]
+    #print("rateM shape {}".format(rateM.shape))
+    #[sample_size, x_dim, x_dim]
     # print(rateM)
 
     tm = torch.matrix_exp(
             torch.einsum("bij,bc->bcij", (rateM, b))).clamp(
                     min=0.0, max=1.0)
 
-    #print("tm sahpe {}".format(tm.shape)) # [sample_size, b_dim, x_dim, x_dim]
+    #print("tm sahpe {}".format(tm.shape))
+    # [sample_size, b_dim, x_dim, x_dim]
     #print(tm)
 
     return tm
@@ -250,7 +267,8 @@ def build_transition_matrix(subs_model, args):
         tm = build_GTR_transition_matrix(**args)
 
     else:
-        raise ValueError("Substitution model key {} is not valid.\n"\
+        raise ValueError("Substitution model key {}"\
+                " is not valid.\n"\
                 "Valid values : jc69 | k80 | hky | gtr".format(
                     subs_model))
 

@@ -14,7 +14,7 @@ __all__ = [
 
 __author__ = "amine"
 
-
+# TODO change the names nuc2cat and nuc2pl
 nuc2cat = {
         'A':[1.,0.,0.,0.], 'G':[0.,1.,0.,0.], 
         'C':[0.,0.,1.,0.], 'T':[0.,0.,0.,1.],
