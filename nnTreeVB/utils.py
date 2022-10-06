@@ -10,6 +10,7 @@ from pprint import pformat
 import numpy as np
 import torch
 from joblib import Parallel, delayed
+import scipy.stats
 from scipy.stats.stats import pearsonr#, spearmanr
 
 __author__ = "amine remita"
@@ -192,6 +193,17 @@ def compute_corr(main, batch, verbose=False):
         corrs[i] = np.array(pears)
 
     return corrs
+
+
+def mean_confidence_interval(data, confidence=0.95, axis=0):
+    a = 1.0 * np.array(data)
+    n = np.size(a, axis=axis)
+
+    m, se = np.mean(a, axis=axis), scipy.stats.sem(a, axis=axis)
+    h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
+
+    return m, m-h, m+h
+
 
 def check_finite_grads(model, epoch, verbose=False):
 

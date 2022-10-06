@@ -18,10 +18,11 @@ class VB_Categorical_NNEncoder(nn.Module):
             #out_dim,  # x_dim * a_dim
             out_shape: list, # [n_dim, x_dim, a_dim]
             prior_dist: TorchDistribution = None,
-            h_dim: int = 16,
+            h_dim: int = 16, 
             nb_layers: int = 3,
-            bias_layers: bool = True,     # True or False
-            activ_layers: str = "relu", # relu, tanh, or False
+            bias_layers: bool = True,
+            activ_layers: str = "relu",# relu, tanh, or False
+            dropout_layers: float = 0.,
             device=torch.device("cpu")):
 
         super().__init__()
@@ -34,12 +35,13 @@ class VB_Categorical_NNEncoder(nn.Module):
         # Prior distribution
         self.dist_p = prior_dist
 
-        self.device_ = device
-
         self.h_dim = h_dim  # hidden layer size
         self.n_layers = n_layers
         self.bias_layers = bias_layers
         self.activ_layers = activ_layers
+        self.dropout = dropout_layers
+
+        self.device_ = device
 
         if self.activ_layers == "relu":
             activation = nn.ReLU
@@ -51,15 +53,21 @@ class VB_Categorical_NNEncoder(nn.Module):
             print("The number of layers in {} should"\
                     " be >= 2. It's set set to 2".format(self))
 
+        assert 0. <= self.dropout <= 1.
+
         # Construct the neural network
         layers = [nn.Linear(self.in_dim, self.h_dim,
             bias=self.bias_layers)]
         if self.activ_layers: layers.append(activation())
+        if self.dropout: layers.append(
+                nn.Dropout(p=self.dropout))
 
         for i in range(1, self.nb_layers-1):
             layers.extend([nn.Linear(self.h_dim, self.h_dim,
                 bias=self.bias_layers)])
             if self.activ_layers: layers.append(activation())
+            if self.dropout: layers.append(
+                    nn.Dropout(p=self.dropout))
 
         layers.extend([nn.Linear(self.h_dim, self.out_dim,
             bias=self.bias_layers), nn.LogSoftmax(-1)])

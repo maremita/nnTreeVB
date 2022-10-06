@@ -14,11 +14,11 @@ class VB_Normal_IndEncoder(nn.Module):
     def __init__(self,
             in_shape: list,         # [..., b_dim]
             out_shape: list,        # [..., b_dim]
-            # list of 2 floats, uniform, normal or False
-            init_distr: list = [0.1, 0.1],
-            # initialized prior distribution
+            # List of 2 floats, "uniform", "normal" or False
+            init_distr: Union[list, str, bool] = [0.1, 0.1],
+            # Initialized prior distribution
             prior_dist: TorchDistribution = None,
-            # sample biject transformation
+            # Sample biject transformation
             transform: TorchTransform = None,
             device=torch.device("cpu")):
 
@@ -35,13 +35,14 @@ class VB_Normal_IndEncoder(nn.Module):
         self.dist_p = prior_dist
 
         self.transform = transform
-        self.device_ = device
 
         # in_shape will be updated if the sample transform 
         # is to a simplex
         if isinstance(self.transform,
                 torch.distributions.StickBreakingTransform):
             self.in_shape[-1] -= 1
+
+        self.device_ = device
 
         # init parameters initialization
         if isinstance(self.init_distr, (list)):
@@ -56,7 +57,7 @@ class VB_Normal_IndEncoder(nn.Module):
             self.input = self.input.normal_()
 
         # Distr parameters transforms
-        self.tr_to_sigma_const = transform_to(
+        self.tr_to_sigma_constr = transform_to(
                 Normal.arg_constraints['scale'])
 
         init_mu = self.input[0].repeat(
@@ -64,14 +65,14 @@ class VB_Normal_IndEncoder(nn.Module):
         # Pay attention here, we use inverse transforms to 
         # transform the initial values from constrained to
         # unconstrained space
-        init_sigma_unconst = self.tr_to_sigma_const.inv(
+        init_sigma_unconstr = self.tr_to_sigma_constr.inv(
                 self.input[1].repeat([*self.in_shape]))
 
         # Initialize the parameters of the variational
         # distribution q
         self.mu = nn.Parameter(init_mu,
                 requires_grad=True)
-        self.sigma_unconst = nn.Parameter(init_sigma_unconst,
+        self.sigma_unconstr = nn.Parameter(init_sigma_unconstr,
                 requires_grad=True)
 
     def forward(
@@ -83,28 +84,25 @@ class VB_Normal_IndEncoder(nn.Module):
 
         # Transform sigma from unconstrained to
         # constrained space
-        self.sigma = self.tr_to_sigma_const(
-                self.sigma_unconst)
+        self.sigma = self.tr_to_sigma_constr(
+                self.sigma_unconstr)
 
         # Approximate distribution
         self.dist_q = Normal(self.mu, self.sigma)
 
         # Sample from approximate distribution q
         # in the unconstrained space
-        samples_unconst = self.dist_q.rsample(
+        samples_unconstr = self.dist_q.rsample(
                 torch.Size([sample_size]))
         #print("samples N shape {}".format(samples.shape))
 
-        samples_unconst = min_max_clamp(
-                samples_unconst, 
-                min_clamp, 
-                max_clamp)
-
-        # Transform samples_unconst to constrained space
+        # Transform samples_unconstr to constrained space
         if self.transform is not None:
-            samples = self.transform(samples_unconst)
+            samples = self.transform(samples_unconstr)
         else:
-            samples = samples_unconst
+            samples = samples_unconstr
+
+        samples = min_max_clamp(samples, min_clamp, max_clamp)
 
         with torch.set_grad_enabled(KL_gradient):
             try:
@@ -120,7 +118,7 @@ class VB_Normal_IndEncoder(nn.Module):
             #print("logprior.shape {}".format(logprior.shape))
 
             # Compute the log of approximate posteriors q(d)
-            logq = self.dist_q.log_prob(samples_unconst)
+            logq = self.dist_q.log_prob(samples_unconstr)
             #print("logq.shape {}".format(logq.shape))
 
         return logprior, logq, kl, samples
@@ -128,16 +126,19 @@ class VB_Normal_IndEncoder(nn.Module):
 
 class VB_Normal_NNIndEncoder(nn.Module):
     def __init__(self,
-            in_shape,              # [..., b_dim]
-            out_shape,             # [..., b_dim]
-            init_distr="uniform", # list of 2 floats, uniform,
-                                  # normal or False
-            prior_hp=[0.2, 0.2],
-            h_dim=16, 
-            nb_layers=3,
-            bias_layers=True,     # True or False
-            activ_layers="relu", # relu, tanh, or False
-            dropout_layers=0.,
+            in_shape,             # [..., b_dim]
+            out_shape,            # [..., b_dim]
+            # list of 2 floats, uniform, normal or False
+            init_distr: Union[list, str, bool] = [0.1, 0.1],
+            # initialized prior distribution
+            prior_dist: TorchDistribution = None,
+            # Sample biject transformation
+            transform: TorchTransform = None,
+            h_dim: int = 16, 
+            nb_layers: int =3,
+            bias_layers: bool = True,
+            activ_layers: str = "relu",# relu, tanh, or False
+            dropout_layers: float = 0.,
             device=torch.device("cpu")):
 
         super().__init__()
@@ -145,22 +146,28 @@ class VB_Normal_NNIndEncoder(nn.Module):
         self.in_shape = in_shape
         self.out_shape = out_shape 
 
+        # loc (mu) and scale (sigma) 
         self.nb_params = 2
         self.init_distr = init_distr
 
-        self.prior_hp = torch.tensor(prior_hp)
-        self.device_ = device
+        # Prior distribution
+        self.dist_p = prior_dist
 
-        assert self.prior_hp.shape[-1] == self.nb_params
+        self.transform = transform
 
-        self.prior_mu = self.prior_hp[0]
-        self.prior_sigma = self.prior_hp[1]
- 
+        # in_shape will be updated if the sample transform 
+        # is to a simplex
+        if isinstance(self.transform,
+                torch.distributions.StickBreakingTransform):
+            self.in_shape[-1] -= 1
+
         self.h_dim = h_dim          # hidden layer size
         self.nb_layers = nb_layers
         self.bias_layers = bias_layers
         self.activ_layers = activ_layers
         self.dropout = dropout_layers
+
+        self.device_ = device
 
         if self.activ_layers == "relu":
             activation = nn.ReLU
@@ -171,6 +178,8 @@ class VB_Normal_NNIndEncoder(nn.Module):
             self.nb_layers = 2
             print("The number of layers in {} should"\
                     " be >= 2. It's set set to 2".format(self))
+
+        assert 0. <= self.dropout <= 1.
 
         # Input of the variational neural network
         if isinstance(self.init_distr, (list)):
@@ -215,10 +224,6 @@ class VB_Normal_NNIndEncoder(nn.Module):
             nn.Linear(self.h_dim, self.out_shape[-1]),
             nn.Softplus()) 
 
-        # Prior distribution
-        self.dist_p = Normal(self.prior_mu,
-                self.prior_sigma)
-
     def forward(
             self, 
             sample_size=1,
@@ -236,18 +241,29 @@ class VB_Normal_NNIndEncoder(nn.Module):
         self.sigma = self.net_out_sigma(h_ms).clamp(min=0.+eps)
 
         # Approximate distribution
-        self.dist_q = LogNormal(self.mu, self.sigma)
+        self.dist_q = Normal(self.mu, self.sigma)
 
-        # Sample
-        samples = self.dist_q.rsample(
+        # Sample from approximate distribution q
+        # in the unconstrained space
+        samples_unconstr = self.dist_q.rsample(
                 torch.Size([sample_size]))
         # print("samples shape {}".format(samples.shape)) #
+
+        # Transform samples_unconstr to constrained space
+        if self.transform is not None:
+            samples = self.transform(samples_unconstr)
+        else:
+            samples = samples_unconstr
 
         samples = min_max_clamp(samples, min_clamp, max_clamp)
 
         with torch.set_grad_enabled(KL_gradient):
-            kl = kl_divergence(self.dist_q, self.dist_p)
-            #print("kl.shape {}".format(kl.shape))
+            try:
+                kl = kl_divergence(self.dist_q, self.dist_p)
+                #print("kl.shape {}".format(kl.shape))
+            except Exception as e:
+                # TODO: use Monte Carlo to compute the kl_div
+                kl = torch.tensor(torch.inf)
 
         with torch.set_grad_enabled(not KL_gradient):
             # Compute log prior of samples p(d)
@@ -255,7 +271,7 @@ class VB_Normal_NNIndEncoder(nn.Module):
             # print("logprior.shape {}".format(logprior.shape))
 
             # Compute the log of approximate posteriors q(d)
-            logq = self.dist_q.log_prob(samples)
+            logq = self.dist_q.log_prob(samples_unconstr)
             # print("logq.shape {}".format(logq.shape))
 
         return logprior, logq, kl, samples

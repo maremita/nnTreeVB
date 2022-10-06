@@ -14,7 +14,7 @@ class VB_LogNormal_IndEncoder(nn.Module):
             in_shape: list,         # [..., b_dim]
             out_shape: list,        # [..., b_dim]
             # list of 2 floats, uniform, normal or False
-            init_distr: list = [0.1, 0.1],
+            init_distr: Union[list, str, bool] = [0.1, 0.1],
             # initialized prior distribution
             prior_dist: TorchDistribution = None,
             device=torch.device("cpu")):
@@ -46,7 +46,7 @@ class VB_LogNormal_IndEncoder(nn.Module):
             self.input = self.input.normal_()
 
         # Distr parameters transforms
-        self.tr_to_sigma_const = transform_to(
+        self.tr_to_sigma_constr = transform_to(
                 LogNormal.arg_constraints['scale'])
 
         init_mu = self.input[0].repeat(
@@ -54,14 +54,14 @@ class VB_LogNormal_IndEncoder(nn.Module):
         # Pay attention here, we use inverse transforms to 
         # transform the initial values from constrained to
         # unconstrained space
-        init_sigma_unconst = self.tr_to_sigma_const.inv(
+        init_sigma_unconstr = self.tr_to_sigma_constr.inv(
                 self.input[1].repeat([*self.in_shape]))
 
         # Initialize the parameters of the variational
         # distribution q
         self.mu = nn.Parameter(init_mu,
                 requires_grad=True)
-        self.sigma_unconst = nn.Parameter(init_sigma_unconst,
+        self.sigma_unconstr = nn.Parameter(init_sigma_unconstr,
                 requires_grad=True)
 
     def forward(
@@ -73,8 +73,8 @@ class VB_LogNormal_IndEncoder(nn.Module):
 
         # Transform sigma from unconstrained to
         # constrained space
-        self.sigma = self.tr_to_sigma_const(
-                self.sigma_unconst)
+        self.sigma = self.tr_to_sigma_constr(
+                self.sigma_unconstr)
 
         # Approximate distribution
         self.dist_q = LogNormal(self.mu, self.sigma)
@@ -104,16 +104,17 @@ class VB_LogNormal_IndEncoder(nn.Module):
 
 class VB_LogNormal_NNIndEncoder(nn.Module):
     def __init__(self,
-            in_shape,              # [..., b_dim]
-            out_shape,             # [..., b_dim]
-            init_distr="uniform", # list of 2 floats, uniform,
-                                  # normal or False
-            prior_hp=[0.2, 0.2],
-            h_dim=16, 
-            nb_layers=3,
-            bias_layers=True,     # True or False
-            activ_layers="relu", # relu, tanh, or False
-            dropout_layers=0.,
+            in_shape,             # [..., b_dim]
+            out_shape,            # [..., b_dim]
+            # list of 2 floats, uniform, normal or False
+            init_distr: Union[list, str, bool] = [0.1, 0.1],
+            # initialized prior distribution
+            prior_dist: TorchDistribution = None,
+            h_dim: int = 16, 
+            nb_layers: int =3,
+            bias_layers: bool = True,
+            activ_layers: str = "relu",# relu, tanh, or False
+            dropout_layers: float = 0.,
             device=torch.device("cpu")):
 
         super().__init__()
@@ -124,19 +125,16 @@ class VB_LogNormal_NNIndEncoder(nn.Module):
         self.nb_params = 2
         self.init_distr = init_distr
 
-        self.prior_hp = torch.tensor(prior_hp)
-        self.device_ = device
-
-        assert self.prior_hp.shape[-1] == self.nb_params
-
-        self.prior_mu = self.prior_hp[0]
-        self.prior_sigma = self.prior_hp[1]
+        # Prior distribution
+        self.dist_p = prior_dist
  
         self.h_dim = h_dim          # hidden layer size
         self.nb_layers = nb_layers
         self.bias_layers = bias_layers
         self.activ_layers = activ_layers
         self.dropout = dropout_layers
+
+        self.device_ = device
 
         if self.activ_layers == "relu":
             activation = nn.ReLU
@@ -147,6 +145,8 @@ class VB_LogNormal_NNIndEncoder(nn.Module):
             self.nb_layers = 2
             print("The number of layers in {} should"\
                     " be >= 2. It's set set to 2".format(self))
+
+        assert 0. <= self.dropout <= 1.
 
         # Input of the variational neural network
         if isinstance(self.init_distr, (list)):
@@ -191,10 +191,6 @@ class VB_LogNormal_NNIndEncoder(nn.Module):
             nn.Linear(self.h_dim, self.out_shape[-1]),
             nn.Softplus()) 
 
-        # Prior distribution
-        self.dist_p = LogNormal(self.prior_mu,
-                self.prior_sigma)
-
     def forward(
             self, 
             sample_size=1,
@@ -226,11 +222,11 @@ class VB_LogNormal_NNIndEncoder(nn.Module):
             #print("kl.shape {}".format(kl.shape))
 
         with torch.set_grad_enabled(not KL_gradient):
-            # Compute log prior of samples p(d)
+            # Compute log prior of samples p()
             logprior = self.dist_p.log_prob(samples)
             # print("logprior.shape {}".format(logprior.shape))
 
-            # Compute the log of approximate posteriors q(d)
+            # Compute the log of approximate posteriors q()
             logq = self.dist_q.log_prob(samples)
             # print("logq.shape {}".format(logq.shape))
 

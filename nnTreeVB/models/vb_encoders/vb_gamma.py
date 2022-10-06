@@ -14,8 +14,8 @@ class VB_Gamma_IndEncoder(nn.Module):
     def __init__(self,
             in_shape: list,         # [..., b_dim]
             out_shape: list,        # [..., b_dim]
-            # list of 2 floats, uniform, normal or False
-            init_distr: list = [0.1, 0.1],
+            # list of 2 floats, "uniform", "normal" or False
+            init_distr: Union[list, str, bool] = [0.1, 0.1],
             # initialized prior distribution
             prior_dist: TorchDistribution = None,
             device=torch.device("cpu")):
@@ -47,25 +47,27 @@ class VB_Gamma_IndEncoder(nn.Module):
             self.input = self.input.normal_()
 
         # Distr parameters transforms
-        self.tr_to_alpha_const = transform_to(
+        self.tr_to_alpha_constr = transform_to(
                 Gamma.arg_constraints['concentration'])
 
-        self.tr_to_beta_const = transform_to(
+        self.tr_to_beta_constr = transform_to(
                 Gamma.arg_constraints['rate'])
         
         # Pay attention here, we use inverse transforms to 
         # transform the initial values from constrained to
         # unconstrained space
-        init_alpha_unconst = self.tr_to_alpha_const.inv(
+        init_alpha_unconstr = self.tr_to_alpha_constr.inv(
                 self.input[0].repeat([*self.in_shape]))
-        init_beta_unconst = self.tr_to_beta_const.inv(
+        init_beta_unconstr = self.tr_to_beta_constr.inv(
                 self.input[1].repeat([*self.in_shape]))
 
         # Initialize the parameters of the variational
         # distribution q
-        self.alpha_unconst = nn.Parameter(init_alpha_unconst,
+        self.alpha_unconstr = nn.Parameter(
+                init_alpha_unconstr,
                 requires_grad=True)
-        self.beta_unconst = nn.Parameter(init_beta_unconst,
+        self.beta_unconstr = nn.Parameter(
+                init_beta_unconstr,
                 requires_grad=True)
 
     def forward(
@@ -77,10 +79,10 @@ class VB_Gamma_IndEncoder(nn.Module):
  
         # Transform params from unconstrained to
         # constrained space
-        self.alpha = self.tr_to_alpha_const(
-                self.alpha_unconst)
-        self.beta = self.tr_to_beta_const(
-                self.beta_unconst)
+        self.alpha = self.tr_to_alpha_constr(
+                self.alpha_unconstr)
+        self.beta = self.tr_to_beta_constr(
+                self.beta_unconstr)
 
         # Approximate distribution 
         self.dist_q = Gamma(self.alpha, self.beta)
@@ -119,14 +121,15 @@ class VB_Gamma_NNIndEncoder(nn.Module):
     def __init__(self,
             in_shape,             # [..., b_dim]
             out_shape,            # [..., b_dim]
-            init_distr="uniform", # list of 2 floats, uniform,
-                                  # normal or False
-            prior_hp=[0.2, 0.2],
-            h_dim=16, 
-            nb_layers=3,
-            bias_layers=True,     # True or False
-            activ_layers="relu", # relu, tanh, or False
-            dropout_layers=0.,
+            # list of 2 floats, uniform, normal or False
+            init_distr: Union[list, str, bool] = [0.1, 0.1],
+            # initialized prior distribution
+            prior_dist: TorchDistribution = None,
+            h_dim: int = 16, 
+            nb_layers: int =3,
+            bias_layers: bool = True,
+            activ_layers: str = "relu",# relu, tanh, or False
+            dropout_layers: float = 0.,
             device=torch.device("cpu")):
 
         super().__init__()
@@ -138,19 +141,16 @@ class VB_Gamma_NNIndEncoder(nn.Module):
         self.nb_params = 2
         self.init_distr = init_distr
 
-        self.prior_hp = torch.tensor(prior_hp)
-        self.device_ = device
-
-        assert self.prior_hp.shape[-1] == self.nb_params
-
-        self.prior_alpha = self.prior_hp[0]
-        self.prior_beta = self.prior_hp[1]
+        # Prior distribution
+        self.dist_p = prior_dist
 
         self.h_dim = h_dim          # hidden layer size
         self.nb_layers = nb_layers
         self.bias_layers = bias_layers
         self.activ_layers = activ_layers
         self.dropout = dropout_layers
+        
+        self.device_ = device
 
         if self.activ_layers == "relu":
             activation = nn.ReLU
@@ -170,7 +170,6 @@ class VB_Gamma_NNIndEncoder(nn.Module):
             self.input = torch.tensor(self.init_distr)
         else:
             self.input = torch.ones(self.nb_params)
-        #print("self.input.shape {}".format(self.input.shape))
 
         if self.init_distr == "uniform":
             self.input = self.input.uniform_()
@@ -178,7 +177,6 @@ class VB_Gamma_NNIndEncoder(nn.Module):
             self.input = self.input.normal_()
  
         self.input = self.input.repeat([*self.in_shape, 1])
-        #print("self.input.shape {}".format(self.input.shape))
 
         # Construct the neural network
         self.net_in_alpha = nn.Linear(self.in_shape[-1],
@@ -210,9 +208,6 @@ class VB_Gamma_NNIndEncoder(nn.Module):
             nn.Linear(self.h_dim, self.out_shape[-1]),
             nn.Softplus())
 
-        # Prior distribution
-        self.dist_p = Gamma(self.prior_alpha, self.prior_beta)
-
     def forward(
             self, 
             sample_size=1,
@@ -225,7 +220,7 @@ class VB_Gamma_NNIndEncoder(nn.Module):
         out_a = self.net_in_alpha(self.input[...,0])
         out_b = self.net_in_beta(self.input[...,1])
         h_ab = self.net_h(torch.cat([out_a, out_b]))
-        
+
         self.alpha = self.net_out_alpha(h_ab).clamp(min=0.+eps)
         self.beta = self.net_out_beta(h_ab).clamp(min=0.+eps)
 
@@ -244,11 +239,11 @@ class VB_Gamma_NNIndEncoder(nn.Module):
             #print("kl.shape {}".format(kl.shape))
 
         with torch.set_grad_enabled(not KL_gradient):
-            # Compute log prior of samples p(d)
+            # Compute log prior of samples
             logprior = self.dist_p.log_prob(samples)
             #print("logprior.shape {}".format(logprior.shape))
 
-            # Compute the log of approximate posteriors q(d)
+            # Compute the log of approximate posteriors
             logq = self.dist_q.log_prob(samples)
             #print("logq.shape {}".format(logq.shape))
 

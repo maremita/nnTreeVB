@@ -14,8 +14,8 @@ class VB_Dirichlet_IndEncoder(nn.Module):
     def __init__(self,
             in_shape: list,            # [..., 6]
             out_shape: list,           # [..., 6]
-            init_distr: list = [1., 1.], 
             # list of floats, "uniform", "normal" or False
+            init_distr: Union[list, str, bool] = [0.1, 0.1],
             # initialized prior distribution
             prior_dist: TorchDistribution = None,
             device=torch.device("cpu")):
@@ -24,10 +24,9 @@ class VB_Dirichlet_IndEncoder(nn.Module):
 
         self.in_shape = in_shape
         self.out_shape = out_shape 
-        
+ 
         # Concentrations
         self.nb_params = self.in_shape[-1]
-
         self.init_distr = init_distr
 
         # Prior distribution
@@ -48,18 +47,19 @@ class VB_Dirichlet_IndEncoder(nn.Module):
             self.input = self.input.normal_()
 
         # Distr parameters transforms
-        self.tr_to_alphas_const = transform_to(
+        self.tr_to_alphas_constr = transform_to(
                 Dirichlet.arg_constraints['concentration'])
 
         # Pay attention here, we use inverse transforms to 
         # transform the initial values from constrained to
         # unconstrained space
-        init_alphas_unconst = self.tr_to_alphas_const.inv(
+        init_alphas_unconstr = self.tr_to_alphas_constr.inv(
                 self.input.repeat([*self.in_shape[:-1],1]))
 
         # Initialize the parameters of the variational
         # distribution q
-        self.alphas_unconst = nn.Parameter(init_alphas_unconst,
+        self.alphas_unconstr = nn.Parameter(
+                init_alphas_unconstr,
                 requires_grad=True)
 
     def forward(
@@ -71,8 +71,8 @@ class VB_Dirichlet_IndEncoder(nn.Module):
 
         # Transform params from unconstrained to
         # constrained space
-        self.alphas = self.tr_to_alphas_const(
-                self.alphas_unconst)
+        self.alphas = self.tr_to_alphas_constr(
+                self.alphas_unconstr)
 
         # Approximate distribution 
         self.dist_q = Dirichlet(self.alphas)
@@ -93,11 +93,11 @@ class VB_Dirichlet_IndEncoder(nn.Module):
             #print("kl.shape {}".format(kl.shape))
 
         with torch.set_grad_enabled(not KL_gradient):
-            # Compute log prior of samples p(d)
+            # Compute log prior of samples
             logprior = self.dist_p.log_prob(samples)
             #print("logprior.shape {}".format(logprior.shape))
 
-            # Compute the log of approximate posteriors q(d)
+            # Compute the log of approximate posteriors
             logq = self.dist_q.log_prob(samples)
             #print("logq.shape {}".format(logq.shape))
 
@@ -106,16 +106,17 @@ class VB_Dirichlet_IndEncoder(nn.Module):
 
 class VB_Dirichlet_NNIndEncoder(nn.Module):
     def __init__(self,
-            in_shape,             # [..., 6]
-            out_shape,            # [..., 6]
-            init_distr=[1., 1.],  # list of floats, "uniform",
-                                  # "normal" or False
-            prior_hp=[1., 1.],
-            h_dim=16, 
-            nb_layers=3,
-            bias_layers=True,     # True or False
-            activ_layers="relu",  # relu, tanh, or False
-            dropout_layers=0.,
+            in_shape: list,            # [..., 6]
+            out_shape: list,           # [..., 6]
+            init_distr: Union[list, str, bool] = [0.1, 0.1],
+            # list of floats, "uniform", "normal" or False
+            # initialized prior distribution
+            prior_dist: TorchDistribution = None,
+            h_dim: int = 16, 
+            nb_layers: int = 3,
+            bias_layers: bool = True,
+            activ_layers: str = "relu",# relu, tanh, or False
+            dropout_layers: float = 0.,
             device=torch.device("cpu")):
 
         super().__init__()
@@ -128,16 +129,16 @@ class VB_Dirichlet_NNIndEncoder(nn.Module):
         self.nb_params = self.in_shape[-1]
         self.init_distr = init_distr
  
-        self.prior_hp = torch.tensor(prior_hp)
-        self.device_ = device
-
-        assert self.prior_hp.shape[-1] == self.nb_params
+        # Prior distribution
+        self.dist_p = prior_dist
 
         self.h_dim = h_dim          # hidden layer size
         self.nb_layers = nb_layers
         self.bias_layers = bias_layers
         self.activ_layers = activ_layers
         self.dropout = dropout_layers
+
+        self.device_ = device
 
         if self.activ_layers == "relu":
             activation = nn.ReLU
@@ -148,6 +149,8 @@ class VB_Dirichlet_NNIndEncoder(nn.Module):
             self.nb_layers = 2
             print("The number of layers in {} should"\
                     " be >= 2. It's set set to 2".format(self))
+
+        assert 0. <= self.dropout <= 1.
 
         # Input of the variational neural network
         if isinstance(self.init_distr, (list)):
@@ -168,7 +171,7 @@ class VB_Dirichlet_NNIndEncoder(nn.Module):
             bias=self.bias_layers)]
         if self.activ_layers: layers.append(activation())
         if self.dropout: layers.append(
-                nn.Dropout(p=self.dropout))
+        nn.Dropout(p=self.dropout))
 
         for i in range(1, self.nb_layers-1):
             layers.extend([nn.Linear(self.h_dim, self.h_dim,
@@ -181,9 +184,6 @@ class VB_Dirichlet_NNIndEncoder(nn.Module):
             bias=self.bias_layers), nn.Softplus()])
 
         self.net = nn.Sequential(*layers)
-
-        # Prior distribution
-        self.dist_p = Dirichlet(self.prior_hp)
 
     def forward(
             self, 
@@ -209,11 +209,9 @@ class VB_Dirichlet_NNIndEncoder(nn.Module):
             kl = kl_divergence(self.dist_q, self.dist_p)
 
         with torch.set_grad_enabled(not KL_gradient):
-            # Compute log prior of samples p(d)
             logprior = self.dist_p.log_prob(samples)
             #print("logprior.shape {}".format(logprior.shape))
 
-            # Compute the log of approximate posteriors q(d)
             logq = self.dist_q.log_prob(samples)
             #print("logq.shape {}".format(logq.shape))
 
@@ -222,16 +220,14 @@ class VB_Dirichlet_NNIndEncoder(nn.Module):
 
 class VB_Dirichlet_NNEncoder(nn.Module):
     def __init__(self,
-            in_shape,   # [n_dim, x_dim , m_dim]
-            #in_dim,    # x_dim * m_dim
-            #out_dim,   # x_dim * a_dim
-            out_shape,  # [n_dim, a_dim, x_dim]
-            prior_hp=[1., 1.],
-            h_dim=16,
-            nb_layers=3,
-            bias_layers=True,     # True or False
-            activ_layers="relu", # relu, tanh, or False
-            dropout_layers=0.,
+            in_shape: list,   # [n_dim, x_dim , m_dim]
+            out_shape: list,  # [n_dim, a_dim, x_dim]
+            prior_dist: TorchDistribution = None,
+            h_dim: int = 16, 
+            nb_layers: int =3,
+            bias_layers: bool = True,
+            activ_layers: str = "relu",# relu, tanh, or False
+            dropout_layers: float = 0.,
             device=torch.device("cpu")):
 
         super().__init__()
@@ -239,16 +235,20 @@ class VB_Dirichlet_NNEncoder(nn.Module):
         self.in_shape = in_shape
         self.out_shape = out_shape 
 
+        #in_dim,    # x_dim * m_dim
         self.in_dim = self.in_shape[-1] * self.in_shape[-2] 
+        #out_dim,   # x_dim * a_dim
         self.out_dim = self.out_shape[-1] * self.out_shape[-2]
 
-        self.prior_hp = torch.tensor(prior_hp)
+        # Prior distribution
+        self.dist_p = prior_dist
 
         self.h_dim = h_dim  # hidden layer size
         self.n_layers = n_layers
         self.bias_layers = bias_layers
         self.activ_layers = activ_layers
         self.dropout = dropout_layers
+
         self.device_ = device
 
         if self.activ_layers == "relu":
@@ -260,6 +260,8 @@ class VB_Dirichlet_NNEncoder(nn.Module):
             self.nb_layers = 2
             print("The number of layers in {} should"\
                     " be >= 2. It's set set to 2".format(self))
+
+        assert 0. <= self.dropout <= 1.
 
         # Construct the neural network
         layers = [nn.Linear(self.in_dim, self.h_dim,
@@ -279,9 +281,6 @@ class VB_Dirichlet_NNEncoder(nn.Module):
             bias=self.bias_layers), nn.Softplus()])
 
         self.net = nn.Sequential(*layers)
-
-        # Prior distribution
-        self.dist_p = Dirichlet(probs=self.prior_hp)
 
     def forward(
             self,
@@ -318,11 +317,11 @@ class VB_Dirichlet_NNEncoder(nn.Module):
             kl = kl_divergence(self.dist_q, self.dist_p)
 
         with torch.set_grad_enabled(not KL_gradient):
-            # Compute log prior of samples p(d)
+            # Compute log prior of samples
             logprior = self.dist_p.log_prob(samples)
             #print("logprior.shape {}".format(logprior.shape))
 
-            # Compute the log of approximate posteriors q(d)
+            # Compute the log of approximate posteriors
             logq = self.dist_q.log_prob(samples)
             #print("logq.shape {}".format(logq.shape))
 
