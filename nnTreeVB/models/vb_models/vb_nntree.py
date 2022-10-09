@@ -2,9 +2,10 @@ from nnTreeVB.models.vb_models import BaseTreeVB
 from nnTreeVB.models.vb_encoders import build_distribution
 from nnTreeVB.models.vb_encoders import build_vb_encoder
 from nnTreeVB.models.evo_models import build_transition_matrix
-from nnTreeVB.models.evo_models import pruning_known_ancestors
 from nnTreeVB.models.evo_models import pruning_rescaled
 from nnTreeVB.models.evo_models import pruning
+from nnTreeVB.utils import sum_log_probs
+from nnTreeVB.utils import sum_kls
 
 import math
 
@@ -18,26 +19,11 @@ class VB_nnTree(nn.Module, BaseTreeVB):
     def __init__(
             self,
             # Dimensions
-            x_dim, # dim of alphabet (4 for nucleotides)
-            m_dim, # number of sequences (leaves)
-            b_dim, # number of branches
-            a_dim, # number of internal nodes
+            x_dim: int, # dim of alphabet (4 for nucleotides)
+            m_dim: int, # number of sequences (leaves)
+            b_dim: int, # number of branches
             #
             subs_model="gtr", # jc69 | k80 | hky | gtr
-            # #################################################
-            # Ancestral state encoder
-            predict_ancestors=False,
-            # fixed | categorical
-            a_encoder_type="categorical_nn",
-            a_init_distr=[1.]*4, 
-            # if not nn: list of 4 floats
-            # if nn: list of 4 floats, uniform, normal or False
-            # if fixed: tensor
-            #
-            a_prior_dist="categorical",
-            a_prior_params=[0.25]*4,
-            #
-            a_transform=None,
             # #################################################
             # Branch lengths encoder
             # fixed | gamma | lognormal | normal
@@ -113,35 +99,14 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         self.x_dim = x_dim
         self.m_dim = m_dim
         self.b_dim = b_dim
-        self.a_dim = a_dim
-        
+ 
         self.t_dim = 1
         self.r_dim = 6
         self.f_dim = 4
         self.k_dim = 1
 
-        self.predict_ancestors = predict_ancestors
         self.subs_model = subs_model
         self.device_ = device
-
-        if self.predict_ancestors: 
-            # Initialize  ancestral state prior distribution
-            self.a_dist_p = build_distribution(
-                    a_prior_dist, a_prior_params)
-
-            # Initialize ancestral state encoder
-            self.a_encoder = build_vb_encoder(
-                    [self.x_dim, self.m_dim],
-                    [self.x_dim, self.a_dim],
-                    encoder_type=a_encoder_type,
-                    init_distr=a_init_distr,
-                    prior_dist=self.a_dist_p,
-                    transform=a_transform,
-                    h_dim=h_dim,
-                    nb_layers=nb_layers,
-                    bias_layers=bias_layers,
-                    activ_layers=activ_layers,
-                    device=self.device_)
 
         self.b_compound = False
         if "dirichlet" in b_encoder_type:
@@ -271,48 +236,36 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         pi = (torch.ones(4)/4).expand([latent_sample_size, 4])
         tm_args = dict()
 
-        #logprior = torch.zeros(1).to(self.device_)
-        logprior = torch.zeros(
-                latent_sample_size).to(self.device_)
-        #logq = torch.zeros(1).to(self.device_)
-        logq = torch.zeros(
-                latent_sample_size).to(self.device_)
-        kl_qprior = torch.zeros(1).to(self.device_)
+        # Sum joint log probs by samples [True] or 
+        # Sum averages of each log probs by samples [False]
+        # Both methods should give the same result
+        sum_by_samples = True
+
+        logpriors = []
+        logqs = []
+        kl_qpriors = []
 
         sites_size, nb_seqs, feat_size = sites.shape
-        #N = site_counts.sum()
+        ## sites_size is n_dim
+
+        assert nb_seqs == self.m_dim
+        assert feat_size == self.x_dim
 
         ## Inference and sampling
         ## ######################
-        if self.predict_ancestors: 
-            # Sample a from q_d and compute log prior, log q
-            a_logprior, a_logq, a_kl, a_samples =\
-                    self.a_encoder(
-                            sites,
-                            sample_size=latent_sample_size,
-                            sample_temp=sample_temp,
-                            KL_gradient=elbo_kl)
-
-            logprior += a_logprior
-            logq += a_logq
-            kl_qprior += a_kl
-
-            ret_values["a"] = a_samples.detach().numpy()
 
         # Sample b from q_d and compute log prior, log q
         b_logprior, b_logq, b_kl, b_samples = self.b_encoder(
                 sample_size=latent_sample_size,
                 KL_gradient=elbo_kl)
 
-        # Average by samples before Elbo computation
-        #logprior += b_logprior.mean(0).sum(0)
-        #logq += b_logq.mean(0).sum(0)
-        #kl_qprior += b_kl.sum(0) #* N
+        #print("b_logprior {}".format(b_logprior.shape))
+        #print("b_logq {}".format(b_logq.shape))
+        #print("b_kl {}".format(b_kl.shape))
 
-        # To sum by samples in Eblo computation
-        logprior += b_logprior.sum(-1)
-        logq += b_logq.sum(-1)
-        kl_qprior += b_kl.sum(-1) #* N
+        logpriors.append(b_logprior)
+        logqs.append(b_logq)
+        kl_qpriors.append(b_kl)
 
         ret_values["b"] = b_samples.detach().numpy()
         tm_args["b"] = b_samples
@@ -325,15 +278,18 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                             sample_size=latent_sample_size,
                             KL_gradient=elbo_kl)
 
+            bt_samples = (b_samples * t_samples)
             #print("t_samples.shape {}".format(
             #    t_samples.shape))
-            bt_samples = (b_samples * t_samples).unsqueeze(-1)
             #print("bt_samples.shape {}".format(
             #    bt_samples.shape))
+            #print("t_logprior {}".format(t_logprior.shape))
+            #print("t_logq {}".format(t_logq.shape))
+            #print("t_kl {}".format(t_kl.shape))
 
-            logprior += t_logprior.mean(0).sum(0)
-            logq += t_logq.mean(0).sum(0)
-            kl_qprior += t_kl #* N
+            logpriors.append(t_logprior)
+            logqs.append(t_logq)
+            kl_qpriors.append(t_kl)
 
             ret_values["t"] = t_samples.detach().numpy()
             ret_values["b1"] = b_samples.detach().numpy()
@@ -347,19 +303,14 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                             sample_size=latent_sample_size,
                             KL_gradient=elbo_kl)
 
-            # Average by samples before Elbo computation
-            #logprior += r_logprior.mean(0).sum(0)
-            #logq += r_logq.mean(0).sum(0)
-            #kl_qprior += r_kl #* N
- 
-            #
-            logprior += r_logprior # dirichlet
+            #print("r_samples {}".format(r_samples.shape))
             #print("r_logprior {}".format(r_logprior.shape))
-            # [sample_size]
-            logq += r_logq.sum(-1) # Normal
             #print("r_logq {}".format(r_logq.shape))
-            # [sample_size, r_dim-1]
-            kl_qprior += r_kl #* N
+            #print("r_kl {}".format(r_kl.shape))
+
+            logpriors.append(r_logprior)
+            logqs.append(r_logq)
+            kl_qpriors.append(r_kl)
 
             ret_values["r"] = r_samples.detach().numpy()
             tm_args["rates"] = r_samples
@@ -371,14 +322,13 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                             sample_size=latent_sample_size,
                             KL_gradient=elbo_kl)
 
-            # Average by samples before Elbo computation
-            #logprior += f_logprior.mean(0).sum(0)
-            #logq += f_logq.mean(0).sum(0)
-            #kl_qprior += f_kl #* N
+            #print("f_logprior {}".format(f_logprior.shape))
+            #print("f_logq {}".format(f_logq.shape))
+            #print("f_kl {}".format(f_kl.shape))
 
-            logprior += f_logprior # dirichlet
-            logq += f_logq.sum(-1) # Normal 3
-            kl_qprior += f_kl #* N
+            logpriors.append(f_logprior)
+            logqs.append(f_logq)
+            kl_qpriors.append(f_kl)
 
             ret_values["f"] = f_samples.detach().numpy()
             pi = f_samples
@@ -391,12 +341,21 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                             sample_size=latent_sample_size,
                             KL_gradient=elbo_kl)
 
-            logprior += k_logprior.mean(0).flatten()
-            logq += k_logq.mean(0).flatten()
-            kl_qprior += k_kl.flatten() #* N
- 
+            #print("k_logprior {}".format(k_logprior.shape))
+            #print("k_logq {}".format(k_logq.shape))
+            #print("k_kl {}".format(k_kl.shape))
+
+            logpriors.append(k_logprior)
+            logqs.append(k_logq)
+            kl_qpriors.append(k_kl)
+
             ret_values["k"] = k_samples.detach().numpy()
             tm_args["kappa"] = k_samples
+
+        # Compute joint logprior, logq and kl
+        logprior = sum_log_probs(logpriors, sum_by_samples)
+        logq = sum_log_probs(logqs, sum_by_samples)
+        kl_qprior = sum_kls(kl_qpriors)
 
         ## Compute logl
         ## ############
@@ -405,56 +364,34 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                 [latent_sample_size,
                     sites_size, self.m_dim, self.x_dim])
 
-        if self.predict_ancestors:
-            logl = pruning_known_ancestors(
-                    tree,
-                    sites_expanded,
-                    a_samples,
-                    tm,
-                    pi)
+        #logl = pruning(tree,
+        #        sites_expanded, tm, pi) * site_counts
 
-            logl = (logl * site_counts).mean(0).sum(0,
-                    keepdim=True)
+        logl = pruning_rescaled(tree,
+                sites_expanded, tm, pi) * site_counts
 
+        if sum_by_samples:
+            logl = (logl).sum(-1)
         else:
-            #logl = pruning(tree, sites_expanded, tm, pi)
-            logl = pruning_rescaled(tree,
-                    sites_expanded, tm, pi)
-
-            #logl = (logl * site_counts).sum(0, keepdim=True)
-            logl = (logl * site_counts).sum(-1)
-            #print(logl.shape)
-
-        #finit_inds = torch.isfinite(logl)
+            logl = (logl).mean(0).sum(0)
 
         # Compute the Elbo
         if elbo_kl:
-            #elbo = torch.mean(logl[finit_inds], 0)\
-            #        - (alpha_kl * kl_qprior[finit_inds])
             elbo = torch.mean(logl, 0) - (alpha_kl * kl_qprior)
         else:
-            #elbo = logl[finit_inds] + logprior[finit_inds]\
-            #        - logq[finit_inds]
-
             elbo = logl + logprior - logq
 
             if elbo_iws:
-                #nb_sample = logl[finit_inds].shape[0]
                 nb_sample = logl.shape[0]
                 elbo = torch.logsumexp(elbo, dim=0,
                         keepdim=True) - math.log(nb_sample)
             else:
-                #print(elbo.shape)
-                #elbo = elbo.mean(0)
                 elbo = elbo.mean()
 
         # returned dict
         ret_values["elbo"]=elbo
-        #ret_values["logl"]=logl
         ret_values["logl"]=logl.mean()
-        #ret_values["logprior"]=logprior
         ret_values["logprior"]=logprior.mean()
-        #ret_values["logq"]=logq
         ret_values["logq"]=logq.mean()
         ret_values["kl_qprior"]=kl_qprior
 

@@ -16,6 +16,39 @@ from scipy.stats.stats import pearsonr#, spearmanr
 __author__ = "amine remita"
 
 
+def sum_kls(kls):
+    sumkls = torch.zeros(1)
+
+    for kl in kls:
+        sumkls += kl.sum()
+
+    return sumkls
+
+
+def sum_log_probs(log_probs, sum_by_samples=True):
+
+    if sum_by_samples:
+        joint = torch.zeros(log_probs[0].shape[0])
+    else:
+        joint = torch.zeros(1)
+
+    for log_p in log_probs:
+        # Sum log probs by samples
+        if sum_by_samples:
+            if len(log_p.shape) <= 1:
+                # No batch
+                joint += log_p
+            else:
+                # Sum first by batch
+                joint += log_p.sum(-1)
+
+        # Sum log probs independentely from samples 
+        else:
+            joint += log_p.mean(0).sum(0)
+
+    return joint
+
+
 def min_max_clamp(x, min_clamp=False, max_clamp=False):
     if not isinstance(min_clamp, bool):
         if isinstance(min_clamp, (float, int)):

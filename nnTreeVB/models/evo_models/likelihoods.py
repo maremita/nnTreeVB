@@ -5,14 +5,13 @@ __author__ = "amine remita"
 __all__ = [
         "pruning",
         "pruning_rescaled",
-        "pruning_known_ancestors"
         ]
 
 def pruning(arbre, x, tm, pi):
 
     for node in arbre.traverse("postorder"):
         if node.is_leaf():
-            node.state = x[:, :, node.postrank, :]
+            node.state = x[..., node.postrank, :]
             # x [sample_size, n_dim, b_dim, x_dim]
             #print("leaf {}\t{}\t{}\t{}".format(node.name,
             #    node.postrank, node.state.shape, node.dist)) 
@@ -94,7 +93,7 @@ def pruning_rescaled(arbre, x, tm, pi):
     for node in arbre.traverse("postorder"):
         if node.is_leaf():
             #print("shape x {}".format(x.shape))
-            node.state = x[:, :, node.postrank, :]
+            node.state = x[..., node.postrank, :]
             # x [sample_size, n_dim, b_dim, x_dim]
             #print("leaf {}\t{}".format(node.name,
             #    node.state.shape)) 
@@ -170,52 +169,3 @@ def pruning_rescaled(arbre, x, tm, pi):
     #print(logl)
 
     return logl
-
-def pruning_known_ancestors(arbre, x, a, tm, pi):
-
-        # Assign each node its sites
-        for node in arbre.traverse("postorder"):
-            if node.is_leaf():
-                node.sites = x[:, :, node.postrank, :]
-                # [sample_size, n_dim, x_dim]
-            else:
-                node.sites = a[:, :, node.ancestral_postrank,:]
-                # node.sites = 1.0
-
-        log_pi_a = torch.einsum("bij,bcjk->bcik", (pi.unsqueeze(-2), arbre.sites.unsqueeze(-1))).log().squeeze(-1).squeeze(-1)
-        #         print("\nlog_pi_a")
-        #         print(log_pi_a.shape)  # [sample_size, n_dim, 1]
-        #         print(log_pi_a)
-
-        #         ll_cumul = torch.zeros_like(log_pi_a)
-        ll_cumul = 0.0
-        for node in arbre.traverse("postorder"):
-            if not node.is_leaf():
-                # Internal node
-                #log_pi_node = torch.einsum("bij,bcjk->bcik", (pi.unsqueeze(-2), node.sites.unsqueeze(-1))).log().view(x.shape[:2])
-                #ll_cumul += log_pi_node
-
-                #print("\nlog_pi_node")
-                #print(log_pi_node.shape)  # [sample_size, n_dim, 1]
-                #print(log_pi_node)
-
-                for child in node.children:
-                    #print("Child {}".format(child.name))
-                    #print("tm[:, {}].shape {}".format(child.postrank, tm[:, child.postrank].shape)) # [sample_size, x_dim, x_dim]
-                    #print("child.sites.shape {}".format(child.sites.shape)) # [sample_size, n_dim, x_dim]
-                    
-                    partials = torch.einsum("bcij,bjk->bcik", (child.sites.unsqueeze(-2), tm[:, child.postrank])).squeeze(-2).clamp(min=0., max=1.)
-                    #print("partials {}".format(partials.shape))  # [sample_size, n_dim, x_dim]
-                    #print(partials)
-                    #print()
-                    #print("node.sites.shape {}".format(node.sites.shape)) # [sample_size, n_dim, x_dim]
-                    #print(node.sites)
-                     
-                    #ll_cumul += (partials.squeeze().dot(node.sites.squeeze())).log()
-                    ll_cumul += torch.log(torch.einsum("bij,bij->bi", (partials, node.sites))) #.log
-                    #print("ll_cumul {}".format(ll_cumul.shape))  # [sample_size, n_dim, x_dim]
-
-        logl = ll_cumul + log_pi_a
-        #print("logl {}".format(logl.shape))
-
-        return logl

@@ -15,5 +15,4 @@ __all__ = [
         "build_transition_matrix",
         "pruning",
         "pruning_rescaled",
-        "pruning_known_ancestors"
         ]

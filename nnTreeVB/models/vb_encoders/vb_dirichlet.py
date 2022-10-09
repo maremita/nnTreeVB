@@ -15,7 +15,7 @@ class VB_Dirichlet_IndEncoder(nn.Module):
             in_shape: list,            # [..., 6]
             out_shape: list,           # [..., 6]
             # list of floats, "uniform", "normal" or False
-            init_distr: Union[list, str, bool] = [0.1, 0.1],
+            init_distr: Union[list, str, bool] = False,
             # initialized prior distribution
             prior_dist: TorchDistribution = None,
             device=torch.device("cpu")):

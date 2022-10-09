@@ -7,7 +7,6 @@
 
 
 from .vb_dirichlet import *
-from .vb_categorical import *
 from .vb_gamma import *
 from .vb_logNormal import *
 from .vb_normal import *
@@ -50,9 +49,6 @@ def get_vb_encoder(encoder_type="gamma"):
 
     elif encoder_type == "dirichlet_nn":
         encoder = VB_Dirichlet_NNEncoder
-
-    elif encoder_type == "categorical_nn":
-        encoder = VB_Categorical_NNEncoder
 
     elif encoder_type == "normal_ind":
         encoder = VB_Normal_IndEncoder
