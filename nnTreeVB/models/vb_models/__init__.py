@@ -29,7 +29,6 @@ __all__ = ["BaseTreeVB"]
 class BaseTreeVB(ABC):
 
     def sample(self,
-            tree,
             sites,
             site_counts,
             elbo_type="elbo",
@@ -43,7 +42,6 @@ class BaseTreeVB(ABC):
                         self.device_)
             # Don't shuffle sites
             return self(
-                    tree,
                     sites,
                     site_counts,
                     elbo_type=elbo_type,
@@ -53,7 +51,6 @@ class BaseTreeVB(ABC):
                     shuffle_sites=False)
 
     def fit(self,
-            tree,
             X_train,
             X_train_counts,
             elbo_type="elbo",
@@ -166,7 +163,6 @@ class BaseTreeVB(ABC):
             optimizer.zero_grad()
             try:
                 fit_dict = self(
-                        tree,
                         X_train,
                         X_train_counts,
                         elbo_type=elbo_type,
@@ -213,7 +209,6 @@ class BaseTreeVB(ABC):
                     val_time = time.time()
                     try:
                         val_dict = self.sample(
-                                tree,
                                 X_val,
                                 X_val_counts, 
                                 elbo_type=elbo_type,
@@ -246,9 +241,9 @@ class BaseTreeVB(ABC):
                     if epoch % 10 == 0:
                         chaine = "{}\tEpoch: {}"\
                                 "\tELBO: {:.3f}"\
-                                "\tLogl: {:.3f}"\
-                                "\tLogp: {:.3f}"\
-                                "\tLogq: {:.3f}"\
+                                "\tLogL: {:.3f}"\
+                                "\tLogP: {:.3f}"\
+                                "\tLogQ: {:.3f}"\
                                 "\tKL: {:.3f}".format(
                                         timeSince(start),
                                         epoch, 
@@ -259,9 +254,11 @@ class BaseTreeVB(ABC):
                                         kls.item())
 
                         if X_val is not None:
-                            chaine += "\nELBO_Val: {:.3f}\t"\
-                                    " Lls_Val {:.3f}\t KLs "\
-                                    "{:.3f}".format(
+                            chaine += "\nVal\tELBO: {:.3f}"\
+                                    "\tLogL: {:.3f}"\
+                                    "\tLogP: {:.3f}"\
+                                    "\tLogQ: {:.3f}"\
+                                    "\tKL: {:.3f}".format(
                                             elbo_val.item(),
                                             lls_val.item(), 
                                             lps_val.item(),
@@ -272,11 +269,14 @@ class BaseTreeVB(ABC):
                             for estim in ["b", "t", "b1",\
                                     "r", "f", "k"]:
                                 if estim in fit_dict:
-                                    estim_vals = fit_dict[estim].mean(0).squeeze() 
+                                    estim_vals = fit_dict[
+                                            estim].mean(0).squeeze() 
                                     chaine += estim + ": "\
                                             +str(estim_vals)
-                                    if estim == "b" and "t" not in fit_dict:
-                                        chaine += "\nt: "+ str(estim_vals.sum()) 
+                                    if estim == "b" and "t"\
+                                            not in fit_dict:
+                                        chaine += "\nt: "+ str(
+                                                estim_vals.sum()) 
                                     chaine += "\n"
                         print(chaine, end="\n")
 

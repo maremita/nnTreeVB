@@ -3,11 +3,12 @@ from nnTreeVB.models.vb_encoders import build_distribution
 from nnTreeVB.models.vb_encoders import build_vb_encoder
 from nnTreeVB.models.evo_models import build_transition_matrix
 from nnTreeVB.models.evo_models import pruning_rescaled
-from nnTreeVB.models.evo_models import pruning
+#from nnTreeVB.models.evo_models import pruning
 from nnTreeVB.utils import sum_log_probs
 from nnTreeVB.utils import sum_kls
 
 import math
+import copy
 
 import torch
 import torch.nn as nn
@@ -18,10 +19,7 @@ __author__ = "Amine Remita"
 class VB_nnTree(nn.Module, BaseTreeVB):
     def __init__(
             self,
-            # Dimensions
-            x_dim: int, # dim of alphabet (4 for nucleotides)
-            m_dim: int, # number of sequences (leaves)
-            b_dim: int, # number of branches
+            tree,
             #
             subs_model="gtr", # jc69 | k80 | hky | gtr
             # #################################################
@@ -96,10 +94,11 @@ class VB_nnTree(nn.Module, BaseTreeVB):
  
         super().__init__()
 
-        self.x_dim = x_dim
-        self.m_dim = m_dim
-        self.b_dim = b_dim
- 
+        self.tree = copy.deepcopy(tree)
+
+        self.m_dim = len(self.tree.get_leaf_names())
+        self.b_dim = len(self.tree.get_edges()) - 1
+
         self.t_dim = 1
         self.r_dim = 6
         self.f_dim = 4
@@ -209,7 +208,6 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     device=self.device_)
 
     def forward(self,
-            tree,
             sites, 
             site_counts,
             elbo_type="elbo",
@@ -245,11 +243,9 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         logqs = []
         kl_qpriors = []
 
-        sites_size, nb_seqs, feat_size = sites.shape
-        ## sites_size is n_dim
+        n_dim, m_dim, x_dim = sites.shape
 
-        assert nb_seqs == self.m_dim
-        assert feat_size == self.x_dim
+        assert self.m_dim == m_dim
 
         ## Inference and sampling
         ## ######################
@@ -362,12 +358,12 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         tm = build_transition_matrix(self.subs_model, tm_args)
         sites_expanded = sites.expand(
                 [latent_sample_size,
-                    sites_size, self.m_dim, self.x_dim])
+                    n_dim, m_dim, x_dim])
 
-        #logl = pruning(tree,
+        #logl = pruning(self.tree,
         #        sites_expanded, tm, pi) * site_counts
 
-        logl = pruning_rescaled(tree,
+        logl = pruning_rescaled(self.tree,
                 sites_expanded, tm, pi) * site_counts
 
         if sum_by_samples:
