@@ -28,8 +28,10 @@ def pruning(arbre, x, tm, pi):
 
                 #print(tm[:, child.postrank].shape)
                 #print(child.state.unsqueeze(-1).shape)
-                node.state *= torch.einsum("bij,bcjk->bcik",
-                        tm[:, child.postrank],
+                #node.state *= torch.einsum("bij,bcjk->bcik",
+                node.state *= torch.einsum(
+                        "...ij,...cjk->...cik",
+                        tm[..., child.postrank, :, :],
                         child.state.unsqueeze(-1)).squeeze(
                                 -1).clamp(min=0., max=1.)
 
@@ -53,7 +55,9 @@ def pruning(arbre, x, tm, pi):
     #            arbre.state.unsqueeze(-1)))).squeeze(
     #                    -1).squeeze(-1)
 
-    logl = torch.log(torch.sum(torch.einsum("bj,bcj->bcj", 
+    #logl = torch.log(torch.sum(torch.einsum("bj,bcj->bcj", 
+    logl = torch.log(torch.sum(torch.einsum(
+        "...j,...cj->...cj", 
         (pi, arbre.state)), -1))
 
     #logl = torch.log(pi @ arbre.state.unsqueeze(-1)).squeeze(
@@ -107,17 +111,18 @@ def pruning_rescaled(arbre, x, tm, pi):
                 #    child.postrank))
                 #print("tm[:, {}].shape {}".format(
                 #    child.postrank,
-                #    tm[:, child.postrank].shape))
+                #    tm[..., child.postrank, :, :].shape))
 
                 #print("node.state.shape {}".format(
                 #    node.state.shape))
                 # [sample_size, n_dim, x_dim]
 
-                partials= torch.einsum("bij,bcjk->bcik",
-                        tm[:, child.postrank],
+                #partials= torch.einsum("bij,bcjk->bcik",
+                partials= torch.einsum("...ij,...cjk->...cik",
+                        tm[..., child.postrank, :, :],
                         child.state.unsqueeze(-1)).squeeze(
                                 -1).clamp(min=0., max=1.)
-                
+
                 #FIXME: Another alternative to compute partials
                 # Does not work correctly when sample_size>1
                 #partials = (tm[:, child.postrank] @
@@ -154,7 +159,8 @@ def pruning_rescaled(arbre, x, tm, pi):
             #logl = torch.einsum("bij,bcjk->bcik", (pi.unsqueeze(-2),
             #    arbre.state.unsqueeze(-1))).log().mean(0).flatten()
 
-    scaler_list.append(torch.einsum("bij,bcjk->bcik",
+    #scaler_list.append(torch.einsum("bij,bcjk->bcik",
+    scaler_list.append(torch.einsum("...ij,...cjk->...cik",
         (pi.unsqueeze(-2),
             arbre.state.unsqueeze(-1))).squeeze(-1))
     #scaler_list.append((pi @

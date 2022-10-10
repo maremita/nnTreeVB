@@ -1,5 +1,6 @@
 from nnTreeVB.utils import min_max_clamp
 from nnTreeVB.typing import *
+from nnTreeVB.utils import check_sample_size
 
 import torch
 import torch.nn as nn
@@ -78,10 +79,13 @@ class VB_Normal_IndEncoder(nn.Module):
 
     def forward(
             self, 
-            sample_size=1,
+            sample_size=torch.Size([1]),
             KL_gradient=False,
             min_clamp=False,
             max_clamp=False):
+
+        #
+        sample_size = check_sample_size(sample_size)
 
         # Transform sigma from unconstrained to
         # constrained space
@@ -99,8 +103,7 @@ class VB_Normal_IndEncoder(nn.Module):
 
         # Sample from approximate distribution q
         # in the constrained space
-        samples = self.dist_q.rsample(
-                torch.Size([sample_size]))
+        samples = self.dist_q.rsample(sample_size)
         #print("samples N shape {}".format(samples.shape))
 
         samples = min_max_clamp(samples, min_clamp, max_clamp)
@@ -229,10 +232,13 @@ class VB_Normal_NNIndEncoder(nn.Module):
 
     def forward(
             self, 
-            sample_size=1,
+            sample_size=torch.Size([1]),
             KL_gradient=False,
             min_clamp=False,
             max_clamp=False):
+
+        #
+        sample_size = check_sample_size(sample_size)
 
         eps = torch.finfo().eps
 
@@ -254,8 +260,7 @@ class VB_Normal_NNIndEncoder(nn.Module):
 
         # Sample from approximate distribution q
         # in the constrained space
-        samples = self.dist_q.rsample(
-                torch.Size([sample_size]))
+        samples = self.dist_q.rsample(sample_size)
         #print("samples N shape {}".format(samples.shape))
 
         samples = min_max_clamp(samples, min_clamp, max_clamp)

@@ -32,9 +32,8 @@ class BaseTreeVB(ABC):
             sites,
             site_counts,
             elbo_type="elbo",
-            latent_sample_size=1,
-            alpha_kl=1.,
-            sample_temp=0.1):
+            sample_size=torch.Size([1]),
+            alpha_kl=1.):
 
         with torch.no_grad():
             if site_counts == None:
@@ -45,8 +44,7 @@ class BaseTreeVB(ABC):
                     sites,
                     site_counts,
                     elbo_type=elbo_type,
-                    latent_sample_size=latent_sample_size,
-                    sample_temp=sample_temp, 
+                    sample_size=sample_size,
                     alpha_kl=alpha_kl, 
                     shuffle_sites=False)
 
@@ -54,8 +52,7 @@ class BaseTreeVB(ABC):
             X_train,
             X_train_counts,
             elbo_type="elbo",
-            latent_sample_size=1,
-            sample_temp=0.1,
+            sample_size=torch.Size([1]),
             alpha_kl=1.,
             max_iter=100,
             optim="adam",
@@ -156,6 +153,10 @@ class BaseTreeVB(ABC):
             ret["lqs_val_list"] = []
             ret["kls_val_list"] = []
 
+        m_axis = 0
+        if len(sample_size) == 2:
+            m_axis = (0,1)
+
         optim_nb = 0
         for epoch in range(1, max_iter + 1):
 
@@ -166,8 +167,7 @@ class BaseTreeVB(ABC):
                         X_train,
                         X_train_counts,
                         elbo_type=elbo_type,
-                        latent_sample_size=latent_sample_size,
-                        sample_temp=sample_temp,
+                        sample_size=sample_size,
                         alpha_kl=alpha_kl,
                         shuffle_sites=True)
 
@@ -212,9 +212,7 @@ class BaseTreeVB(ABC):
                                 X_val,
                                 X_val_counts, 
                                 elbo_type=elbo_type,
-                                latent_sample_size=\
-                                        latent_sample_size,
-                                sample_temp=sample_temp)
+                                sample_size=sample_size)
                                 #alpha_kl=alpha_kl,
 
                         val_dict = dict_to_numpy(val_dict)
@@ -270,7 +268,7 @@ class BaseTreeVB(ABC):
                                     "r", "f", "k"]:
                                 if estim in fit_dict:
                                     estim_vals = fit_dict[
-                                            estim].mean(0).squeeze() 
+                                            estim].mean(m_axis).squeeze() 
                                     chaine += estim + ": "\
                                             +str(estim_vals)
                                     if estim == "b" and "t"\

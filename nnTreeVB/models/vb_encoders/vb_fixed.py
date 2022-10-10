@@ -22,13 +22,16 @@ class VB_FixedEncoder(nn.Module):
 
     def forward(
             self, 
-            sample_size=1,
+            sample_size=torch.Size([1]),
             KL_gradient=False,
             min_clamp=False,
             max_clamp=False):
 
+        #
+        sample_size = check_sample_size(sample_size)
+
         samples = self.data.expand(
-                [sample_size, *self.out_shape])
+                [*list(sample_size), *self.out_shape])
         #print("samples fixed shape {}".format(samples.shape))
 
         samples = min_max_clamp(samples, min_clamp, max_clamp)

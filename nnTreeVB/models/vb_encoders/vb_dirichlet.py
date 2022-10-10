@@ -1,5 +1,6 @@
 from nnTreeVB.utils import min_max_clamp
 from nnTreeVB.typing import *
+from nnTreeVB.utils import check_sample_size
 
 import torch
 import torch.nn as nn
@@ -64,10 +65,13 @@ class VB_Dirichlet_IndEncoder(nn.Module):
 
     def forward(
             self, 
-            sample_size=1,
+            sample_size=torch.Size([1]),
             KL_gradient=False,
             min_clamp=0.0000001,    # should be <= to 10^-7
             max_clamp=False):
+
+        #
+        sample_size = check_sample_size(sample_size)
 
         # Transform params from unconstrained to
         # constrained space
@@ -78,8 +82,7 @@ class VB_Dirichlet_IndEncoder(nn.Module):
         self.dist_q = Dirichlet(self.alphas)
 
         # Sample from approximate distribution q
-        samples = self.dist_q.rsample(
-                torch.Size([sample_size]))
+        samples = self.dist_q.rsample(sample_size)
         #print("samples dirichlet shape {}".format(
         #    samples.shape)) # [sample_size, 6]
 
@@ -187,19 +190,21 @@ class VB_Dirichlet_NNIndEncoder(nn.Module):
 
     def forward(
             self, 
-            sample_size=1,
+            sample_size=torch.Size([1]),
             KL_gradient=False,
             min_clamp=0.0000001,    # should be <= to 10^-7
             max_clamp=False):
+
+        #
+        sample_size = check_sample_size(sample_size)
 
         self.alphas = self.net(self.input)
 
         # Approximate distribution
         self.dist_q = Dirichlet(self.alphas)
 
-        # Sample
-        samples = self.dist_q.rsample(
-                torch.Size([sample_size]))
+        # Sample from approximate distribution q
+        samples = self.dist_q.rsample(sample_size)
         #print("samples dirichlet deep shape {}".format(
         #    samples.shape)) # [sample_size, 6]
 
@@ -285,10 +290,13 @@ class VB_Dirichlet_NNEncoder(nn.Module):
     def forward(
             self,
             data,
-            sample_size=1,
+            sample_size=torch.Size([1]),
             KL_gradient=False,
             min_clamp=0.0000001,    # should be <= to 10^-7
             max_clamp=False):
+
+        #
+        sample_size = check_sample_size(sample_size)
 
         # Flatten the data
         #data = data.squeeze(0).flatten(0)
@@ -306,8 +314,7 @@ class VB_Dirichlet_NNEncoder(nn.Module):
         self.dist_q = Dirichlet(self.alphas)
 
         # Sample
-        samples = self.dist_q.rsample(
-                torch.Size([sample_size]))
+        samples = self.dist_q.rsample(sample_size)
         #print("samples dirichlet deep shape {}".format(
         #    samples.shape)) # [sample_size, 6]
  

@@ -6,6 +6,7 @@ from nnTreeVB.models.evo_models import pruning_rescaled
 #from nnTreeVB.models.evo_models import pruning
 from nnTreeVB.utils import sum_log_probs
 from nnTreeVB.utils import sum_kls
+from nnTreeVB.utils import check_sample_size
 
 import math
 import copy
@@ -211,14 +212,17 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             sites, 
             site_counts,
             elbo_type="elbo",
-            latent_sample_size=10,
-            sample_temp=0.1,
+            sample_size=torch.Size([1]),
             alpha_kl=1.,
             shuffle_sites=True):
 
         # returned dict
         ret_values = dict()
 
+        #
+        sample_size = check_sample_size(sample_size)
+
+        #
         elbos = ["elbo", "elbo_iws", "elbo_kl"]
         elbo_type = elbo_type.lower()
         if elbo_type not in elbos:
@@ -227,11 +231,16 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             print("elbo_type is set to elbo")
             elbo_type = "elbo"
 
+        if len(sample_size) == 1 and elbo_type=="elbo_iws":
+            elbo_type = "elbo"
+        elif len(sample_size) == 2 and elbo_type!="elbo_iws":
+            elbo_type = "elbo_iws"
+
         elbo_kl = elbo_type=="elbo_kl"
         elbo_iws = elbo_type=="elbo_iws"
 
         #
-        pi = (torch.ones(4)/4).expand([latent_sample_size, 4])
+        pi = (torch.ones(4)/4).expand([*list(sample_size), 4])
         tm_args = dict()
 
         # Sum joint log probs by samples [True] or 
@@ -252,7 +261,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
         # Sample b from q_d and compute log prior, log q
         b_logprior, b_logq, b_kl, b_samples = self.b_encoder(
-                sample_size=latent_sample_size,
+                sample_size=sample_size,
                 KL_gradient=elbo_kl)
 
         #print("b_logprior {}".format(b_logprior.shape))
@@ -271,7 +280,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             # Sample t from q_d and compute log prior, log q
             t_logprior, t_logq, t_kl, t_samples =\
                     self.t_encoder(
-                            sample_size=latent_sample_size,
+                            sample_size=sample_size,
                             KL_gradient=elbo_kl)
 
             bt_samples = (b_samples * t_samples)
@@ -296,7 +305,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             # Sample r from q_r and compute log prior, log q
             r_logprior, r_logq, r_kl, r_samples =\
                     self.r_encoder(
-                            sample_size=latent_sample_size,
+                            sample_size=sample_size,
                             KL_gradient=elbo_kl)
 
             #print("r_samples {}".format(r_samples.shape))
@@ -315,7 +324,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             # Sample f from q_f and compute log prior, log q
             f_logprior, f_logq, f_kl, f_samples =\
                     self.f_encoder(
-                            sample_size=latent_sample_size,
+                            sample_size=sample_size,
                             KL_gradient=elbo_kl)
 
             #print("f_logprior {}".format(f_logprior.shape))
@@ -334,7 +343,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             # Sample k from q_d and compute log prior, log q
             k_logprior, k_logq, k_kl, k_samples =\
                     self.k_encoder(
-                            sample_size=latent_sample_size,
+                            sample_size=sample_size,
                             KL_gradient=elbo_kl)
 
             #print("k_logprior {}".format(k_logprior.shape))
@@ -349,16 +358,21 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             tm_args["kappa"] = k_samples
 
         # Compute joint logprior, logq and kl
-        logprior = sum_log_probs(logpriors, sum_by_samples)
-        logq = sum_log_probs(logqs, sum_by_samples)
+        logprior = sum_log_probs(logpriors, sample_size,
+                sum_by_samples)
+        logq = sum_log_probs(logqs, sample_size,
+                sum_by_samples)
         kl_qprior = sum_kls(kl_qpriors)
+
+        #print("logprior {}".format(logprior.shape))
+        #print("logq {}".format(logq.shape))
+        #print("kl_qprior {}".format(kl_qprior.shape))
 
         ## Compute logl
         ## ############
         tm = build_transition_matrix(self.subs_model, tm_args)
         sites_expanded = sites.expand(
-                [latent_sample_size,
-                    n_dim, m_dim, x_dim])
+                [*list(sample_size), n_dim, m_dim, x_dim])
 
         #logl = pruning(self.tree,
         #        sites_expanded, tm, pi) * site_counts
@@ -378,11 +392,11 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             elbo = logl + logprior - logq
 
             if elbo_iws:
-                nb_sample = logl.shape[0]
-                elbo = torch.logsumexp(elbo, dim=0,
+                nb_sample = logl.shape[-1]
+                elbo = torch.logsumexp(elbo, dim=-1,
                         keepdim=True) - math.log(nb_sample)
-            else:
-                elbo = elbo.mean()
+
+            elbo = elbo.mean()
 
         # returned dict
         ret_values["elbo"]=elbo

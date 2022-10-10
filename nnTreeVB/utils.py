@@ -16,6 +16,21 @@ from scipy.stats.stats import pearsonr#, spearmanr
 __author__ = "amine remita"
 
 
+def check_sample_size(sample_size):
+    
+    if isinstance(sample_size, torch.Size):
+        return sample_size
+
+    if isinstance(sample_size, int):
+        return torch.Size([sample_size])
+
+    elif isinstance(sample_size, list):
+        return torch.Size(sample_size)
+
+    else:
+        raise ValueError("Sample size type is not valid")
+
+
 def sum_kls(kls):
     sumkls = torch.zeros(1)
 
@@ -25,17 +40,19 @@ def sum_kls(kls):
     return sumkls
 
 
-def sum_log_probs(log_probs, sum_by_samples=True):
+def sum_log_probs(log_probs, sample_size, sum_by_samples=True):
+
+    nb_s_dim = len(sample_size)
 
     if sum_by_samples:
-        joint = torch.zeros(log_probs[0].shape[0])
+        joint = torch.zeros(sample_size)
     else:
         joint = torch.zeros(1)
 
     for log_p in log_probs:
         # Sum log probs by samples
         if sum_by_samples:
-            if len(log_p.shape) <= 1:
+            if len(log_p.shape) <= nb_s_dim:
                 # No batch
                 joint += log_p
             else:
