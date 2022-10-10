@@ -6,6 +6,7 @@ import torch.nn as nn
 from torch.distributions.normal import Normal
 from torch.distributions.kl import kl_divergence
 from torch.distributions import transform_to
+from torch.distributions import TransformedDistribution
 
 __author__ = "Amine Remita"
 
@@ -19,7 +20,7 @@ class VB_Normal_IndEncoder(nn.Module):
             # Initialized prior distribution
             prior_dist: TorchDistribution = None,
             # Sample biject transformation
-            transform: TorchTransform = None,
+            transform_dist: TorchTransform = None,
             device=torch.device("cpu")):
 
         super().__init__()
@@ -34,11 +35,11 @@ class VB_Normal_IndEncoder(nn.Module):
         # Prior distribution
         self.dist_p = prior_dist
 
-        self.transform = transform
+        self.transform_dist = transform_dist
 
         # in_shape will be updated if the sample transform 
         # is to a simplex
-        if isinstance(self.transform,
+        if isinstance(self.transform_dist,
                 torch.distributions.StickBreakingTransform):
             self.in_shape[-1] -= 1
 
@@ -88,19 +89,19 @@ class VB_Normal_IndEncoder(nn.Module):
                 self.sigma_unconstr)
 
         # Approximate distribution
-        self.dist_q = Normal(self.mu, self.sigma)
+        base_q = Normal(self.mu, self.sigma)
+ 
+        if self.transform_dist is not None:
+            self.dist_q = TransformedDistribution(base_q, 
+                    self.transform_dist)
+        else:
+            self.dist_q = base_q
 
         # Sample from approximate distribution q
-        # in the unconstrained space
-        samples_unconstr = self.dist_q.rsample(
+        # in the constrained space
+        samples = self.dist_q.rsample(
                 torch.Size([sample_size]))
         #print("samples N shape {}".format(samples.shape))
-
-        # Transform samples_unconstr to constrained space
-        if self.transform is not None:
-            samples = self.transform(samples_unconstr)
-        else:
-            samples = samples_unconstr
 
         samples = min_max_clamp(samples, min_clamp, max_clamp)
 
@@ -118,7 +119,9 @@ class VB_Normal_IndEncoder(nn.Module):
             #print("logprior.shape {}".format(logprior.shape))
 
             # Compute the log of approximate posteriors q(d)
-            logq = self.dist_q.log_prob(samples_unconstr)
+            # If transformed distribution, the log_abs_det_jac
+            # will be added in log_prob
+            logq = self.dist_q.log_prob(samples)
             #print("logq.shape {}".format(logq.shape))
 
         return logprior, logq, kl, samples
@@ -133,7 +136,7 @@ class VB_Normal_NNIndEncoder(nn.Module):
             # initialized prior distribution
             prior_dist: TorchDistribution = None,
             # Sample biject transformation
-            transform: TorchTransform = None,
+            transform_dist: TorchTransform = None,
             h_dim: int = 16, 
             nb_layers: int =3,
             bias_layers: bool = True,
@@ -153,11 +156,11 @@ class VB_Normal_NNIndEncoder(nn.Module):
         # Prior distribution
         self.dist_p = prior_dist
 
-        self.transform = transform
+        self.transform_dist = transform_dist
 
         # in_shape will be updated if the sample transform 
         # is to a simplex
-        if isinstance(self.transform,
+        if isinstance(self.transform_dist,
                 torch.distributions.StickBreakingTransform):
             self.in_shape[-1] -= 1
 
@@ -241,19 +244,19 @@ class VB_Normal_NNIndEncoder(nn.Module):
         self.sigma = self.net_out_sigma(h_ms).clamp(min=0.+eps)
 
         # Approximate distribution
-        self.dist_q = Normal(self.mu, self.sigma)
+        base_q = Normal(self.mu, self.sigma)
+ 
+        if self.transform_dist is not None:
+            self.dist_q = TransformedDistribution(base_q, 
+                    self.transform_dist)
+        else:
+            self.dist_q = base_q
 
         # Sample from approximate distribution q
-        # in the unconstrained space
-        samples_unconstr = self.dist_q.rsample(
+        # in the constrained space
+        samples = self.dist_q.rsample(
                 torch.Size([sample_size]))
-        # print("samples shape {}".format(samples.shape)) #
-
-        # Transform samples_unconstr to constrained space
-        if self.transform is not None:
-            samples = self.transform(samples_unconstr)
-        else:
-            samples = samples_unconstr
+        #print("samples N shape {}".format(samples.shape))
 
         samples = min_max_clamp(samples, min_clamp, max_clamp)
 
@@ -271,7 +274,9 @@ class VB_Normal_NNIndEncoder(nn.Module):
             # print("logprior.shape {}".format(logprior.shape))
 
             # Compute the log of approximate posteriors q(d)
-            logq = self.dist_q.log_prob(samples_unconstr)
+            # If transformed distribution, the log_abs_det_jac
+            # will be added in log_prob
+            logq = self.dist_q.log_prob(samples)
             # print("logq.shape {}".format(logq.shape))
 
         return logprior, logq, kl, samples

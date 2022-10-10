@@ -17,6 +17,8 @@ class VB_LogNormal_IndEncoder(nn.Module):
             init_distr: Union[list, str, bool] = [0.1, 0.1],
             # initialized prior distribution
             prior_dist: TorchDistribution = None,
+            # Sample biject transformation
+            transform_dist: TorchTransform = None,
             device=torch.device("cpu")):
 
         super().__init__()
@@ -30,6 +32,14 @@ class VB_LogNormal_IndEncoder(nn.Module):
 
         # Prior distribution
         self.dist_p = prior_dist
+
+        self.transform_dist = transform_dist
+
+        # in_shape will be updated if the sample transform 
+        # is to a simplex
+        if isinstance(self.transform_dist,
+                torch.distributions.StickBreakingTransform):
+            self.in_shape[-1] -= 1
 
         self.device_ = device
 
@@ -77,7 +87,13 @@ class VB_LogNormal_IndEncoder(nn.Module):
                 self.sigma_unconstr)
 
         # Approximate distribution
-        self.dist_q = LogNormal(self.mu, self.sigma)
+        base_q = LogNormal(self.mu, self.sigma)
+
+        if self.transform_dist is not None:
+            self.dist_q = TransformedDistribution(base_q, 
+                    self.transform_dist)
+        else:
+            self.dist_q = base_q
 
         # Sample from approximate distribution q
         samples = self.dist_q.rsample(
@@ -110,6 +126,8 @@ class VB_LogNormal_NNIndEncoder(nn.Module):
             init_distr: Union[list, str, bool] = [0.1, 0.1],
             # initialized prior distribution
             prior_dist: TorchDistribution = None,
+            # Sample biject transformation
+            transform_dist: TorchTransform = None,
             h_dim: int = 16, 
             nb_layers: int =3,
             bias_layers: bool = True,
@@ -128,6 +146,14 @@ class VB_LogNormal_NNIndEncoder(nn.Module):
         # Prior distribution
         self.dist_p = prior_dist
  
+        self.transform_dist = transform_dist
+
+        # in_shape will be updated if the sample transform 
+        # is to a simplex
+        if isinstance(self.transform_dist,
+                torch.distributions.StickBreakingTransform):
+            self.in_shape[-1] -= 1
+
         self.h_dim = h_dim          # hidden layer size
         self.nb_layers = nb_layers
         self.bias_layers = bias_layers
@@ -208,9 +234,15 @@ class VB_LogNormal_NNIndEncoder(nn.Module):
         self.sigma = self.net_out_sigma(h_ms).clamp(min=0.+eps)
 
         # Approximate distribution
-        self.dist_q = LogNormal(self.mu, self.sigma)
+        base_q = LogNormal(self.mu, self.sigma)
 
-        # Sample
+        if self.transform_dist is not None:
+            self.dist_q = TransformedDistribution(base_q, 
+                    self.transform_dist)
+        else:
+            self.dist_q = base_q
+
+        # Sample from approximate distribution q
         samples = self.dist_q.rsample(
                 torch.Size([sample_size]))
         # print("samples shape {}".format(samples.shape)) #

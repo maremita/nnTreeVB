@@ -76,7 +76,7 @@ def build_vb_encoder(
         # or False for nn encoders
         # or tensor for fixed encoder
         prior_dist: TorchDistribution = None,
-        transform: TorchTransform = None,
+        transform_dist: TorchTransform = None,
         # Following parameters are needed if nn
         h_dim: int = 16,
         nb_layers: int = 3,
@@ -100,9 +100,9 @@ def build_vb_encoder(
         encoder_args.update(
             init_distr=init_distr)
 
-    if transform is not None:
+    if transform_dist is not None:
         encoder_args.update(
-            transform=transform)
+            transform_dist=transform_dist)
 
     if "nn" in encoder_type:
         encoder_args.update(

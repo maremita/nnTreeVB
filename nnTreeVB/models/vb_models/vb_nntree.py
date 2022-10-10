@@ -34,7 +34,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             b_prior_dist="gamma",
             b_prior_params=[0.2, 0.2],
             #
-            b_transform=None,
+            b_transform_dist=None,
             # #################################################
             # Total tree length
             # fixed | gamma | lognormal | normal
@@ -46,7 +46,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             t_prior_dist="gamma",
             t_prior_params=[0.2, 0.2],
             #
-            t_transform=None,
+            t_transform_dist=None,
             # #################################################
             # GTR rates encoder args
             # fixed | dirichlet | normal
@@ -58,7 +58,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             r_prior_dist="dirichlet",
             r_prior_params=[1.]*6,
             #
-            r_transform=None,
+            r_transform_dist=None,
             # #################################################
             # GTR frequencies encoder args
             # fixed | dirichlet | normal
@@ -70,7 +70,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             f_prior_dist="dirichlet",
             f_prior_params=[1.]*4,
             #
-            f_transform=None,
+            f_transform_dist=None,
             # #################################################
             # k encoder args
             # fixed | gamma | lognormal | normal
@@ -82,7 +82,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             k_prior_dist="gamma",
             k_prior_params=[0.1, 0.1],
             #
-            k_transform=None,
+            k_transform_dist=None,
             # #################################################
             # Following parameters are needed if nn
             h_dim=16,
@@ -122,7 +122,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                 encoder_type=b_encoder_type,
                 init_distr=b_init_distr,
                 prior_dist=self.b_dist_p,
-                transform=b_transform,
+                transform_dist=b_transform_dist,
                 h_dim=h_dim,
                 nb_layers=nb_layers,
                 bias_layers=bias_layers,
@@ -143,7 +143,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     encoder_type=t_encoder_type,
                     init_distr=t_init_distr,
                     prior_dist=self.t_dist_p,
-                    transform=t_transform,
+                    transform_dist=t_transform_dist,
                     h_dim=h_dim,
                     nb_layers=nb_layers,
                     bias_layers=bias_layers,
@@ -162,7 +162,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     encoder_type=r_encoder_type,
                     init_distr=r_init_distr,
                     prior_dist=self.r_dist_p,
-                    transform=r_transform,
+                    transform_dist=r_transform_dist,
                     h_dim=h_dim,
                     nb_layers=nb_layers,
                     bias_layers=bias_layers,
@@ -181,7 +181,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     encoder_type=f_encoder_type,
                     init_distr=f_init_distr,
                     prior_dist=self.f_dist_p,
-                    transform=f_transform,
+                    transform_dist=f_transform_dist,
                     h_dim=h_dim,
                     nb_layers=nb_layers,
                     bias_layers=bias_layers,
@@ -200,7 +200,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     encoder_type=k_encoder_type,
                     init_distr=k_init_distr,
                     prior_dist=self.k_dist_p,
-                    transform=k_transform,
+                    transform_dist=k_transform_dist,
                     h_dim=h_dim,
                     nb_layers=nb_layers,
                     bias_layers=bias_layers,
