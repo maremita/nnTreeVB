@@ -1,5 +1,6 @@
 from nnTreeVB.utils import init_parameters
 from nnTreeVB.utils import build_neuralnet
+from nnTreeVB.utils import freeze_model_params
 from nnTreeVB.typing import *
 
 import torch
@@ -27,7 +28,7 @@ class VB_Dirichlet(nn.Module):
         # Concentrations
         self.nb_params = self.in_shape[-1]
         self.init_params = init_params
-
+        self.learn_params = learn_params
         self.device_ = device
 
         # init parameters initialization
@@ -45,7 +46,7 @@ class VB_Dirichlet(nn.Module):
                 self.input.repeat([*self.in_shape[:-1],1]))
 
         # Initialize the parameters of the distribution
-        if learn_params:
+        if self.learn_params:
             self.alphas_unconstr = nn.Parameter(
                     init_alphas_unconstr,
                     requires_grad=True).to(self.device_)
@@ -72,6 +73,7 @@ class VB_Dirichlet_NN(nn.Module):
             out_shape: list,           # [..., r_dim]
             init_params: Union[list, str, bool] = [0.1, 0.1],
             # list of floats, "uniform", "normal" or False
+            learn_params: bool = True,
             h_dim: int = 16, 
             nb_layers: int = 3,
             bias_layers: bool = True,
@@ -89,6 +91,7 @@ class VB_Dirichlet_NN(nn.Module):
         # Concentrations
         self.nb_params = self.in_shape[-1]
         self.init_params = init_params
+        self.learn_params = learn_params
  
         self.h_dim = h_dim          # hidden layer size
         self.nb_layers = nb_layers
@@ -114,7 +117,13 @@ class VB_Dirichlet_NN(nn.Module):
             nn.Softplus(),
             self.device_)
 
+        if not self.learn_params:
+            freeze_model_params(self.net)
+
     def forward(self): 
+
+        if not self.learn_params:
+            freeze_model_params(self.net)
 
         self.alphas = self.net(self.input)
 
@@ -128,6 +137,7 @@ class VB_Dirichlet_NNX(nn.Module):
     def __init__(self,
             in_shape: list,   # [n_dim, x_dim , m_dim]
             out_shape: list,  # [n_dim, a_dim, x_dim]
+            learn_params: bool = True,
             h_dim: int = 16, 
             nb_layers: int =3,
             bias_layers: bool = True,
@@ -145,6 +155,7 @@ class VB_Dirichlet_NNX(nn.Module):
         #out_dim,   # x_dim * a_dim
         self.out_dim = self.out_shape[-1] * self.out_shape[-2]
 
+        self.learn_params = learn_params
         self.h_dim = h_dim  # hidden layer size
         self.n_layers = n_layers
         self.bias_layers = bias_layers
@@ -163,7 +174,13 @@ class VB_Dirichlet_NNX(nn.Module):
             nn.Softplus(),
             self.device_)
 
+        if not self.learn_params:
+            freeze_model_params(self.net)
+
     def forward(self, X):
+
+        if not self.learn_params:
+            freeze_model_params(self.net)
 
         # Flatten the data X
         #data = X.squeeze(0).flatten(0)

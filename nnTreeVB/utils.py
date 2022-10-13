@@ -18,6 +18,10 @@ import torch.nn as nn
 __author__ = "amine remita"
 
 
+def freeze_model_params(model):
+    for param in model.parameters():
+        param.requires_grad = False
+
 def build_neuralnet(
         in_dim,
         out_dim,
@@ -286,7 +290,10 @@ def get_weight_list(module):
 def apply_on_submodules(func, nn_module):
     ret = dict()
     for name, sub_module in nn_module.named_children():
-        if len(get_weight_list(sub_module))>0:
+        #if len(get_weight_list(sub_module))>0:
+        #TODO: Try another way to check the type 
+        # values to be collected (grads or weigths)
+        if len(get_grad_list(sub_module))>0:
             ret[name]=func(sub_module)
 
     return ret
@@ -323,19 +330,20 @@ def mean_confidence_interval(data, confidence=0.95, axis=0):
 
 def check_finite_grads(model, epoch, verbose=False):
 
-    finit = True
+    finite = True
     for name, param in model.named_parameters():
-        if not torch.isfinite(param.grad).all():
-            finit = False
+        if param.grad is None or\
+                not torch.isfinite(param.grad).all():
+            finite = False
 
             if verbose:
                 print("{} Nonfinit grad {} : {}".format(epoch,
                     name, param.grad))
             else:
-                return finit
+                return finite
 
-    if not finit and verbose: print()
-    return finit
+    if not finite and verbose: print()
+    return finite
 
 def dict_to_cpu(some_dict):
     new_dict = dict()

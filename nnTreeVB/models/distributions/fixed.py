@@ -7,7 +7,7 @@ from torch.distributions.kl import register_kl
 __author__ = "Amine Remita"
 
 
-class Fixed(Distribution)
+class Fixed(Distribution):
     def __init__(self, batch_shape, data):
         super().__init__(batch_shape=batch_shape)
 
@@ -49,6 +49,7 @@ class VB_Fixed(nn.Module):
             in_shape,              # [..., 6]
             out_shape,             # [..., 6]
             init_params=torch.ones(6),
+            learn_params: bool = False,
             device=torch.device("cpu")):
 
         super().__init__()
@@ -56,6 +57,7 @@ class VB_Fixed(nn.Module):
         self.in_shape = in_shape
         self.out_shape = out_shape
         self.data = init_params
+        self.learn_params = False
         self.device_ = device
 
         if self.data.device != self.device_:

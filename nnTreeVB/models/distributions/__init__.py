@@ -53,6 +53,12 @@ def get_distribution(dist_type="gamma"):
     elif dist_type == "normal_nn":
         distribution = VB_Normal_NN
 
+    elif dist_type == "exponential":
+        distribution = VB_Exponential
+
+    elif dist_type == "exponential_nn":
+        distribution = VB_Exponential_NN
+
     elif dist_type == "fixed":
         distribution = VB_Fixed
 
@@ -81,7 +87,7 @@ def build_distribution(
         dropout_layers:float = 0.,
         device: torch.device = torch.device("cpu")):
 
-    distribution = get_dist(dist_type)
+    distribution = get_distribution(dist_type)
 
     dist_args = dict(
             device=device)
@@ -94,6 +100,9 @@ def build_distribution(
         dist_args.update(
             transform_dist=transform_dist)
 
+    if dist_type != "fixed":
+        dist_args.update(learn_params=learn_params)
+
     if "nn" in dist_type:
         dist_args.update(
                 h_dim=h_dim,
@@ -101,7 +110,5 @@ def build_distribution(
                 bias_layers=bias_layers,
                 activ_layers=activ_layers,
                 dropout_layers=dropout_layers)
-    else:
-        dist_args.update(learn_params=learn_params)
 
     return distribution(in_shape, out_shape, **dist_args)

@@ -1,5 +1,6 @@
 from nnTreeVB.utils import init_parameters
 from nnTreeVB.utils import build_neuralnet
+from nnTreeVB.utils import freeze_model_params
 from nnTreeVB.typing import *
 
 import torch
@@ -27,6 +28,8 @@ class VB_Gamma(nn.Module):
         self.in_shape = in_shape
         self.out_shape = out_shape 
 
+        self.transform_dist = transform_dist
+
         # in_shape and out_shape should be updated if
         # the sample transform is to a simplex
         if isinstance(self.transform_dist,
@@ -37,8 +40,7 @@ class VB_Gamma(nn.Module):
         # shape (concentration, alpha) and rate (beta)
         self.nb_params = 2
         self.init_params = init_params
-
-        self.transform_dist = transform_dist
+        self.learn_params = learn_params
         self.device_ = device
 
         # init parameters initialization
@@ -61,7 +63,7 @@ class VB_Gamma(nn.Module):
                 self.input[1].repeat([*self.in_shape]))
 
         # Initialize the parameters of the distribution
-        if learn_params:
+        if self.learn_params:
             self.alpha_unconstr = nn.Parameter(
                     init_alpha_unconstr,
                     requires_grad=True).to(self.device_)
@@ -101,6 +103,7 @@ class VB_Gamma_NN(nn.Module):
             out_shape,            # [..., b_dim]
             # list of 2 floats, uniform, normal or False
             init_params: Union[list, str, bool] = [0.1, 0.1],
+            learn_params: bool = True,
             # Sample biject transformation
             transform_dist: TorchTransform = None,
             h_dim: int = 16, 
@@ -115,6 +118,8 @@ class VB_Gamma_NN(nn.Module):
         self.in_shape = in_shape
         self.out_shape = out_shape 
 
+        self.transform_dist = transform_dist
+
         # in_shape and out_shape should be updated if
         # the sample transform is to a simplex
         if isinstance(self.transform_dist,
@@ -128,8 +133,7 @@ class VB_Gamma_NN(nn.Module):
         # shape (concentration, alpha) and rate (beta)
         self.nb_params = 2
         self.init_params = init_params
-
-        self.transform_dist = transform_dist
+        self.learn_params = learn_params
 
         self.h_dim = h_dim          # hidden layer size
         self.nb_layers = nb_layers
@@ -163,13 +167,21 @@ class VB_Gamma_NN(nn.Module):
             self.nb_layers,
             self.bias_layers,
             self.activ_layers,
-            self.dropout
+            self.dropout,
             nn.Softplus(),
             self.device_)
+
+        if not self.learn_params:
+            freeze_model_params(self.net_alpha)
+            freeze_model_params(self.net_beta)
 
     def forward(self): 
 
         eps = torch.finfo().eps
+
+        if not self.learn_params:
+            freeze_model_params(self.net_alpha)
+            freeze_model_params(self.net_beta)
 
         self.alpha = self.net_alpha(
                 self.input[...,0]).clamp(min=0.+eps)

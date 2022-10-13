@@ -28,6 +28,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             # Prior distribution:
             b_prior_dist="gamma",
             b_prior_params=[0.2, 0.2],
+            b_learn_prior=False,
             # Variational distribution:
             # fixed | gamma | lognormal | normal
             b_var_dist="gamma", 
@@ -42,6 +43,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             # Prior distribution:
             t_prior_dist="gamma",
             t_prior_params=[0.2, 0.2],
+            t_learn_prior=False,
             # Variational distribution:
             # fixed | gamma | lognormal | normal
             t_var_dist="gamma", 
@@ -56,6 +58,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             # Prior distribution:
             r_prior_dist="dirichlet",
             r_prior_params=[1.]*6,
+            r_learn_prior=False,
             # Variational distribution:
             # fixed | dirichlet | normal
             r_var_dist="dirichlet_ind",
@@ -70,6 +73,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             # Prior distribution:
             f_prior_dist="dirichlet",
             f_prior_params=[1.]*4,
+            f_learn_prior=False,
             # Variational distribution:
             # fixed | dirichlet | normal
             f_var_dist="dirichlet_ind",  # 
@@ -84,6 +88,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             # Prior distribution:
             k_prior_dist="gamma",
             k_prior_params=[0.1, 0.1],
+            k_learn_prior=False,
             # Variational distribution:
             # fixed | gamma | lognormal | normal
             k_var_dist="gamma_ind",
@@ -126,7 +131,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                 device=self.device_)
 
         self.b_compound = False
-        if "dirichlet" in b_encoder_type:
+        if "dirichlet" in b_var_dist:
             self.b_compound = True
 
         # Initialize branch length prior distribution
@@ -135,7 +140,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                 [self.b_dim],
                 dist_type=b_prior_dist,
                 init_params=b_prior_params,
-                learn_params=False,
+                learn_params=b_learn_prior,
                 transform_dist=None,
                 **common_args)
 
@@ -150,7 +155,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                 **common_args)
  
         # Initialize branch length encoder
-        self.b_encoder(self.b_dist_p, self.b_dist_q)
+        self.b_encoder = VB_Encoder(self.b_dist_p, self.b_dist_q)
 
         if self.b_compound:
             # Using a Compound Dirichlet Gamma distribution
@@ -160,7 +165,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     [self.t_dim],
                     dist_type=t_prior_dist,
                     init_params=t_prior_params,
-                    learn_params=False,
+                    learn_params=t_learn_prior,
                     transform_dist=None,
                     **common_args)
 
@@ -175,7 +180,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     **common_args)
  
             # Initialize tree length encoder
-            self.t_encoder(self.t_dist_p, self.t_dist_q)
+            self.t_encoder = VB_Encoder(self.t_dist_p, self.t_dist_q)
 
         if self.subs_model in ["gtr"]:
             # Initialize rates prior distribution
@@ -184,7 +189,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     [self.r_dim],
                     dist_type=r_prior_dist,
                     init_params=r_prior_params,
-                    learn_params=False,
+                    learn_params=r_learn_prior,
                     transform_dist=None,
                     **common_args)
 
@@ -199,7 +204,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     **common_args)
 
             # Initialize rates encoder
-            self.r_encoder(self.r_dist_p, self.r_dist_q)
+            self.r_encoder = VB_Encoder(self.r_dist_p, self.r_dist_q)
 
         if self.subs_model in ["hky", "gtr"]:
             # Initialize frequencies prior distribution
@@ -208,7 +213,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     [self.f_dim],
                     dist_type=f_prior_dist,
                     init_params=f_prior_params,
-                    learn_params=False,
+                    learn_params=f_learn_prior,
                     transform_dist=None,
                     **common_args)
 
@@ -223,7 +228,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     **common_args)
 
             # Initialize frequencies encoder
-            self.f_encoder(self.f_dist_p, self.f_dist_q)
+            self.f_encoder = VB_Encoder(self.f_dist_p, self.f_dist_q)
 
         if self.subs_model in ["k80", "hky"]:
             # Initialize kappa prior distribution
@@ -232,7 +237,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     [self.k_dim],
                     dist_type=k_prior_dist,
                     init_params=k_prior_params,
-                    learn_params=False,
+                    learn_params=k_learn_prior,
                     transform_dist=None,
                     **common_args)
 
@@ -247,7 +252,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     **common_args)
             
             # Initialize kappa encoder
-            self.k_encoder(self.k_dist_p, self.k_dist_q)
+            self.k_encoder = VB_Encoder(self.k_dist_p, self.k_dist_q)
 
     def forward(self,
             sites, 

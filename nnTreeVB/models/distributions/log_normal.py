@@ -26,6 +26,8 @@ class VB_LogNormal(nn.Module):
 
         self.in_shape = in_shape
         self.out_shape = out_shape 
+
+        self.transform_dist = transform_dist
  
         # in_shape and out_shape should be updated if
         # the sample transform is to a simplex
@@ -37,8 +39,7 @@ class VB_LogNormal(nn.Module):
         # loc (mu) and scale (sigma) 
         self.nb_params = 2
         self.init_params = init_params
-
-        self.transform_dist = transform_dist
+        self.learn_params = learn_params
         self.device_ = device
 
         # init parameters initialization
@@ -58,7 +59,7 @@ class VB_LogNormal(nn.Module):
                 self.input[1].repeat([*self.in_shape]))
 
         # Initialize the parameters of the distribution
-        if learn_params:
+        if self.learn_params:
             self.mu = nn.Parameter(init_mu,
                     requires_grad=True).to(self.device_)
             self.sigma_unconstr = nn.Parameter(
@@ -95,6 +96,7 @@ class VB_LogNormal_NN(nn.Module):
             out_shape,            # [..., b_dim]
             # list of 2 floats, uniform, normal or False
             init_params: Union[list, str, bool] = [0.1, 0.1],
+            learn_params: bool = True,
             # Sample biject transformation
             transform_dist: TorchTransform = None,
             h_dim: int = 16, 
@@ -109,6 +111,8 @@ class VB_LogNormal_NN(nn.Module):
         self.in_shape = in_shape
         self.out_shape = out_shape 
 
+        self.transform_dist = transform_dist
+
         # in_shape and out_shape should be updated if
         # the sample transform is to a simplex
         if isinstance(self.transform_dist,
@@ -122,8 +126,7 @@ class VB_LogNormal_NN(nn.Module):
         # loc (mu) and scale (sigma) 
         self.nb_params = 2
         self.init_params = init_params
-
-        self.transform_dist = transform_dist
+        self.learn_params = learn_params
 
         self.h_dim = h_dim          # hidden layer size
         self.nb_layers = nb_layers
@@ -157,13 +160,21 @@ class VB_LogNormal_NN(nn.Module):
             self.nb_layers,
             self.bias_layers,
             self.activ_layers,
-            self.dropout
+            self.dropout,
             nn.Softplus(),
             self.device_)
+
+        if not self.learn_params:
+            freeze_model_params(self.net_mu)
+            freeze_model_params(self.net_sigma)
 
     def forward(self): 
 
         eps = torch.finfo().eps
+
+        if not self.learn_params:
+            freeze_model_params(self.net_mu)
+            freeze_model_params(self.net_sigma)
 
         self.mu = self.net_mu(self.input[...,0])
         self.sigma = self.net_sigma(
