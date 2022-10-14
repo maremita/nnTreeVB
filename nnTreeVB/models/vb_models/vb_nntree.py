@@ -155,7 +155,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                 **common_args)
  
         # Initialize branch length encoder
-        self.b_encoder = VB_Encoder(self.b_dist_p, self.b_dist_q)
+        self.b_encoder = VB_Encoder(
+                self.b_dist_p, self.b_dist_q)
 
         if self.b_compound:
             # Using a Compound Dirichlet Gamma distribution
@@ -180,7 +181,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     **common_args)
  
             # Initialize tree length encoder
-            self.t_encoder = VB_Encoder(self.t_dist_p, self.t_dist_q)
+            self.t_encoder = VB_Encoder(
+                    self.t_dist_p, self.t_dist_q)
 
         if self.subs_model in ["gtr"]:
             # Initialize rates prior distribution
@@ -204,7 +206,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     **common_args)
 
             # Initialize rates encoder
-            self.r_encoder = VB_Encoder(self.r_dist_p, self.r_dist_q)
+            self.r_encoder = VB_Encoder(
+                    self.r_dist_p, self.r_dist_q)
 
         if self.subs_model in ["hky", "gtr"]:
             # Initialize frequencies prior distribution
@@ -228,7 +231,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     **common_args)
 
             # Initialize frequencies encoder
-            self.f_encoder = VB_Encoder(self.f_dist_p, self.f_dist_q)
+            self.f_encoder = VB_Encoder(
+                    self.f_dist_p, self.f_dist_q)
 
         if self.subs_model in ["k80", "hky"]:
             # Initialize kappa prior distribution
@@ -252,7 +256,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     **common_args)
             
             # Initialize kappa encoder
-            self.k_encoder = VB_Encoder(self.k_dist_p, self.k_dist_q)
+            self.k_encoder = VB_Encoder(
+                    self.k_dist_p, self.k_dist_q)
 
     def forward(self,
             sites, 

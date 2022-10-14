@@ -63,7 +63,7 @@ def get_distribution(dist_type="gamma"):
         distribution = VB_Fixed
 
     else:
-        print("warning distribution type")
+        print("warning distribution type {}".format(dist_type))
         distribution = VB_Fixed
 
     return distribution
