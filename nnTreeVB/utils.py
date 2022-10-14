@@ -8,12 +8,82 @@ import configparser
 from pprint import pformat
 
 import numpy as np
-import torch
 from joblib import Parallel, delayed
 import scipy.stats
 from scipy.stats.stats import pearsonr#, spearmanr
 
+import torch
+import torch.nn as nn
+
 __author__ = "amine remita"
+
+
+def freeze_model_params(model):
+    for param in model.parameters():
+        param.requires_grad = False
+
+def build_neuralnet(
+        in_dim,
+        out_dim,
+        h_dim,
+        nb_layers,
+        bias_layers,
+        activ_layers,
+        dropout,
+        last_layers, #nn.Softplus() for example
+        device):
+
+    if activ_layers == "relu":
+        activation = nn.ReLU
+    elif activ_layers == "tanh":
+        activation = nn.Tanh
+    else:
+        print("activation set to ReLU")
+        activation = nn.ReLU
+
+    if nb_layers < 2:
+        nb_layers = 2
+        print("The number of layers in {} should"\
+                " be >= 2. It's set set to 2".format(self))
+
+    assert 0. <= dropout <= 1.
+
+    # Construct the neural network
+    layers = [nn.Linear(in_dim, h_dim,
+        bias=bias_layers)]
+    if activ_layers: layers.append(activation())
+    if dropout: layers.append(
+            nn.Dropout(p=dropout))
+
+    for i in range(1, nb_layers-1):
+        layers.extend([nn.Linear(h_dim, h_dim,
+            bias=bias_layers)])
+        if activ_layers: layers.append(activation())
+        if dropout: layers.append(
+                nn.Dropout(p=dropout))
+
+    layers.extend([nn.Linear(h_dim, out_dim,
+        bias=bias_layers)])
+
+    if last_layers is not None:
+        layers.extend([last_layers])
+
+    return nn.Sequential(*layers)
+
+
+def init_parameters(init_params, nb_params):
+    if isinstance(init_params, (list)):
+        assert len(init_params) == nb_params
+        init_input = torch.tensor(init_params)
+    else:
+        init_input = torch.ones(nb_params)
+
+    if init_params == "uniform":
+        init_input = init_input.uniform_()
+    elif init_params == "normal":
+        init_input = init_input.normal_()
+
+    return init_input
 
 
 def check_sample_size(sample_size):
@@ -220,7 +290,10 @@ def get_weight_list(module):
 def apply_on_submodules(func, nn_module):
     ret = dict()
     for name, sub_module in nn_module.named_children():
-        if len(get_weight_list(sub_module))>0:
+        #if len(get_weight_list(sub_module))>0:
+        #TODO: Try another way to check the type 
+        # values to be collected (grads or weigths)
+        if len(get_grad_list(sub_module))>0:
             ret[name]=func(sub_module)
 
     return ret
@@ -257,19 +330,20 @@ def mean_confidence_interval(data, confidence=0.95, axis=0):
 
 def check_finite_grads(model, epoch, verbose=False):
 
-    finit = True
+    finite = True
     for name, param in model.named_parameters():
-        if not torch.isfinite(param.grad).all():
-            finit = False
+        if param.grad is None or\
+                not torch.isfinite(param.grad).all():
+            finite = False
 
             if verbose:
                 print("{} Nonfinit grad {} : {}".format(epoch,
                     name, param.grad))
             else:
-                return finit
+                return finite
 
-    if not finit and verbose: print()
-    return finit
+    if not finite and verbose: print()
+    return finite
 
 def dict_to_cpu(some_dict):
     new_dict = dict()

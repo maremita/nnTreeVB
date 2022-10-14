@@ -23,7 +23,9 @@ from scipy.spatial.distance import hamming
 
 __author__ = "amine remita"
 
-__all__ = ["BaseTreeVB"]
+__all__ = [
+        "BaseTreeVB"
+        ]
 
 
 class BaseTreeVB(ABC):
@@ -62,21 +64,10 @@ class BaseTreeVB(ABC):
             X_val=None,
             # If not None, a validation stpe will be done
             X_val_counts=None,
-            A_val=None, 
-            # (np.ndarray) Embedded ancestral sequence which
-            # was used to sample the estimates.
-            # If not None, it will be used only to report its
-            # distance with the inferred ancestral
-            # sequence during calidation
-            # It is not used during the inference.
             save_fit_history=False,
             # Save estimates for each epoch of fitting step
             save_val_history=False,
             #Save estimates for each epoch of validation step
-            #keep_fit_vars=False,
-            # Save estimate variances from fitting step
-            #keep_val_vars=False,
-            # Save estimate variances from validation step
             save_grad_stats=False,
             # Save statistics of gradients
             save_weight_stats=False,
@@ -111,7 +102,6 @@ class BaseTreeVB(ABC):
                 lr=lr_default,
                 weight_decay=optim_weight_decay)
 
-        
         # Scheduler configuration
         scheduler = torch.optim.lr_scheduler.LambdaLR(
                 optimizer,
@@ -287,7 +277,8 @@ class BaseTreeVB(ABC):
 
                 if save_fit_history:
                     fit_estim = dict()
-                    for estim in ["b", "t", "b1", "r", "f", "k"]:
+                    for estim in ["b", "t", "b1", "r",\
+                            "f", "k"]:
                         if estim in fit_dict:
                             fit_estim[estim] = fit_dict[estim]
                     ret["fit_estimates"].append(fit_estim)
@@ -303,7 +294,8 @@ class BaseTreeVB(ABC):
                                 get_weight_stats, self))
 
                 if X_val is not None:
-                    ret["elbos_val_list"].append(elbo_val.item())
+                    ret["elbos_val_list"].append(
+                            elbo_val.item())
                     ret["lls_val_list"].append(lls_val.item())
                     ret["lps_val_list"].append(lps_val.item())
                     ret["lqs_val_list"].append(lqs_val.item())
@@ -311,47 +303,11 @@ class BaseTreeVB(ABC):
 
                     if save_val_history:
                         val_estim = dict()
-                        for estim in ["b", "t", "b1", "r", "f", "k"]:
+                        for estim in ["b", "t", "b1", "r",\
+                                "f", "k"]:
                             if estim in val_dict:
-                                val_estim[estim]=val_dict[estim]
-
-                        # Generated sequences and inferred 
-                        # ancestral sequences are not saved 
-                        # for each epoch because they consume
-                        # a lot of space.
-                        # Instead of that, we report their
-                        # distances with actual sequences.
- 
-                        # Compute Hamming and average Euclidean
-                        # distances
-                        # between X_val and generated sequences
-                        if "x" in val_dict:
-                            xrecons = val_dict["x"]
-                            x_ham_dist = np.array([hamming(
-                                xrecons[:,i,:].argmax(axis=1),
-                                np_X_val[:,i,:].argmax(axis=1))\
-                                        for i in range(
-                                            np_X_val.shape[1])])
-                            x_euc_dist = np.linalg.norm(
-                                    xrecons -np_X_val,
-                                    axis=2).mean(0)
-                            val_estim['x_hamming'] = x_ham_dist
-                            val_estim['x_euclidean'] = x_euc_dist
- 
-                        # Compute Hamming and average Euclidea 
-                        # distances
-                        # between actual ancestral sequence and
-                        # inferred ancestral sequence
-                        if A_val is not None and "a" in val_dict:
-                            estim_ancestor = val_dict["a"]
-                            a_ham_dist = np.array([hamming(
-                                    estim_ancestor.argmax(axis=1),
-                                    A_val.argmax(axis=1))])
-                            a_euc_dist = np.array([np.linalg.norm(
-                                    estim_ancestor - A_val, 
-                                    axis=1).mean()])
-                            val_estim['a_hamming'] = a_ham_dist
-                            val_estim['a_euclidean'] = a_euc_dist
+                                val_estim[estim]=val_dict[
+                                        estim]
 
                         ret["val_estimates"].append(val_estim)
         # End of fitting/validating
@@ -364,11 +320,16 @@ class BaseTreeVB(ABC):
             ret["lqs_list"] = np.array(ret["lqs_list"])
             ret["kls_list"] = np.array(ret["kls_list"])
             if X_val is not None:
-                ret["elbos_val_list"]=np.array(ret["elbos_val_list"])
-                ret["lls_val_list"] = np.array(ret["lls_val_list"]) 
-                ret["lps_val_list"] = np.array(ret["lps_val_list"])
-                ret["lqs_val_list"] = np.array(ret["lqs_val_list"])
-                ret["kls_val_list"] = np.array(ret["kls_val_list"])
+                ret["elbos_val_list"]=np.array(
+                        ret["elbos_val_list"])
+                ret["lls_val_list"] = np.array(
+                        ret["lls_val_list"]) 
+                ret["lps_val_list"] = np.array(
+                        ret["lps_val_list"])
+                ret["lqs_val_list"] = np.array(
+                        ret["lqs_val_list"])
+                ret["kls_val_list"] = np.array(
+                        ret["kls_val_list"])
 
         optim_rate = optim_nb/max_iter
 

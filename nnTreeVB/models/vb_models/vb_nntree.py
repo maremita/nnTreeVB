@@ -1,6 +1,6 @@
 from nnTreeVB.models.vb_models import BaseTreeVB
+from nnTreeVB.models.vb_encoders import VB_Encoder
 from nnTreeVB.models.vb_encoders import build_distribution
-from nnTreeVB.models.vb_encoders import build_vb_encoder
 from nnTreeVB.models.evo_models import build_transition_matrix
 from nnTreeVB.models.evo_models import pruning_rescaled
 #from nnTreeVB.models.evo_models import pruning
@@ -25,65 +25,79 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             subs_model="gtr", # jc69 | k80 | hky | gtr
             # #################################################
             # Branch lengths encoder
-            # fixed | gamma | lognormal | normal
-            b_encoder_type="gamma_ind", 
-            b_init_distr=[0.1, 0.1], 
-            # if not nn: list of 2 floats
-            # if nn: list of 2 floats, uniform, normal or False
-            # if fixed: tensor
-            #
+            # Prior distribution:
             b_prior_dist="gamma",
             b_prior_params=[0.2, 0.2],
+            b_learn_prior=False,
+            # Variational distribution:
+            # fixed | gamma | lognormal | normal
+            b_var_dist="gamma", 
+            b_var_params=[0.1, 0.1], 
+            # if not nn: list of 2 floats
+            # if nn: list of 2 floats, uniform, normal or False
+            # if fixed: tensor
             #
-            b_transform_dist=None,
+            b_var_transform=None,
             # #################################################
             # Total tree length
-            # fixed | gamma | lognormal | normal
-            t_encoder_type="gamma_ind", 
-            t_init_distr=[0.1, 0.1],
-            # if not nn: list of 2 floats
-            # if nn: list of 2 floats, uniform, normal or False
-            # if fixed: tensor
+            # Prior distribution:
             t_prior_dist="gamma",
             t_prior_params=[0.2, 0.2],
-            #
-            t_transform_dist=None,
-            # #################################################
-            # GTR rates encoder args
-            # fixed | dirichlet | normal
-            r_encoder_type="dirichlet_ind",
-            r_init_distr=[1.]*6, 
-            # if not nn: list of 6 floats
-            # if nn: list of 6 floats, uniform, normal or False
-            # if fixed: tensor
-            r_prior_dist="dirichlet",
-            r_prior_params=[1.]*6,
-            #
-            r_transform_dist=None,
-            # #################################################
-            # GTR frequencies encoder args
-            # fixed | dirichlet | normal
-            f_encoder_type="dirichlet_ind",  # 
-            f_init_distr=[1.]*4, 
-            # if not nn: list of 6 floats
-            # if nn: list of 6 floats, uniform, normal or False
-            # if fixed: tensor
-            f_prior_dist="dirichlet",
-            f_prior_params=[1.]*4,
-            #
-            f_transform_dist=None,
-            # #################################################
-            # k encoder args
-            # fixed | gamma | lognormal | normal
-            k_encoder_type="gamma_ind",
-            k_init_distr=[0.1, 0.1], 
+            t_learn_prior=False,
+            # Variational distribution:
+            # fixed | gamma | lognormal | normal
+            t_var_dist="gamma", 
+            t_var_params=[0.1, 0.1], 
             # if not nn: list of 2 floats
             # if nn: list of 2 floats, uniform, normal or False
             # if fixed: tensor
+            #
+            t_var_transform=None,
+            # #################################################
+            # GTR rates encoder args
+            # Prior distribution:
+            r_prior_dist="dirichlet",
+            r_prior_params=[1.]*6,
+            r_learn_prior=False,
+            # Variational distribution:
+            # fixed | dirichlet | normal
+            r_var_dist="dirichlet_ind",
+            r_var_params=[1.]*6, 
+            # if not nn: list of 6 floats
+            # if nn: list of 6 floats, uniform, normal or False
+            # if fixed: tensor
+            #
+            r_var_transform=None,
+            # #################################################
+            # GTR frequencies encoder args
+            # Prior distribution:
+            f_prior_dist="dirichlet",
+            f_prior_params=[1.]*4,
+            f_learn_prior=False,
+            # Variational distribution:
+            # fixed | dirichlet | normal
+            f_var_dist="dirichlet_ind",  # 
+            f_var_params=[1.]*4, 
+            # if not nn: list of 6 floats
+            # if nn: list of 6 floats, uniform, normal or False
+            # if fixed: tensor
+            #
+            f_var_transform=None,
+            # #################################################
+            # Kappa encoder args
+            # Prior distribution:
             k_prior_dist="gamma",
             k_prior_params=[0.1, 0.1],
+            k_learn_prior=False,
+            # Variational distribution:
+            # fixed | gamma | lognormal | normal
+            k_var_dist="gamma_ind",
+            k_var_params=[0.1, 0.1], 
+            # if not nn: list of 2 floats
+            # if nn: list of 2 floats, uniform, normal or False
+            # if fixed: tensor
             #
-            k_transform_dist=None,
+            k_var_transform=None,
             # #################################################
             # Following parameters are needed if nn
             h_dim=16,
@@ -108,22 +122,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         self.subs_model = subs_model
         self.device_ = device
 
-        self.b_compound = False
-        if "dirichlet" in b_encoder_type:
-            self.b_compound = True
-
-        # Initialize branch length prior distribution
-        self.b_dist_p = build_distribution(
-                b_prior_dist, b_prior_params)
-
-        # Initialize branch length encoder
-        self.b_encoder = build_vb_encoder(
-                [self.b_dim],
-                [self.b_dim],
-                encoder_type=b_encoder_type,
-                init_distr=b_init_distr,
-                prior_dist=self.b_dist_p,
-                transform_dist=b_transform_dist,
+        common_args = dict(
                 h_dim=h_dim,
                 nb_layers=nb_layers,
                 bias_layers=bias_layers,
@@ -131,82 +130,134 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                 dropout_layers=dropout_layers,
                 device=self.device_)
 
+        self.b_compound = False
+        if "dirichlet" in b_var_dist:
+            self.b_compound = True
+
+        # Initialize branch length prior distribution
+        self.b_dist_p = build_distribution(
+                [self.b_dim],
+                [self.b_dim],
+                dist_type=b_prior_dist,
+                init_params=b_prior_params,
+                learn_params=b_learn_prior,
+                transform_dist=None,
+                **common_args)
+
+        # Initialize branch length variational distribution
+        self.b_dist_q = build_distribution(
+                [self.b_dim],
+                [self.b_dim],
+                dist_type=b_var_dist,
+                init_params=b_var_params,
+                learn_params=True,
+                transform_dist=b_var_transform,
+                **common_args)
+ 
+        # Initialize branch length encoder
+        self.b_encoder = VB_Encoder(
+                self.b_dist_p, self.b_dist_q)
+
         if self.b_compound:
+            # Using a Compound Dirichlet Gamma distribution
             # Initialize tree length prior distribution
             self.t_dist_p = build_distribution(
-                    t_prior_dist, t_prior_params)
+                    [self.t_dim],
+                    [self.t_dim],
+                    dist_type=t_prior_dist,
+                    init_params=t_prior_params,
+                    learn_params=t_learn_prior,
+                    transform_dist=None,
+                    **common_args)
 
+            # Initialize tree length variational distribution
+            self.t_dist_q = build_distribution(
+                    [self.t_dim],
+                    [self.t_dim],
+                    dist_type=t_var_dist,
+                    init_params=t_var_params,
+                    learn_params=True,
+                    transform_dist=t_var_transform,
+                    **common_args)
+ 
             # Initialize tree length encoder
-            # Using a Compound Dirichlet Gamma distribution
-            self.t_encoder = build_vb_encoder(
-                    [self.t_dim],
-                    [self.t_dim],
-                    encoder_type=t_encoder_type,
-                    init_distr=t_init_distr,
-                    prior_dist=self.t_dist_p,
-                    transform_dist=t_transform_dist,
-                    h_dim=h_dim,
-                    nb_layers=nb_layers,
-                    bias_layers=bias_layers,
-                    activ_layers=activ_layers,
-                    device=self.device_)
+            self.t_encoder = VB_Encoder(
+                    self.t_dist_p, self.t_dist_q)
 
         if self.subs_model in ["gtr"]:
             # Initialize rates prior distribution
             self.r_dist_p = build_distribution(
-                    r_prior_dist, r_prior_params)
+                    [self.r_dim],
+                    [self.r_dim],
+                    dist_type=r_prior_dist,
+                    init_params=r_prior_params,
+                    learn_params=r_learn_prior,
+                    transform_dist=None,
+                    **common_args)
+
+            # Initialize rates variational distribution
+            self.r_dist_q = build_distribution(
+                    [self.r_dim],
+                    [self.r_dim],
+                    dist_type=r_var_dist,
+                    init_params=r_var_params,
+                    learn_params=True,
+                    transform_dist=r_var_transform,
+                    **common_args)
 
             # Initialize rates encoder
-            self.r_encoder = build_vb_encoder(
-                    [self.r_dim],
-                    [self.r_dim],
-                    encoder_type=r_encoder_type,
-                    init_distr=r_init_distr,
-                    prior_dist=self.r_dist_p,
-                    transform_dist=r_transform_dist,
-                    h_dim=h_dim,
-                    nb_layers=nb_layers,
-                    bias_layers=bias_layers,
-                    activ_layers=activ_layers,
-                    device=self.device_)
+            self.r_encoder = VB_Encoder(
+                    self.r_dist_p, self.r_dist_q)
 
         if self.subs_model in ["hky", "gtr"]:
             # Initialize frequencies prior distribution
             self.f_dist_p = build_distribution(
-                    f_prior_dist, f_prior_params)
+                    [self.f_dim],
+                    [self.f_dim],
+                    dist_type=f_prior_dist,
+                    init_params=f_prior_params,
+                    learn_params=f_learn_prior,
+                    transform_dist=None,
+                    **common_args)
+
+            # Initialize frequencies variational distribution
+            self.f_dist_q = build_distribution(
+                    [self.f_dim],
+                    [self.f_dim],
+                    dist_type=f_var_dist,
+                    init_params=f_var_params,
+                    learn_params=True,
+                    transform_dist=f_var_transform,
+                    **common_args)
 
             # Initialize frequencies encoder
-            self.f_encoder = build_vb_encoder(
-                    [self.f_dim],
-                    [self.f_dim],
-                    encoder_type=f_encoder_type,
-                    init_distr=f_init_distr,
-                    prior_dist=self.f_dist_p,
-                    transform_dist=f_transform_dist,
-                    h_dim=h_dim,
-                    nb_layers=nb_layers,
-                    bias_layers=bias_layers,
-                    activ_layers=activ_layers,
-                    device=self.device_)
+            self.f_encoder = VB_Encoder(
+                    self.f_dist_p, self.f_dist_q)
 
         if self.subs_model in ["k80", "hky"]:
             # Initialize kappa prior distribution
             self.k_dist_p = build_distribution(
-                    k_prior_dist, k_prior_params)
+                    [self.k_dim],
+                    [self.k_dim],
+                    dist_type=k_prior_dist,
+                    init_params=k_prior_params,
+                    learn_params=k_learn_prior,
+                    transform_dist=None,
+                    **common_args)
 
+            # Initialize kappa variational distribution
+            self.k_dist_q = build_distribution(
+                    [self.k_dim],
+                    [self.k_dim],
+                    dist_type=k_var_dist,
+                    init_params=k_var_params,
+                    learn_params=True,
+                    transform_dist=k_var_transform,
+                    **common_args)
+            
             # Initialize kappa encoder
-            self.k_encoder = build_vb_encoder(
-                    [self.k_dim],
-                    [self.k_dim],
-                    encoder_type=k_encoder_type,
-                    init_distr=k_init_distr,
-                    prior_dist=self.k_dist_p,
-                    transform_dist=k_transform_dist,
-                    h_dim=h_dim,
-                    nb_layers=nb_layers,
-                    bias_layers=bias_layers,
-                    activ_layers=activ_layers,
-                    device=self.device_)
+            self.k_encoder = VB_Encoder(
+                    self.k_dist_p, self.k_dist_q)
 
     def forward(self,
             sites, 
@@ -215,6 +266,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             sample_size=torch.Size([1]),
             alpha_kl=1.,
             shuffle_sites=True):
+
+        eps = torch.finfo().eps
 
         # returned dict
         ret_values = dict()
@@ -262,7 +315,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         # Sample b from q_d and compute log prior, log q
         b_logprior, b_logq, b_kl, b_samples = self.b_encoder(
                 sample_size=sample_size,
-                KL_gradient=elbo_kl)
+                KL_gradient=elbo_kl,
+                min_clamp=eps)
 
         #print("b_logprior {}".format(b_logprior.shape))
         #print("b_logq {}".format(b_logq.shape))
@@ -281,7 +335,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             t_logprior, t_logq, t_kl, t_samples =\
                     self.t_encoder(
                             sample_size=sample_size,
-                            KL_gradient=elbo_kl)
+                            KL_gradient=elbo_kl,
+                            min_clamp=eps)
 
             bt_samples = (b_samples * t_samples)
             #print("t_samples.shape {}".format(
@@ -344,7 +399,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             k_logprior, k_logq, k_kl, k_samples =\
                     self.k_encoder(
                             sample_size=sample_size,
-                            KL_gradient=elbo_kl)
+                            KL_gradient=elbo_kl,
+                            min_clamp=eps)
 
             #print("k_logprior {}".format(k_logprior.shape))
             #print("k_logq {}".format(k_logq.shape))

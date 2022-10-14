@@ -2,14 +2,6 @@ from nnTreeVB.typing import TorchDistribution
 
 import torch
 
-#from torch.distributions.normal import Normal
-#from torch.distributions.log_normal import LogNormal
-#from torch.distributions.gamma import Gamma
-#from torch.distributions.dirichlet import Dirichlet
-#from torch.distributions.categorical import Categorical
-#from torch.distributions.exponential import Exponential
-#from torch.distributions.uniform import Uniform
-
 __author__ = "Amine Remita"
 
 
@@ -90,8 +82,6 @@ def build_Exponential(
         params: list)->TorchDistribution:
 
     rate = torch.tensor(params)
-
-    assert rate.shape[-1] == 1
 
     return torch.distributions.exponential.Exponential(rate)
 

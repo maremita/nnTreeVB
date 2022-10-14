@@ -5,13 +5,14 @@
 ##                             ##
 #################################
 
+from .vb_encoder import VB_Encoder
 
 from .vb_dirichlet import *
-from .vb_gamma import *
-from .vb_logNormal import *
-from .vb_normal import *
+from .vb_exponential import *
 from .vb_fixed import *
-from .build_distributions import build_distribution 
+from .vb_gamma import *
+from .vb_log_normal import *
+from .vb_normal import *
 
 from nnTreeVB.typing import *
 
@@ -19,97 +20,98 @@ import torch
 
 __author__ = "amine remita"
 
-
 __all__ = [
-        "get_vb_encoder",
-        "build_vb_encoder"
-        "build_distribution"
+        "VB_Encoder",
+        "get_distribution",
+        "build_distribution",
         ]
 
-def get_vb_encoder(encoder_type="gamma"):
-    encoder_type = encoder_type.lower()
+def get_distribution(dist_type="gamma"):
+    dist_type = dist_type.lower()
 
-    if encoder_type == "gamma_ind":
-        encoder = VB_Gamma_IndEncoder
+    if dist_type == "gamma":
+        distribution = VB_Gamma
 
-    elif encoder_type == "gamma_nn_ind":
-        encoder = VB_Gamma_NNIndEncoder
+    elif dist_type == "gamma_nn":
+        distribution = VB_Gamma_NN
 
-    elif encoder_type == "lognormal_ind":
-        encoder = VB_LogNormal_IndEncoder
+    elif dist_type == "lognormal":
+        distribution = VB_LogNormal
 
-    elif encoder_type == "lognormal_nn_ind":
-        encoder = VB_LogNormal_NNIndEncoder
+    elif dist_type == "lognormal_nn":
+        distribution = VB_LogNormal_NN
 
-    elif encoder_type == "dirichlet_ind":
-        encoder = VB_Dirichlet_IndEncoder
+    elif dist_type == "dirichlet":
+        distribution = VB_Dirichlet
 
-    elif encoder_type == "dirichlet_nn_ind":
-        encoder = VB_Dirichlet_NNIndEncoder
+    elif dist_type == "dirichlet_nn":
+        distribution = VB_Dirichlet_NN
 
-    elif encoder_type == "dirichlet_nn":
-        encoder = VB_Dirichlet_NNEncoder
+    elif dist_type == "dirichlet_nnx":
+        distribution = VB_Dirichlet_NNX
 
-    elif encoder_type == "normal_ind":
-        encoder = VB_Normal_IndEncoder
+    elif dist_type == "normal":
+        distribution = VB_Normal
 
-    elif encoder_type == "normal_nn_ind":
-        encoder = VB_Normal_NNIndEncoder
+    elif dist_type == "normal_nn":
+        distribution = VB_Normal_NN
 
-    elif encoder_type == "fixed":
-        encoder = VB_FixedEncoder
+    elif dist_type == "exponential":
+        distribution = VB_Exponential
+
+    elif dist_type == "exponential_nn":
+        distribution = VB_Exponential_NN
+
+    elif dist_type == "fixed":
+        distribution = VB_Fixed
 
     else:
-        print("warning encoder type")
-        encoder = VB_FixedEncoder
+        print("warning distribution type {}".format(dist_type))
+        distribution = VB_Fixed
 
-    return encoder
+    return distribution
 
 
-def build_vb_encoder(
+def build_distribution(
         in_shape: list,
         out_shape: list,
-        encoder_type: str = "gamma", # gamma_ind
-        init_distr: list = [0.1, 0.1], 
+        dist_type: str = "gamma", # gamma
+        init_params: list = [0.1, 0.1], 
         # if not deep: list of 2 floats
-        # if deep: list of 2 floats, uniform, normal for nnInd
-        # or False for nn encoders
-        # or tensor for fixed encoder
-        prior_dist: TorchDistribution = None,
+        # if deep: list of 2 floats, uniform, normal
+        # or False for nn distributions
+        learn_params: bool = True,
         transform_dist: TorchTransform = None,
         # Following parameters are needed if nn
         h_dim: int = 16,
         nb_layers: int = 3,
-        bias_layers: bool = True,     # True or False
+        bias_layers: bool = True,    # True or False
         activ_layers: str = "relu",  # relu, tanh, or False
         dropout_layers:float = 0.,
         device: torch.device = torch.device("cpu")):
 
-    encoder = get_vb_encoder(encoder_type)
+    distribution = get_distribution(dist_type)
 
-    encoder_args = dict(
+    dist_args = dict(
             device=device)
 
-    if encoder_type != "fixed":
-        encoder_args.update(
-            prior_dist=prior_dist)
-    else:
-        assert isinstance(init_distr, torch.Tensor)
-
-    if init_distr is not False:
-        encoder_args.update(
-            init_distr=init_distr)
+    if init_params is not False:
+        dist_args.update(
+            init_params=init_params)
 
     if transform_dist is not None:
-        encoder_args.update(
+        dist_args.update(
             transform_dist=transform_dist)
 
-    if "nn" in encoder_type:
-        encoder_args.update(
+    if dist_type != "fixed":
+        dist_args.update(learn_params=learn_params)
+
+    if "nn" in dist_type:
+        dist_args.update(
                 h_dim=h_dim,
                 nb_layers=nb_layers,
                 bias_layers=bias_layers,
                 activ_layers=activ_layers,
                 dropout_layers=dropout_layers)
 
-    return encoder(in_shape, out_shape, **encoder_args)
+    return distribution(in_shape, out_shape, **dist_args)

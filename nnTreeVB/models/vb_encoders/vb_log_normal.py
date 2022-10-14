@@ -4,18 +4,18 @@ from nnTreeVB.typing import *
 
 import torch
 import torch.nn as nn
-from torch.distributions.normal import Normal
+from torch.distributions.log_normal import LogNormal
 from torch.distributions import transform_to
 from torch.distributions import TransformedDistribution
 
 __author__ = "Amine Remita"
 
 
-class VB_Normal(nn.Module):
+class VB_LogNormal(nn.Module):
     def __init__(self,
             in_shape: list,         # [..., b_dim]
             out_shape: list,        # [..., b_dim]
-            # List of 2 floats, "uniform", "normal" or False
+            # list of 2 floats, uniform, normal or False
             init_params: Union[list, str, bool] = [0.1, 0.1],
             learn_params: bool = True,
             # Sample biject transformation
@@ -26,7 +26,7 @@ class VB_Normal(nn.Module):
 
         self.in_shape = in_shape
         self.out_shape = out_shape 
- 
+
         self.transform_dist = transform_dist
  
         # in_shape and out_shape should be updated if
@@ -35,7 +35,7 @@ class VB_Normal(nn.Module):
                 torch.distributions.StickBreakingTransform):
             self.in_shape[-1] -= 1
             self.out_shape[-1] -= 1
-
+        
         # loc (mu) and scale (sigma) 
         self.nb_params = 2
         self.init_params = init_params
@@ -48,7 +48,7 @@ class VB_Normal(nn.Module):
 
         # Distr parameters transforms
         self.tr_to_sigma_constr = transform_to(
-                Normal.arg_constraints['scale'])
+                LogNormal.arg_constraints['scale'])
 
         init_mu = self.input[0].repeat(
                 [*self.in_shape])
@@ -78,9 +78,9 @@ class VB_Normal(nn.Module):
         self.sigma = self.tr_to_sigma_constr(
                 self.sigma_unconstr)
 
-        # Initialize the distribution
-        base_dist = Normal(self.mu, self.sigma)
- 
+        # Approximate distribution
+        base_dist = LogNormal(self.mu, self.sigma)
+
         if self.transform_dist is not None:
             self.dist = TransformedDistribution(base_dist,
                     self.transform_dist)
@@ -90,7 +90,7 @@ class VB_Normal(nn.Module):
         return self.dist
 
 
-class VB_Normal_NN(nn.Module):
+class VB_LogNormal_NN(nn.Module):
     def __init__(self,
             in_shape,             # [..., b_dim]
             out_shape,            # [..., b_dim]
@@ -112,7 +112,7 @@ class VB_Normal_NN(nn.Module):
         self.out_shape = out_shape 
 
         self.transform_dist = transform_dist
- 
+
         # in_shape and out_shape should be updated if
         # the sample transform is to a simplex
         if isinstance(self.transform_dist,
@@ -181,8 +181,8 @@ class VB_Normal_NN(nn.Module):
                 self.input[...,1]).clamp(min=0.+eps)
 
         # Approximate distribution
-        base_dist = Normal(self.mu, self.sigma)
- 
+        base_dist = LogNormal(self.mu, self.sigma)
+
         if self.transform_dist is not None:
             self.dist = TransformedDistribution(base_dist,
                     self.transform_dist)
