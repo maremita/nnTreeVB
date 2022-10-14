@@ -1,5 +1,4 @@
 from nnTreeVB.utils import min_max_clamp
-from nnTreeVB.typing import *
 from nnTreeVB.utils import check_sample_size
 
 import torch

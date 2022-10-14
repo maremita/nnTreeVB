@@ -8,8 +8,6 @@
 # This code is adapted from evoABCmodels.py module of evoVGM
 # https://github.com/maremita/evoVGM/blob/main/evoVGM/models/evoABCmodels.py
 
-from .vb_encoders import VB_Encoder
-
 from nnTreeVB.utils import timeSince, dict_to_numpy
 from nnTreeVB.utils import check_finite_grads
 from nnTreeVB.utils import get_grad_stats
@@ -26,7 +24,6 @@ from scipy.spatial.distance import hamming
 __author__ = "amine remita"
 
 __all__ = [
-        "VB_Encoder",
         "BaseTreeVB"
         ]
 

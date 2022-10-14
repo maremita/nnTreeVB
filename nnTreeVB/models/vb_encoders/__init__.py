@@ -5,12 +5,14 @@
 ##                             ##
 #################################
 
-from .dirichlet import *
-from .exponential import *
-from .fixed import *
-from .gamma import *
-from .log_normal import *
-from .normal import *
+from .vb_encoder import VB_Encoder
+
+from .vb_dirichlet import *
+from .vb_exponential import *
+from .vb_fixed import *
+from .vb_gamma import *
+from .vb_log_normal import *
+from .vb_normal import *
 
 from nnTreeVB.typing import *
 
@@ -19,6 +21,7 @@ import torch
 __author__ = "amine remita"
 
 __all__ = [
+        "VB_Encoder",
         "get_distribution",
         "build_distribution",
         ]
