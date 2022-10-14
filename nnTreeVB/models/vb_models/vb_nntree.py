@@ -267,6 +267,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             alpha_kl=1.,
             shuffle_sites=True):
 
+        eps = torch.finfo().eps
+
         # returned dict
         ret_values = dict()
 
@@ -313,7 +315,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         # Sample b from q_d and compute log prior, log q
         b_logprior, b_logq, b_kl, b_samples = self.b_encoder(
                 sample_size=sample_size,
-                KL_gradient=elbo_kl)
+                KL_gradient=elbo_kl,
+                min_clamp=eps)
 
         #print("b_logprior {}".format(b_logprior.shape))
         #print("b_logq {}".format(b_logq.shape))
@@ -332,7 +335,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             t_logprior, t_logq, t_kl, t_samples =\
                     self.t_encoder(
                             sample_size=sample_size,
-                            KL_gradient=elbo_kl)
+                            KL_gradient=elbo_kl,
+                            min_clamp=eps)
 
             bt_samples = (b_samples * t_samples)
             #print("t_samples.shape {}".format(
@@ -395,7 +399,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             k_logprior, k_logq, k_kl, k_samples =\
                     self.k_encoder(
                             sample_size=sample_size,
-                            KL_gradient=elbo_kl)
+                            KL_gradient=elbo_kl,
+                            min_clamp=eps)
 
             #print("k_logprior {}".format(k_logprior.shape))
             #print("k_logq {}".format(k_logq.shape))
