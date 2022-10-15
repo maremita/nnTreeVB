@@ -10,10 +10,9 @@ __author__ = "Amine Remita"
 class Fixed(Distribution):
     def __init__(self, batch_shape, data):
         super().__init__(batch_shape=batch_shape)
-
-        self.batch_shape = batch_shape
+ 
         self.data = data
-        self.device = data.divice
+        self.device_ = data.device
 
     def rsample(
             self, 
@@ -31,11 +30,10 @@ class Fixed(Distribution):
 
         samples = self.data.expand(
                 [*list(sample_size), *self.batch_shape])
-        #print("samples fixed shape {}".format(samples.shape))
 
         return samples
  
-    def log_prob(self):
+    def log_prob(self, samples):
         return torch.zeros(1).to(self.device_)
 
 
@@ -60,11 +58,17 @@ class VB_Fixed(nn.Module):
         self.learn_params = False
         self.device_ = device
 
+        if isinstance(self.data, list):
+            self.data = torch.tensor(self.data)
+        elif not isinstance(self.data, torch.Tensor):
+            raise ValueError("{} data should be list or tensor "\
+                    "in Fixed dist".format(self.data))
+
         if self.data.device != self.device_:
             self.data = self.data.to(self.device_)
 
     def forward(self): 
-        self.dist = Fixed(self.out_shape, 
+        self.dist = Fixed(torch.Size(self.out_shape), 
                 self.data)
 
         return self.dist
