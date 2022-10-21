@@ -31,32 +31,30 @@ __all__ = [
 class BaseTreeVB(ABC):
 
     def sample(self,
-            sites,
-            site_counts,
+            X:torch.Tensor,
+            X_counts:torch.Tensor,
             elbo_type="elbo",
             sample_size=torch.Size([1]),
             alpha_kl=1.):
 
         with torch.no_grad():
-            if site_counts == None:
-                site_counts = torch.ones(sites.shape[0]).to(
+            if X_counts == None:
+                X_counts = torch.ones(X.shape[0]).to(
                         self.device_)
-            # Don't shuffle sites
             return self(
-                    sites,
-                    site_counts,
+                    X,
+                    X_counts,
                     elbo_type=elbo_type,
                     sample_size=sample_size,
-                    alpha_kl=alpha_kl, 
-                    shuffle_sites=False)
+                    alpha_kl=alpha_kl) 
 
     def fit(self,
-            X_train,
-            X_train_counts,
-            elbo_type="elbo",
+            X:torch.Tensor,
+            X_counts:torch.Tensor,
+            elbo_type: str = "elbo",
             sample_size=torch.Size([1]),
             alpha_kl=1.,
-            max_iter=100,
+            max_iter:int = 100,
             optim="adam",
             optim_learning_rate=0.005, 
             optim_weight_decay=0.1,
@@ -154,12 +152,11 @@ class BaseTreeVB(ABC):
             optimizer.zero_grad()
             try:
                 fit_dict = self(
-                        X_train,
-                        X_train_counts,
+                        X,
+                        X_counts,
                         elbo_type=elbo_type,
                         sample_size=sample_size,
-                        alpha_kl=alpha_kl,
-                        shuffle_sites=True)
+                        alpha_kl=alpha_kl)
 
                 elbo = fit_dict["elbo"]
                 lls = fit_dict["logl"].cpu()

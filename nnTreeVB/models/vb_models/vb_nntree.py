@@ -61,7 +61,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             r_learn_prior=False,
             # Variational distribution:
             # fixed | dirichlet | normal
-            r_var_dist="dirichlet_ind",
+            r_var_dist="dirichlet",
             r_var_params=[1.]*6, 
             # if not nn: list of 6 floats
             # if nn: list of 6 floats, uniform, normal or False
@@ -76,7 +76,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             f_learn_prior=False,
             # Variational distribution:
             # fixed | dirichlet | normal
-            f_var_dist="dirichlet_ind",  # 
+            f_var_dist="dirichlet",  # 
             f_var_params=[1.]*4, 
             # if not nn: list of 6 floats
             # if nn: list of 6 floats, uniform, normal or False
@@ -91,7 +91,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             k_learn_prior=False,
             # Variational distribution:
             # fixed | gamma | lognormal | normal
-            k_var_dist="gamma_ind",
+            k_var_dist="gamma",
             k_var_params=[0.1, 0.1], 
             # if not nn: list of 2 floats
             # if nn: list of 2 floats, uniform, normal or False
@@ -264,8 +264,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             site_counts,
             elbo_type="elbo",
             sample_size=torch.Size([1]),
-            alpha_kl=1.,
-            shuffle_sites=True):
+            alpha_kl=1.):
 
         eps = torch.finfo().eps
 
