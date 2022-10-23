@@ -113,7 +113,7 @@ if __name__ == "__main__":
     stg = arg.stg
     plt = arg.plt
 
-    verbose = verbose
+    verbose = stg.verbose
 
     # The order of freqs is different for pyvolve
     # A C G T
@@ -159,7 +159,7 @@ if __name__ == "__main__":
 
     ## Get Fasta file names
     ## #########################
-    if arg.sim_data:
+    if arg.sim.sim_data:
         # Files paths of simulated data
         # training sequences
         fasta_file = output_path+"/{}.fasta".format(

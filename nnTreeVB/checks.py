@@ -37,7 +37,10 @@ def check_sim_blengths(sim_blengths):
     for str_dist in str_dists:
         dist_split = str_dist.split("(")
         dist_name = dist_split[0]
-        param_list = str2floats(dist_split[1].strip(")"))
+        #param_list = str2floats(dist_split[1].strip(")"))
+
+        param_list = str2floats(
+                re.split(dist_name+"\(|\)", str_dist)[1])
 
         if dist_name in torch_dist_names:
             blen_dists.append(build_torch_distribution(
