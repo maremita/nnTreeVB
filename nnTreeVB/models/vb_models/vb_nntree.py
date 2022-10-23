@@ -1,12 +1,12 @@
 from nnTreeVB.models.vb_models import BaseTreeVB
 from nnTreeVB.models.vb_encoders import VB_Encoder
-from nnTreeVB.models.vb_encoders import build_distribution
+from nnTreeVB.models.vb_encoders import build_vb_distribution
 from nnTreeVB.models.evo_models import build_transition_matrix
 from nnTreeVB.models.evo_models import pruning_rescaled
 #from nnTreeVB.models.evo_models import pruning
 from nnTreeVB.utils import sum_log_probs
 from nnTreeVB.utils import sum_kls
-from nnTreeVB.utils import check_sample_size
+from nnTreeVB.checks import check_sample_size
 
 import math
 import copy
@@ -135,7 +135,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             self.b_compound = True
 
         # Initialize branch length prior distribution
-        self.b_dist_p = build_distribution(
+        self.b_dist_p = build_vb_distribution(
                 [self.b_dim],
                 [self.b_dim],
                 dist_type=b_prior_dist,
@@ -145,7 +145,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                 **common_args)
 
         # Initialize branch length variational distribution
-        self.b_dist_q = build_distribution(
+        self.b_dist_q = build_vb_distribution(
                 [self.b_dim],
                 [self.b_dim],
                 dist_type=b_var_dist,
@@ -161,7 +161,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         if self.b_compound:
             # Using a Compound Dirichlet Gamma distribution
             # Initialize tree length prior distribution
-            self.t_dist_p = build_distribution(
+            self.t_dist_p = build_vb_distribution(
                     [self.t_dim],
                     [self.t_dim],
                     dist_type=t_prior_dist,
@@ -171,7 +171,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     **common_args)
 
             # Initialize tree length variational distribution
-            self.t_dist_q = build_distribution(
+            self.t_dist_q = build_vb_distribution(
                     [self.t_dim],
                     [self.t_dim],
                     dist_type=t_var_dist,
@@ -186,7 +186,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
         if self.subs_model in ["gtr"]:
             # Initialize rates prior distribution
-            self.r_dist_p = build_distribution(
+            self.r_dist_p = build_vb_distribution(
                     [self.r_dim],
                     [self.r_dim],
                     dist_type=r_prior_dist,
@@ -196,7 +196,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     **common_args)
 
             # Initialize rates variational distribution
-            self.r_dist_q = build_distribution(
+            self.r_dist_q = build_vb_distribution(
                     [self.r_dim],
                     [self.r_dim],
                     dist_type=r_var_dist,
@@ -211,7 +211,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
         if self.subs_model in ["hky", "gtr"]:
             # Initialize frequencies prior distribution
-            self.f_dist_p = build_distribution(
+            self.f_dist_p = build_vb_distribution(
                     [self.f_dim],
                     [self.f_dim],
                     dist_type=f_prior_dist,
@@ -221,7 +221,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     **common_args)
 
             # Initialize frequencies variational distribution
-            self.f_dist_q = build_distribution(
+            self.f_dist_q = build_vb_distribution(
                     [self.f_dim],
                     [self.f_dim],
                     dist_type=f_var_dist,
@@ -236,7 +236,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
         if self.subs_model in ["k80", "hky"]:
             # Initialize kappa prior distribution
-            self.k_dist_p = build_distribution(
+            self.k_dist_p = build_vb_distribution(
                     [self.k_dim],
                     [self.k_dim],
                     dist_type=k_prior_dist,
@@ -246,7 +246,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     **common_args)
 
             # Initialize kappa variational distribution
-            self.k_dist_q = build_distribution(
+            self.k_dist_q = build_vb_distribution(
                     [self.k_dim],
                     [self.k_dim],
                     dist_type=k_var_dist,

@@ -15,8 +15,6 @@ from scipy.stats.stats import pearsonr#, spearmanr
 import torch
 import torch.nn as nn
 
-__author__ = "amine remita"
-
 
 def freeze_model_params(model):
     for param in model.parameters():
@@ -70,7 +68,6 @@ def build_neuralnet(
 
     return nn.Sequential(*layers)
 
-
 def init_parameters(init_params, nb_params):
     if isinstance(init_params, (list)):
         assert len(init_params) == nb_params
@@ -85,22 +82,6 @@ def init_parameters(init_params, nb_params):
 
     return init_input
 
-
-def check_sample_size(sample_size):
-    
-    if isinstance(sample_size, torch.Size):
-        return sample_size
-
-    if isinstance(sample_size, int):
-        return torch.Size([sample_size])
-
-    elif isinstance(sample_size, list):
-        return torch.Size(sample_size)
-
-    else:
-        raise ValueError("Sample size type is not valid")
-
-
 def sum_kls(kls):
     sumkls = torch.zeros(1)
 
@@ -108,7 +89,6 @@ def sum_kls(kls):
         sumkls += kl.sum()
 
     return sumkls
-
 
 def sum_log_probs(log_probs, sample_size, sum_by_samples=True):
 
@@ -135,7 +115,6 @@ def sum_log_probs(log_probs, sample_size, sum_by_samples=True):
 
     return joint
 
-
 def min_max_clamp(x, min_clamp=False, max_clamp=False):
     if not isinstance(min_clamp, bool):
         if isinstance(min_clamp, (float, int)):
@@ -147,11 +126,9 @@ def min_max_clamp(x, min_clamp=False, max_clamp=False):
 
     return x
 
-
 def getboolean(value):
     return configparser.RawConfigParser()._convert_to_boolean(
             value)
-
 
 def timeSince(since):
     now = time.time()
@@ -160,56 +137,8 @@ def timeSince(since):
     s -= m * 60
     return '%dm %ds' % (m, s)
 
-def get_categorical_prior(conf, prior_type, verbose=False):
-    priors = []
-
-    if prior_type in ["ancestor", "freqs"]:
-        nb_categories = 4
-    elif prior_type == "rates":
-        nb_categories = 6
-    else:
-        raise ValueError(
-                "prior type value should be ancestor, freqs or rates")
-
-    if conf == "uniform":
-        priors = torch.ones(nb_categories)/nb_categories
-    elif "," in conf:
-        priors = str2float_tensor(conf, ',', nb_categoriesi,
-                prior_type)
-    #elif conf == "empirical": # to be implemented
-    #    pass
-    else:
-        raise ValueError(
-                "Check {} prior config values".format(prior_type))
-
-    if verbose:
-        print("{} prior hyper-parameters: {}".format(
-            prior_type, priors))
-
-    return priors
-
-def get_branch_prior(conf, verbose=False):
-    priors = str2float_tensor(conf, ",", 2, "branch")
-
-    if verbose:
-        print("Branch prior hyper-parameters: {}".format(priors))
-
-    return priors 
-
-def get_kappa_prior(conf, verbose=False):
-    priors = str2float_tensor(conf, ",", 2, "kappa")
-
-    if verbose:
-        print("Kappa prior hyper-parameters: {}".format(priors))
-
-    return priors 
-
-def str2float_tensor(chaine, sep, nb_values, prior_type):
+def str2tensor(chaine, sep=","):
     values = [float(v) for v in chaine.strip().split(sep)]
-    if len(values) != nb_values:
-        raise ValueError(
-                "the Number of prior values for {} "\
-                        "is not correct".format(prior_type))
     return torch.FloatTensor(values)
 
 def str2ints(chaine, sep=","):
@@ -218,25 +147,25 @@ def str2ints(chaine, sep=","):
 def str2floats(chaine, sep=","):
     return [float(s) for s in chaine.strip().split(sep)]
 
-def fasta_to_list(fasta_file, verbose=False):
-    # fetch sequences from fasta
-    if verbose: print("Fetching sequences from {}".format(fasta_file))
-    seqRec_list = SeqCollection.read_bio_file(fasta_file)
-    return [str(seqRec.seq._data) for seqRec in seqRec_list] 
-
-def str_to_list(chaine, sep=",", cast=None):
+def str2list(chaine, sep=",", cast=None):
     c = lambda x: x
     if cast: c = cast
 
     return [c(i.strip()) for i in chaine.strip().split(sep)]
 
-def str_to_values(chaine, nb_repeat=1, sep=",", cast=None):
+def str2values(chaine, nb_repeat=1, sep=",", cast=None):
     chaine = chaine.rstrip(sep)
     values = str_to_list(chaine, sep=sep, cast=cast)
     if len(values)==1 : values = values * nb_repeat
 
     return values
 
+def fasta2list(fasta_file, verbose=False):
+    # fetch sequences from fasta
+    if verbose: print("Fetching sequences from {}".format(
+        fasta_file))
+    seqRec_list = SeqCollection.read_bio_file(fasta_file)
+    return [str(seqRec.seq._data) for seqRec in seqRec_list] 
 
 def get_lognorm_params(m, s):
     # to produce a distribution with desired mean m
@@ -322,28 +251,11 @@ def mean_confidence_interval(data, confidence=0.95, axis=0):
     a = 1.0 * np.array(data)
     n = np.size(a, axis=axis)
 
-    m, se = np.mean(a, axis=axis), scipy.stats.sem(a, axis=axis)
+    m, se = np.mean(a, axis=axis), scipy.stats.sem(a,
+            axis=axis)
     h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
 
     return m, m-h, m+h
-
-
-def check_finite_grads(model, epoch, verbose=False):
-
-    finite = True
-    for name, param in model.named_parameters():
-        if param.grad is None or\
-                not torch.isfinite(param.grad).all():
-            finite = False
-
-            if verbose:
-                print("{} Nonfinit grad {} : {}".format(epoch,
-                    name, param.grad))
-            else:
-                return finite
-
-    if not finite and verbose: print()
-    return finite
 
 def dict_to_cpu(some_dict):
     new_dict = dict()

@@ -4,22 +4,31 @@ import torch
 
 __author__ = "Amine Remita"
 
+torch_dist_names = [
+        "normal",
+        "lognormal",
+        "gamma",
+        "dirichlet",
+        "categorical",
+        "exponential",
+        "uniform"
+        ]
 
-def build_distribution(
+def build_torch_distribution(
         dist_type:str,
         dist_params:list)->TorchDistribution:
     
     build_dist = {
-        "build_normal":build_Normal,
-        "build_lognormal":build_LogNormal,
-        "build_gamma":build_Gamma,
-        "build_dirichlet":build_Dirichlet,
-        "build_categorical":build_Categorical,
-        "build_exponential":build_Exponential,
-        "build_uniform":build_Uniform
+        "normal":build_Normal,
+        "lognormal":build_LogNormal,
+        "gamma":build_Gamma,
+        "dirichlet":build_Dirichlet,
+        "categorical":build_Categorical,
+        "exponential":build_Exponential,
+        "uniform":build_Uniform
             }
 
-    return build_dist["build_"+dist_type.lower()](dist_params)
+    return build_dist[dist_type.lower()](dist_params)
 
 
 def build_Normal(

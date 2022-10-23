@@ -8,11 +8,12 @@
 # This code is adapted from evoABCmodels.py module of evoVGM
 # https://github.com/maremita/evoVGM/blob/main/evoVGM/models/evoABCmodels.py
 
+from .vb_nntree import VB_nnTree
 from nnTreeVB.utils import timeSince, dict_to_numpy
-from nnTreeVB.utils import check_finite_grads
 from nnTreeVB.utils import get_grad_stats
 from nnTreeVB.utils import get_weight_stats
 from nnTreeVB.utils import apply_on_submodules
+from nnTreeVB.checks import check_finite_grads
 
 from abc import ABC 
 import time
@@ -24,9 +25,9 @@ from scipy.spatial.distance import hamming
 __author__ = "amine remita"
 
 __all__ = [
+        "VB_nnTree",
         "BaseTreeVB"
         ]
-
 
 class BaseTreeVB(ABC):
 
@@ -34,7 +35,7 @@ class BaseTreeVB(ABC):
             X:torch.Tensor,
             X_counts:torch.Tensor,
             elbo_type="elbo",
-            sample_size=torch.Size([1]),
+            nb_samples=torch.Size([1]),
             alpha_kl=1.):
 
         with torch.no_grad():
@@ -45,14 +46,15 @@ class BaseTreeVB(ABC):
                     X,
                     X_counts,
                     elbo_type=elbo_type,
-                    sample_size=sample_size,
+                    sample_size=nb_samples,
                     alpha_kl=alpha_kl) 
 
     def fit(self,
             X:torch.Tensor,
             X_counts:torch.Tensor,
             elbo_type: str = "elbo",
-            sample_size=torch.Size([1]),
+            grad_samples=torch.Size([1]),
+            nb_samples=torch.Size([1]),
             alpha_kl=1.,
             max_iter:int = 100,
             optim="adam",
@@ -142,7 +144,7 @@ class BaseTreeVB(ABC):
             ret["kls_val_list"] = []
 
         m_axis = 0
-        if len(sample_size) == 2:
+        if len(nb_samples) == 2:
             m_axis = (0,1)
 
         optim_nb = 0
@@ -155,7 +157,7 @@ class BaseTreeVB(ABC):
                         X,
                         X_counts,
                         elbo_type=elbo_type,
-                        sample_size=sample_size,
+                        sample_size=grad_samples,
                         alpha_kl=alpha_kl)
 
                 elbo = fit_dict["elbo"]
@@ -199,7 +201,7 @@ class BaseTreeVB(ABC):
                                 X_val,
                                 X_val_counts, 
                                 elbo_type=elbo_type,
-                                sample_size=sample_size)
+                                nb_samples=nb_samples)
                                 #alpha_kl=alpha_kl,
 
                         val_dict = dict_to_numpy(val_dict)

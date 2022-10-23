@@ -1,9 +1,14 @@
 #!/usr/bin/env python
 
-from nnTreeVB.data import evolve_seqs_full_homogeneity as evolve_sequences
+from nnTreeVB.data import evolve_seqs_full_homogeneity as\
+        evolve_sequences
+from nnTreeVB.data import simulate_tree
+
 from nnTreeVB.data import build_tree_from_nwk
 from nnTreeVB.data import TreeSeqCollection
 from nnTreeVB.data import build_msa_categorical
+
+from nnTreeVB.parse_config import parse_config
 
 from nnTreeVB.utils import timeSince
 from nnTreeVB.utils import get_categorical_prior 
@@ -22,12 +27,11 @@ from nnTreeVB.reports import aggregate_sampled_estimates
 from nnTreeVB.reports import report_sampled_estimates
 
 #from nnTreeVB.models import compute_log_likelihood_data 
-from nnTreeVB.models import VB_nnTree
+from nnTreeVB.models.vb_models import VB_nnTree
 
 import sys
 import os
 from os import makedirs
-import configparser
 import time
 from datetime import datetime
 
@@ -68,23 +72,13 @@ def eval_evomodel(EvoModel, m_args, fit_args):
     e = EvoModel(**m_args)
 
     ## Fitting and param3ter estimation
-    ## ################################
-    ret = e.fit(
-            fit_args["X"],
-            fit_args["X_counts"],
-            elbo_type=fit_args["elbo_type"],
-            sample_size=fit_args["nb_samples"],
-            alpha_kl=fit_args["alpha_kl"], 
-            max_iter=fit_args["max_iter"],
-            optim=fit_args["optim"], 
-            optim_learning_rate=fit_args["learning_rate"],
-            optim_weight_decay=fit_args["weight_decay"],
-            scheduler_lambda=fit_args["scheduler_lambda"]
-            save_fit_history=fit_args["save_fit_history"],
-            verbose=fit_args["verbose"]
-            )
+    ret = e.fit(**fit_args)
 
-    fit_hist = [ret["elbos_list"], ret["lls_list"], ret["kls_list"]]
+    fit_hist = [
+            ret["elbos_list"],
+            ret["lls_list"],
+            ret["kls_list"]
+            ]
 
     overall["fit_hist_estim"] = ret["fit_estimates"]
 
@@ -96,7 +90,7 @@ def eval_evomodel(EvoModel, m_args, fit_args):
             fit_args["X"],
             fit_args["X_counts"],
             elbo_type=fit_args["elbo_type"],
-            sample_size=fit_args["nb_samples"],
+            nb_samples=fit_args["nb_samples"],
             alpha_kl=fit_args["alpha_kl"]
             )
 
@@ -114,163 +108,53 @@ if __name__ == "__main__":
     ## Fetch argument values from ini file
     ## ###################################
     config_file = sys.argv[1]
-    config = configparser.ConfigParser(
-            interpolation=\
-                    configparser.ExtendedInterpolation())
+    arg, config = parse_config(config_file)
 
-    with open(config_file, "r") as cf:
-        config.read_file(cf)
+    io = arg.io
+    sim = arg.sim
+    mdl = arg.mdl
+    fit = arg.fit
+    stg = arg.stg
+    plt = arg.plt
 
-    # IO files
-    output_path = config.get("io", "output_path")
-    
-    seq_file = config.get("io", "seq_file",
-            fallback="")
-    nwk_file = config.get("io", "nwk_file",
-            fallback="")
-
-    scores_from_file = config.getboolean("io",
-            "scores_from_file", fallback=False)
-
-    # Simulation data
-    sim_data = config.getboolean("sim_data", "sim_data",
-            fallback=True)
-    sim_from_fasta = config.getboolean("sim_data",
-            "sim_from_fasta", fallback=True)
-    nb_sites = config.getint("sim_data",
-            "nb_sites", fallback=100)
-    nb_taxa = config.getint("sim_data",
-            "nb_taxa", fallback=100)
-    sim_blengths = config.get("sim_data",
-            "branch_lengths", fallback="0.1,0.1")
-    sim_rates = str_to_values(config.get("sim_data", "rates",
-        fallback="0.16"), 6, cast=float)
-    sim_freqs = str_to_values(config.get("sim_data",
-        "frequencies", fallback="0.25"), 4, cast=float)
-    sim_kappa = config.getfloat("sim_data",
-        "kappa", fallback=1.)
+    verbose = verbose
 
     # The order of freqs is different for pyvolve
-    # A CGT
-    sim_freqs_pyv = [sim_freqs[0], sim_freqs[2],
-            sim_freqs[1], sim_freqs[3]]
+    # A C G T
+    sim_freqs_pyv = [sim.sim_freqs[0], sim.sim_freqs[2],
+            sim.sim_freqs[1], sim.sim_freqs[3]]
 
-    # setting parameters
-    job_name = config.get("settings", "job_name",
-            fallback=None)
-    seed = config.getint("settings", "seed",
-            fallback=42)
-    device_str = config.get("settings", "device",
-            fallback="cpu")
-    verbose = config.get("settings", "verbose",
-            fallback=1)
-    compress_files = config.getboolean("settings", 
-            "compress_files", fallback=False)
-
-    # Evo variational model type
-    subs_model = config.get("hyperparams",
-            "subs_model", fallback="gtr")
-
-    # Hyper parameters
-    nb_replicates = config.getint("hyperparams",
-            "nb_replicates", fallback=2)
-    nb_samples = config.getint("hyperparams", "nb_samples",
-            fallback=10)
-    h_dim = config.getint("hyperparams", "hidden_size",
-            fallback=32)
-    nb_layers = config.getint("hyperparams", "nb_layers",
-            fallback=3)
-    alpha_kl = config.getfloat("hyperparams", "alpha_kl",
-            fallback=0.0001)
-    max_iter = config.getint("hyperparams", "max_iter",
-            fallback=100)
-    optim = config.get("hyperparams", "optim",
-            fallback="adam")
-    learning_rate = config.getfloat("hyperparams",
-            "learning_rate", fallback=0.005)
-    weight_decay = config.getfloat("hyperparams",
-            "weight_decay", fallback=0.00001)
-
-    # Hyper-parameters of prior distributions
-    ancestor_hp_conf = config.get("priors",
-            "ancestor_prior_hp", fallback="uniform")
-    branch_hp_conf = config.get("priors", "branch_prior_hp",
-            fallback="0.1,0.1")
-    kappa_hp_conf = config.get("priors", "kappa_prior_hp",
-            fallback="1.,1.")
-    rates_hp_conf = config.get("priors", "rates_prior_hp",
-            fallback="uniform")
-    freqs_hp_conf = config.get("priors", "freqs_prior_hp",
-            fallback="uniform")
-
-    # plotting settings
-    size_font = config.getint("plotting", "size_font",
-            fallback=16)
-    plt_usetex = config.getboolean("plotting", "plt_usetex",
-            fallback=False)
-    print_xtick_every = config.getint("plotting",
-            "print_xtick_every", fallback=10)
-    make_logos = config.getboolean("plotting",
-            "make_logos", fallback=True)
-
-    # Process verbose
-    if verbose.lower() == "false":
-        verbose = 0
-    elif verbose.lower() == "none":
-        verbose = 0
-    elif verbose.lower() == "true":
-        verbose = 1
-    else:
-        try:
-            verbose = int(verbose)
-            if verbose < 0:
-                print("\nInvalid value for verbose"\
-                        " {}".format(verbose))
-                print("Valid values are: True, False, None"\
-                        " and positive integers")
-                print("Verbose is set to 0")
-                verbose = 0
-        except ValueError as e:
-            print("\nInvalid value for verbose {}".format(
-                verbose))
-            print("Valid values are: True, False, None and"\
-                    " positive integers")
-            print("Verbose is set to 1")
-            verbose = 1
-
-    if subs_model not in ["jc69", "k80", "hky", "gtr"]:
+    if mdl.subs_model not in ["jc69", "k80", "hky", "gtr"]:
         print("\nsubs_model should be jc69|k80|hky|gtr,"\
-                " not {}".format(subs_model),
+                " not {}".format(mdl.subs_model),
                 file=sys.stderr)
         sys.exit()
 
     # Computing device setting
-    if device_str != "cpu" and not torch.cuda.is_available():
+    device = stg.device
+    # TODO check other gpu devices
+    if device != "cpu" and\
+            not torch.cuda.is_available():
         if verbose: 
             print("\nCuda is not available."\
                     " Changing device to 'cpu'")
-        device_str = 'cpu'
+        device = 'cpu'
 
-    device = torch.device(device_str)
+    device = torch.device(device)
 
-    if str(job_name).lower() in ["auto", "none"]:
-        job_name = None
+    # Set the job name
+    if str(stg.job_name).lower() in ["auto", "none"]:
+        stg.job_name = None
 
-    if not job_name:
+    if not stg.job_name:
         now = datetime.now()
-        job_name = now.strftime("%y%m%d%H%M")
+        stg.job_name = now.strftime("%y%m%d%H%M")
 
-    sim_params = dict(
-            b=np.array(str2floats(sim_blengths)),
-            r=np.array(sim_rates),
-            f=np.array(sim_freqs),
-            k=np.array([[sim_kappa]])
-            )
 
-    ## output name file
-    ## ################
-    output_path = os.path.join(output_path,
-            subs_model, job_name)
+    ## output path 
+    ## ###########
+    output_path = os.path.join(io.output_path,
+            mdl.subs_model, stg.job_name)
     makedirs(output_path, mode=0o700, exist_ok=True)
 
     if verbose:
@@ -279,20 +163,32 @@ if __name__ == "__main__":
 
     ## Get Fasta file names
     ## #########################
-    if sim_data:
+    if arg.sim_data:
         # Files paths of simulated data
         # training sequences
-        x_fasta_file = output_path+"/{}_train.fasta".format(
-                job_name)
+        fasta_file = output_path+"/{}.fasta".format(
+                stg.job_name)
+        tree_file = output_path+"/{}.nwk".format(
+                stg.job_name)
     else:
         # Files paths of given FASTA files
-        # training sequences
-        x_fasta_file = seq_file
+        # TODO check if files exist or raise Exception
+        fasta_file = io.seq_file
+        tree_file = io.nwk_file
+
+    # sim_params will be used to compare with estimated 
+    # parameters
+    sim_params = dict(
+            b=np.array(post_branches),
+            r=np.array(sim.sim_rates),
+            f=np.array(sim.sim_freqs),
+            k=np.array([[sim.sim_kappa]])
+            )
 
     ## Loading results from file
     ## #########################
     results_file = output_path+"/{}_results.pkl".format(
-            job_name)
+            stg.job_name)
 
     if os.path.isfile(results_file) and scores_from_file:
         if verbose: print("\nLoading scores from file...")
@@ -300,20 +196,6 @@ if __name__ == "__main__":
         # Get the results
         result_data = load(results_file)
         rep_results=result_data["rep_results"]
-        
-        # Get X_gen ndarray 
-        # used in the generation step as input 
-        x_gen_fasta = x_fasta_file
-
-        if sim_data:
-            # Simulated Fasta contains ancestral sequence, to discard
-            x_gen_sequences = fasta_to_list(
-                    x_gen_fasta, verbose)[1:]
-        else:
-            x_gen_sequences = fasta_to_list(
-                    x_gen_fasta, verbose)
-
-        X_gen = build_msa_categorical(x_gen_sequences).data
 
     ## Execute the evaluation and save results
     ## #######################################
@@ -322,76 +204,57 @@ if __name__ == "__main__":
 
         ## Data preparation
         ## ################
-        if sim_data:
-            ## Files paths of simulated data
-            ## training sequences
-            #x_fasta_file = output_path+"/{}_train.fasta".format(
-            #        job_name)
-
-            # Extract data from simulated files if they exist
-            if os.path.isfile(x_fasta_file) and sim_from_fasta:
-                if verbose: 
-                    print("\nLoading simulated sequences"\
-                            " from files...")
-                # Load from files
-                # Here, simulated FASTA file contain the
-                # root sequence
-                ax_sequences = fasta_to_list(x_fasta_file,
-                        verbose)
-                x_root = ax_sequences[0]
-                x_sequences = ax_sequences[1:]
-
+        if sim.sim_data and (not sim.sim_from_files) and \
+                not os.path.isfile(fasta_file):
             # Simulate new data
-            else:
-                if verbose: print("\nSimulating sequences...")
-                # Evolve sequences
-                tree=build_star_tree(sim_blengths)
+ 
+            if not os.path.isfile(tree_file):
+            # if tree file is not given, simulate a tree
+            # using ete3 populate function
+            if verbose: print("\nSimulating a new tree...")
 
-                x_root, x_sequences = evolve_sequences(
-                        tree,
-                        fasta_file=x_fasta_file,
-                        nb_sites=nb_sites,
-                        subst_rates=sim_rates,
-                        state_freqs=sim_freqs_pyv,
-                        return_anc=True,
-                        seed=seed,
-                        verbose=verbose)
-            #FIXME
-            x_logl_data = compute_log_likelihood_data(
-                    AX_unique,
-                    AX_counts, sim_blengths, sim_rates, 
-                    sim_freqs)
+                # set seed to numpy here
+                tree_obj, post_branches = simulate_tree(
+                        nb_taxa, sim.sim_blengths,
+                        unroot=True, seed=seed)
+                tree_obj.write(format=1, tree_file)
 
-            if verbose:
-                print("\nLog likelihood of the fitting data"\
-                        " {}".format(x_logl_data))
-
-        # Extract data from given FASTA files
-        else:
-            ## Files paths of given FASTA files
-            ## training sequences
-            #x_fasta_file = seq_file
-
-            # Given FASTA files do not contain root sequences
-            if verbose: print("\nLoading sequences from"\
-                    " files...")
-            x_sequences = fasta_to_list(x_fasta_file, verbose)
-
-        # End of fetching/simulating the data
+            if verbose:print("\nSimulating new sequences...")
+            # Evolve sequences
+            all_seqdict = evolve_sequences(
+                    tree_obj,
+                    fasta_file=fasta_file,
+                    nb_sites=sim.nb_sites,
+                    subst_rates=sim.sim_rates,
+                    state_freqs=sim_freqs_pyv,
+                    return_anc=False,
+                    seed=stg.seed,
+                    verbose=verbose)
 
         # Update file paths in config file
-        config.set("io", "seq_file", x_fasta_file)
+        config.set("io", "seq_file", fasta_file)
+        config.set("io", "nwk_file", tree_file)
+
+        if verbose: print("\nLoading data to"\
+                " TreeSeqCollection collection...")
+        treeseqs = TreeSeqCollection(fasta_file, tree_file)
+        tree_obj = treeseqs.tree
 
         # Transform fitting sequences
-        x_motifs_cats = build_msa_categorical(x_sequences)
+        x_motifs_cats = build_msa_categorical(treeseqs,
+                nuc_cat=False)
         X = torch.from_numpy(x_motifs_cats.data).to(device)
-        X_gen = X.clone().detach() # will be used in generation
         X, X_counts = X.unique(dim=0, return_counts=True)
 
-        # Set dimensions
-        x_dim = 4
-        a_dim = 4
-        m_dim = len(x_sequences) # Number of sequences
+        #FIXME
+        logl_data = compute_log_likelihood_data(
+                X_unique,
+                X_counts, post_branches, sim.sim_rates, 
+                sim.sim_freqs)
+
+        if verbose:
+            print("\nLog likelihood of the fitting data"\
+                    " {}".format(logl_data))
 
         ## Get prior hyper-parameter values
         ## ################################
@@ -420,17 +283,20 @@ if __name__ == "__main__":
         if verbose: print()
         ## Evo model type
         ## ##############
-        if subs_model == "gtr":
-            EvoModelClass = EvoVGM_GTR
-        elif subs_model == "k80":
-            EvoModelClass = EvoVGM_K80
-        else:
-            EvoModelClass = EvoVGM_JC69
+        EvoModelClass = VB_nnTree
 
         model_args = {
-                "h_dim":h_dim,
+                "tree":tree_obj,
+                "subs_model":mdl.subs_model
+                #
                 "ancestor_prior_hp":ancestor_prior_hp,
                 "branch_prior_hp":branch_prior_hp,
+                #
+                "h_dim":mdl.h_dim,
+                "nb_layers":mdl.nb_layers,
+                "bias_layers":mdl.bias_layers,
+                "activ_layers":mdl.activ_layers,
+                "dropout_layers":mdl.dropout_layers,
                 "device":device
                 }
 
@@ -444,35 +310,43 @@ if __name__ == "__main__":
 
         save_fit_history=True
 
-        # Fitting the parameters
+        # Fitting the parameters 
+        if fit.K_grad_samples > 1:
+            grad_samples = [fit.grad_samples,
+                    fit.K_grad_samples
+        else:
+            grad_samples = fit.grad_samples
+
         fit_args = {
                 "X":X,
                 "X_counts":X_counts,
-                "X_gen":X_gen,
-                "nb_samples":nb_samples,
-                "alpha_kl":alpha_kl,
-                "max_iter":max_iter,
-                "optim":"adam",
-                "learning_rate":learning_rate,
-                "weight_decay":weight_decay,
-                "save_fit_history":save_fit_history,
-                "":
+                "elbo_type"=fit.elbo_type,
+                "grad_samples"=grad_samples,
+                "nb_samples"=fit.nb_samples,
+                "alpha_kl"=fit.alpha_kl,
+                "max_iter"=fit.max_iter,
+                "optim"=fit.optim,
+                "optim_learning_rate"=fit.learning_rate,
+                "optim_weight_decay"=fit.weight_decay,
+                "scheduler_lambda"=fit.scheduler_lambda,
+                "save_fit_history"=fit.save_fit_history,
                 "verbose":not sim_data
                 }
 
         parallel = Parallel(n_jobs=nb_replicates, 
                 prefer="processes", verbose=verbose)
 
-        rep_results = parallel(delayed(eval_evomodel)(EvoModelClass,
-            model_args, fit_args) for s in range(nb_replicates))
+        rep_results = parallel(delayed(eval_evomodel)(
+            EvoModelClass,
+            model_args, fit_args) for s in\
+                    range(nb_replicates))
 
         #
         result_data = dict(
                 rep_results=rep_results, # rep for replicates
                 )
 
-        if sim_data:
-            result_data["logl_data"] = x_logl_data
+        result_data["logl_data"] = logl_data
 
         dump(result_data, results_file,
                 compress=compress_files)
@@ -506,11 +380,11 @@ if __name__ == "__main__":
     ## #######################################
     if verbose: print("\nGenerate reports...")
 
-    estim_gens = aggregate_sampled_estimates(
-            rep_results, "gen_results")
+    estim_samples = aggregate_sampled_estimates(
+            rep_results, "samples")
 
     report_sampled_estimates(
-            estim_gens,
+            estim_samples,
             output_path+"/{}_estim_report".format(job_name),
             )
 
