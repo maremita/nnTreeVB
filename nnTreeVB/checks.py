@@ -1,8 +1,12 @@
 from nnTreeVB.typing import dist_types
 from nnTreeVB.utils import str2floats
+from nnTreeVB.utils import str2values
 from nnTreeVB.models.torch_distributions import\
         build_torch_distribution, torch_dist_names
 
+import re
+
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -44,17 +48,79 @@ def check_sim_blengths(sim_blengths):
 
     return blen_dists
 
-def check_sim_rates(sim_rates):
-    rates = sim_rates.lower()
-    rates = str2values(rates, 6, cast=float)
+def check_sim_float(sim_float):
+    """
+    Possible values:
+    
+    a float or a distribution
 
-    return rates
+    gamma(x,y)
+    uniform(x,y)
+    exponential(x)
+ 
+    Other distributions:
+    normal, lognormal, dirichlet, categorical
 
-def check_sim_freqs(sim_freqs):
-    freqs = sim_freqs.lower()
-    freqs = str2values(freqs, 4, cast=float)
+    """
 
-    return freqs
+    try:
+        return float(sim_float)
+
+    except ValueError as e:
+        float_str = sim_float.lower()
+
+        dist_split = float_str.split("(")
+        dist_name = dist_split[0]
+        param_list = str2floats(
+                re.split(dist_name+"\(|\)", float_str)[1])
+
+        if dist_name in torch_dist_names:
+            torch_dist = build_torch_distribution(
+                dist_name, param_list)
+
+            with torch.no_grad():
+                return torch_dist.sample().item()
+
+        else:
+            raise ValueError("{} distribution name "\
+                    "is not valid".format(dist_name))
+
+def check_sim_simplex(sim_simplex, nb_params):
+    simplex_str = sim_simplex.lower()
+
+    # for now, the program accepts only dirichlet 
+    dist_name = "dirichlet"
+
+    if dist_name in simplex_str:
+        param_list = str2floats(
+                re.split(dist_name+"\(|\)", simplex_str)[1])
+        
+        # dirichlet(1.)
+        if len(param_list) == 1:
+            param_list = [param_list[0]] * nb_params
+        elif len(param_list) != nb_params:
+            raise ValueError("{} lacks parameters".format(
+                sim_simplex))
+
+        rates_dist = build_torch_distribution(
+                dist_name, param_list)
+        
+        with torch.no_grad():
+            values = rates_dist.sample().numpy()
+
+    else:
+        values = np.array(
+                str2values(simplex_str, nb_params, cast=float))
+        
+        if len(values) != nb_params:
+            raise ValueError("[{}] lacks values".format(
+                sim_simplex))
+
+    values = values/values.sum()
+
+    assert np.isclose(values.sum(), 1.)
+
+    return values.tolist()
 
 def check_dist_type(dist_type):
     dist = dist_type.lower()

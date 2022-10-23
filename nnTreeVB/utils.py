@@ -155,7 +155,7 @@ def str2list(chaine, sep=",", cast=None):
 
 def str2values(chaine, nb_repeat=1, sep=",", cast=None):
     chaine = chaine.rstrip(sep)
-    values = str_to_list(chaine, sep=sep, cast=cast)
+    values = str2list(chaine, sep=sep, cast=cast)
     if len(values)==1 : values = values * nb_repeat
 
     return values

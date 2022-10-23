@@ -11,18 +11,14 @@ from nnTreeVB.data import build_msa_categorical
 from nnTreeVB.parse_config import parse_config
 
 from nnTreeVB.utils import timeSince
-from nnTreeVB.utils import get_categorical_prior 
-from nnTreeVB.utils import get_branch_prior 
-from nnTreeVB.utils import get_kappa_prior 
-from nnTreeVB.utils import str2floats, fasta_to_list
-from nnTreeVB.utils import str_to_values
+#from nnTreeVB.utils import str2floats
+#from nnTreeVB.utils import str2values
 from nnTreeVB.utils import write_conf_packages
 
 from nnTreeVB.reports import plt_elbo_ll_kl_rep_figure
 from nnTreeVB.reports import aggregate_estimate_values
 from nnTreeVB.reports import plot_fit_estim_dist
 from nnTreeVB.reports import plot_fit_estim_corr
-from nnTreeVB.reports import plot_fit_seq_dist
 from nnTreeVB.reports import aggregate_sampled_estimates
 from nnTreeVB.reports import report_sampled_estimates
 
@@ -211,13 +207,13 @@ if __name__ == "__main__":
             if not os.path.isfile(tree_file):
             # if tree file is not given, simulate a tree
             # using ete3 populate function
-            if verbose: print("\nSimulating a new tree...")
+                if verbose: print("\nSimulating a new tree...")
 
                 # set seed to numpy here
                 tree_obj, post_branches = simulate_tree(
                         nb_taxa, sim.sim_blengths,
                         unroot=True, seed=seed)
-                tree_obj.write(format=1, tree_file)
+                tree_obj.write(outfile=tree_file, format=1)
 
             if verbose:print("\nSimulating new sequences...")
             # Evolve sequences
@@ -287,10 +283,8 @@ if __name__ == "__main__":
 
         model_args = {
                 "tree":tree_obj,
-                "subs_model":mdl.subs_model
+                "subs_model":mdl.subs_model,
                 #
-                "ancestor_prior_hp":ancestor_prior_hp,
-                "branch_prior_hp":branch_prior_hp,
                 #
                 "h_dim":mdl.h_dim,
                 "nb_layers":mdl.nb_layers,
@@ -313,23 +307,23 @@ if __name__ == "__main__":
         # Fitting the parameters 
         if fit.K_grad_samples > 1:
             grad_samples = [fit.grad_samples,
-                    fit.K_grad_samples
+                    fit.K_grad_samples]
         else:
             grad_samples = fit.grad_samples
 
         fit_args = {
                 "X":X,
                 "X_counts":X_counts,
-                "elbo_type"=fit.elbo_type,
-                "grad_samples"=grad_samples,
-                "nb_samples"=fit.nb_samples,
-                "alpha_kl"=fit.alpha_kl,
-                "max_iter"=fit.max_iter,
-                "optim"=fit.optim,
-                "optim_learning_rate"=fit.learning_rate,
-                "optim_weight_decay"=fit.weight_decay,
-                "scheduler_lambda"=fit.scheduler_lambda,
-                "save_fit_history"=fit.save_fit_history,
+                "elbo_type":fit.elbo_type,
+                "grad_samples":grad_samples,
+                "nb_samples":fit.nb_samples,
+                "alpha_kl":fit.alpha_kl,
+                "max_iter":fit.max_iter,
+                "optim":fit.optim,
+                "optim_learning_rate":fit.learning_rate,
+                "optim_weight_decay":fit.weight_decay,
+                "scheduler_lambda":fit.scheduler_lambda,
+                "save_fit_history":fit.save_fit_history,
                 "verbose":not sim_data
                 }
 

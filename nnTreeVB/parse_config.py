@@ -2,8 +2,8 @@ from dataclasses import dataclass
 import configparser
 
 from nnTreeVB.checks import check_sim_blengths
-from nnTreeVB.checks import check_sim_rates
-from nnTreeVB.checks import check_sim_freqs
+from nnTreeVB.checks import check_sim_simplex
+from nnTreeVB.checks import check_sim_float
 from nnTreeVB.checks import check_verbose
 from nnTreeVB.checks import check_dist_type
 from nnTreeVB.checks import check_dist_params
@@ -51,12 +51,12 @@ def parse_config(config_file):
             "sim_data", "nb_taxa", fallback=100)
     arg.sim.sim_blengths = check_sim_blengths(config.get(
         "sim_data", "sim_blengths", fallback="0.1,1."))
-    arg.sim.sim_rates = check_sim_rates(config.get(
-        "sim_data", "sim_rates", fallback="0.16"))
-    arg.sim.sim_freqs = check_sim_rates(config.get(
-        "sim_data", "sim_fres", fallback="0.25"))
-    arg.sim.sim_kappa = config.getfloat(
-        "sim_data", "sim_kappa", fallback=1.)
+    arg.sim.sim_rates = check_sim_simplex(config.get(
+        "sim_data", "sim_rates", fallback="0.16"), 6)
+    arg.sim.sim_freqs = check_sim_simplex(config.get(
+        "sim_data", "sim_fres", fallback="0.25"), 4)
+    arg.sim.sim_kappa = check_sim_float(config.get(
+        "sim_data", "sim_kappa", fallback="1."))
 
     # Hyper parameters
     arg.mdl = ArgObject()
