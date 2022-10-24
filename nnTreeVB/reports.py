@@ -1,10 +1,18 @@
+from collections import defaultdict
 import numpy as np
+
+from nnTreeVB.utils import compute_corr
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
+import torch
+
 __author__ = "amine remita"
 
+
+estim_names = ["b", "t", "b1", "r", "f", "k"]
+stat_names = ["mean", "cimin", "cimax", "var", "min", "max"]
 
 def plot_grads_weights_epochs(
         data,
@@ -92,7 +100,8 @@ def plt_elbo_ll_kl_rep_figure(
 
     fig_file = out_file+"."+fig_format
 
-    plt.rcParams.update({'font.size':sizefont, 'text.usetex':usetex})
+    plt.rcParams.update({'font.size':sizefont, 
+        'text.usetex':usetex})
     plt.subplots_adjust(wspace=0.16, hspace=0.1)
 
     f, ax = plt.subplots(figsize=(8, 5))
@@ -140,11 +149,14 @@ def plt_elbo_ll_kl_rep_figure(
 
     # plot validation
     if plot_validation:
-        ax.plot(x, scores[:,3,:].mean(0), "-.", color=elbo_color_v,
+        ax.plot(x, scores[:,3,:].mean(0), "-.",
+                color=elbo_color_v,
                 label="ELBO_val", zorder=2) # ELBO val
-        ax.plot(x, scores[:,4,:].mean(0), "-.", color=ll_color_v,
+        ax.plot(x, scores[:,4,:].mean(0), "-.",
+                color=ll_color_v,
                 label="LogL_val", zorder=0) # LL val
-        ax2.plot(x, scores[:,5,:].mean(0), "-.", color=kl_color_v,
+        ax2.plot(x, scores[:,5,:].mean(0), "-.",
+                color=kl_color_v,
                 label="KL_qp_val", zorder=2) # KL val
         
         ax.fill_between(x,
@@ -198,7 +210,6 @@ def plt_elbo_ll_kl_rep_figure(
 
     plt.close(f)
 
-
 def plot_fit_estim_dist(
         scores,
         sim_params,
@@ -211,7 +222,7 @@ def plot_fit_estim_dist(
         title=None):
     """
     scores here is a dictionary of estimate arrays.
-    Each array has the shape : (nb_reps, nb_epochs, *estim_shape)
+    Each array has the shape:(nb_reps, nb_epochs, *estim_shape)
     """
 
     fig_format= "png"
@@ -219,29 +230,32 @@ def plot_fit_estim_dist(
 
     fig_file = out_file+"."+fig_format
 
-    plt.rcParams.update({'font.size':sizefont, 'text.usetex':usetex})
+    plt.rcParams.update({'font.size':sizefont,
+        'text.usetex':usetex})
     plt.subplots_adjust(wspace=0.16, hspace=0.1)
 
     f, ax = plt.subplots(figsize=(8, 5))
 
-    nb_iters = scores["b"].shape[1]
+    nb_iters = scores["b"]["mean"].shape[1]
     x = [j for j in range(1, nb_iters+1)]
 
     params = {
             "b":"Branch lengths",
+            "t":"Tree length",
             "r":"Substitution rates", 
             "f":"Relative frequencies",
             "k":"Kappa"}
 
     colors = { 
             "b":"#226E9C",
+            "t":"#226E9C",
             "r":"#D12959", 
             "f":"#40AD5A",
             "k":"#FFAA00"}
 
     for ind, name in enumerate(scores):
         if name in params:
-            estim_scores = scores[name]
+            estim_scores = scores[name]["mean"]
             sim_param = sim_params[name].reshape(1, 1, -1)
 
             # eucl dist
@@ -302,7 +316,7 @@ def plot_fit_estim_corr(
         
     """
     scores here is a dictionary of estimate arrays.
-    Each array has the shape : (nb_reps, nb_epochs, *estim_shape)
+    Each array has the shape:(nb_reps, nb_epochs, *estim_shape)
     """
 
     fig_format= "png"
@@ -312,10 +326,11 @@ def plot_fit_estim_corr(
 
     f, ax = plt.subplots(figsize=(8, 5))
 
-    plt.rcParams.update({'font.size':sizefont, 'text.usetex':usetex})
+    plt.rcParams.update({'font.size':sizefont,
+        'text.usetex':usetex})
     plt.subplots_adjust(wspace=0.16, hspace=0.1)
 
-    nb_iters = scores["b"].shape[1]
+    nb_iters = scores["b"]["mean"].shape[1]
     x = [j for j in range(1, nb_iters+1)]
 
     params = {
@@ -337,7 +352,7 @@ def plot_fit_estim_corr(
 
     for ind, name in enumerate(scores):
         if name in params and name not in skip:
-            estim_scores = scores[name]
+            estim_scores = scores[name]["mean"]
             sim_param = sim_params[name]
             #print(name, estim_scores.shape)
 
@@ -390,18 +405,17 @@ def aggregate_estimate_values(
         ):
 
     #return a dictionary of arrays
-    estimates = dict()
+    estimates = defaultdict(dict)
 
-    # List (nb_reps) of list (nb_epochs) of dictionaries (estimates) 
+    # List (nb_reps) of list (nb_epochs) of dictionaries
+    # (estimate names) of dicitonaries (estimate stats)
     estim_reps = [result[key] for result in rep_results]
 
-    param_names = ["b", "r", "f", "k"]
+    param_names = estim_names
     names = param_names+[
             "a", "x", 
             "a_hamming", "a_euclidean",
             "x_hamming", "x_euclidean"]
-
-    estim_shapes = dict()
 
     nb_reps = len(rep_results)
 
@@ -415,47 +429,55 @@ def aggregate_estimate_values(
     for name in names:
         if name in estim_reps[0][0]:
             #print(name)
- 
-            estim = estim_reps[0][0][name]
-            if name in param_names:
-                shape = list(estim.flatten().shape)
-            else:
-                shape = list(estim.shape)
-            #print(name, shape)
 
-            estim_shapes[name] = shape
-            #print(shape)
+            estim_stats = estim_reps[0][0][name]
 
-            estimates[name] = np.zeros((nb_reps, nb_epochs, *shape))
-            #print(estimates[name].shape)
+            for stat_name in stat_names:
+                if stat_name in estim_stats:
+                    estim = estim_stats[stat_name]
+
+                if name in param_names:
+                    shape = list(estim.flatten().shape)
+                else:
+                    shape = list(estim.shape)
+                #print(name, shape)
+
+                estimates[name][stat_name] = np.zeros((
+                    nb_reps,
+                    nb_epochs,
+                    *shape))
+                #print(estimates[name][stat_name].shape)
 
     for i, replicat in enumerate(estim_reps): # list of reps
         #print("replicat {}".format(type(replicat)))
         for j in range(nb_epochs): # list of epochs
             epoch = replicat[j]
             #print("epoch {}".format(type(epoch)))
-            for name in names:
-                if name in epoch:
+            #for name in names:
+                #if name in epoch:
+            for name in estimates:
+                for stat_name in estimates[name]:
 
-                    if isinstance(epoch[name], torch.Tensor):
-                        estimation = epoch[name].cpu().detach(
-                                ).numpy()
-                    elif isinstance(epoch[name], np.ndarray): 
-                        estimation = epoch[name]
+                    if isinstance(epoch[name][stat_name],
+                            torch.Tensor):
+                        estimation =epoch[name][stat_name].cpu(
+                                ).detach().numpy()
+                    elif isinstance(epoch[name][stat_name],
+                            np.ndarray): 
+                        estimation = epoch[name][stat_name]
                     else:
                         raise ValueError("{} is not tensor"\
-                                " or array in {}".format(name, key))
+                                " or array in {}".format(
+                                    name, key))
 
                     if name in param_names:
                         #print(name, estimation.shape)
                         estimation = estimation.flatten()
 
-                    estimates[name][i,j] = estimation
+                    estimates[name][stat_name][i,j]=estimation
                     #print(name, estimation.shape)
-                    #print(name, estimates[name].shape)
 
     return estimates 
-
 
 def aggregate_sampled_estimates(
         rep_results,
@@ -562,39 +584,10 @@ def report_sampled_estimates(
                 chaine += the_name + "\t"
                 chaine += "{:.4f}".format(means[dim].item())
                 if var_flag:
-                    chaine += "\t"+"{:.4f}".format(vars_[dim].item())
+                    chaine += "\t"+"{:.4f}".format(
+                            vars_[dim].item())
                 chaine += "\n"
-
             chaine += "\n"
-
-    var_flag = False
-    chaine += "Ancestral states\n"
-    m_estimate = estimates["a"]
-    seq_len = m_estimate.shape[1]
-    means = m_estimate.mean(0)
-
-    if "a_var" in estimates:
-        var_flag = True
-        v_estimate = estimates["a_var"]
-        vars_ = v_estimate.mean(0)
-
-    chaine += "pos"
-    for nd in freqs:
-        chaine += "\t"+ nd
-        if var_flag : chaine += "\t"
-
-    chaine += "\n "
-    for nd in freqs:
-        chaine += "\tMean"
-        if var_flag : chaine += "\tVar"
-
-    for i in range(seq_len):
-        chaine += "\n{}".format(i+1)
-        for j in range(4):
-            chaine += "\t{:.4f}".format(means[i,j].item())
-            if var_flag: 
-                chaine += "\t{:.4f}".format(vars_[i,j].item())
 
     with open(out_file, "w") as fh:
         fh.write(chaine)
-

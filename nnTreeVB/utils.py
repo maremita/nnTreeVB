@@ -1,5 +1,6 @@
 from nnTreeVB.data import SeqCollection 
 
+import copy
 import time
 import math
 import platform
@@ -257,6 +258,21 @@ def mean_confidence_interval(data, confidence=0.95, axis=0):
 
     return m, m-h, m+h
 
+def compute_estim_stats(
+        sample,
+        confidence=0.95,
+        axis=0):
+
+    stats = dict()
+
+    stats["mean"],stats["cimin"],stats["cimax"] =\
+            mean_confidence_interval(sample, confidence, axis)
+    stats["var"] = np.var(sample, axis=axis)
+    stats["min"] = np.min(sample, axis=axis)
+    stats["max"] = np.max(sample, axis=axis)
+
+    return stats
+
 def dict_to_cpu(some_dict):
     new_dict = dict()
 
@@ -270,7 +286,8 @@ def dict_to_numpy(some_dict):
 
     for key in some_dict:
         if isinstance(some_dict[key], torch.Tensor):
-            new_dict[key] = some_dict[key].cpu().detach().numpy()
+            new_dict[key] = some_dict[
+                    key].cpu().detach().numpy()
         elif isinstance(some_dict[key], list):
             new_dict[key] = np.array(some_dict[key])
         elif isinstance(some_dict[key], (int, float)):

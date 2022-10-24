@@ -47,9 +47,9 @@ def simulate_tree(
                 node.dist = 0.
 
     # Add postorder ranking of nodes:
-    t, _, _ = set_postorder_ranks(t)
+    t, taxa, nodes = set_postorder_ranks(t)
 
-    return t, post_branches
+    return t, post_branches, taxa, nodes
 
 def evolve_seqs_full_homogeneity(
         nwk_tree,

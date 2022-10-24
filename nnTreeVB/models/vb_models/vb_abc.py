@@ -2,6 +2,7 @@ from nnTreeVB.utils import timeSince, dict_to_numpy
 from nnTreeVB.utils import get_grad_stats
 from nnTreeVB.utils import get_weight_stats
 from nnTreeVB.utils import apply_on_submodules
+from nnTreeVB.utils import compute_estim_stats
 from nnTreeVB.checks import check_finite_grads
 
 from abc import ABC 
@@ -11,6 +12,8 @@ import numpy as np
 import torch
 
 __author__ = "amine remita"
+
+estim_names = ["b", "t", "b1", "r", "f", "k"]
 
 # This code is adapted from evoABCmodels.py module of evoVGM
 # https://github.com/maremita/evoVGM/blob/main/evoVGM/models/evoABCmodels.py
@@ -39,12 +42,12 @@ class BaseTreeVB(ABC):
             X_counts:torch.Tensor,
             elbo_type: str = "elbo",
             grad_samples=torch.Size([1]),
-            nb_samples=torch.Size([1]),
+            val_samples=torch.Size([1]),
             alpha_kl=1.,
             max_iter:int = 100,
-            optim="adam",
-            optim_learning_rate=0.005, 
-            optim_weight_decay=0.1,
+            optimizer="adam",
+            learning_rate=0.005, 
+            weight_decay=0.1,
             scheduler_lambda=lambda e:1.,
             X_val=None,
             # If not None, a validation stpe will be done
@@ -57,35 +60,36 @@ class BaseTreeVB(ABC):
             # Save statistics of gradients
             save_weight_stats=False,
             # Save statistics of weights
-            verbose=None):
- 
+            verbose=None,
+            **kwargs):
+
         # Optimizer configuration
         optim_algo = torch.optim.SGD
-        if optim == 'adam':
+        if optimizer == 'adam':
             optim_algo = torch.optim.Adam
 
         optim_params = self.parameters()
         lr_default = 0.01
 
-        if isinstance(optim_learning_rate, dict):
+        if isinstance(learning_rate, dict):
             optim_params = []
 
             for name, encoder in self.named_children():
-                if name in optim_learning_rate:
+                if name in learning_rate:
                     ps = {'params': encoder.parameters(),
-                            'lr': optim_learning_rate[name]}
+                            'lr': learning_rate[name]}
                     optim_params.append(ps)
 
-            if 'default' in optim_learning_rate:
-                lr_default = optim_learning_rate['default']
+            if 'default' in learning_rate:
+                lr_default = learning_rate['default']
 
-        elif isinstance(optim_learning_rate, (int, float)):
-            lr_default = optim_learning_rate
+        elif isinstance(learning_rate, (int, float)):
+            lr_default = learning_rate
 
         optimizer = optim_algo(
                 optim_params, 
                 lr=lr_default,
-                weight_decay=optim_weight_decay)
+                weight_decay=weight_decay)
 
         # Scheduler configuration
         scheduler = torch.optim.lr_scheduler.LambdaLR(
@@ -129,7 +133,8 @@ class BaseTreeVB(ABC):
             ret["kls_val_list"] = []
 
         m_axis = 0
-        if len(nb_samples) == 2:
+        if isinstance(val_samples, (torch.Size, list)) and\
+                len(val_samples) == 2 or val_samples==2:
             m_axis = (0,1)
 
         optim_nb = 0
@@ -186,7 +191,7 @@ class BaseTreeVB(ABC):
                                 X_val,
                                 X_val_counts, 
                                 elbo_type=elbo_type,
-                                nb_samples=nb_samples)
+                                nb_samples=val_samples)
                                 #alpha_kl=alpha_kl,
 
                         val_dict = dict_to_numpy(val_dict)
@@ -238,17 +243,17 @@ class BaseTreeVB(ABC):
                                             kls_val.item())
                         if verbose >= 2:
                             chaine += "\n"
-                            for estim in ["b", "t", "b1",\
-                                    "r", "f", "k"]:
+                            for estim in estim_names:
                                 if estim in fit_dict:
                                     estim_vals = fit_dict[
-                                            estim].mean(m_axis).squeeze() 
+                                        estim].mean(
+                                            m_axis).squeeze() 
                                     chaine += estim + ": "\
                                             +str(estim_vals)
                                     if estim == "b" and "t"\
                                             not in fit_dict:
                                         chaine += "\nt: "+ str(
-                                                estim_vals.sum()) 
+                                            estim_vals.sum()) 
                                     chaine += "\n"
                         print(chaine, end="\n")
 
@@ -261,10 +266,13 @@ class BaseTreeVB(ABC):
 
                 if save_fit_history:
                     fit_estim = dict()
-                    for estim in ["b", "t", "b1", "r",\
-                            "f", "k"]:
+                    for estim in estim_names:
                         if estim in fit_dict:
-                            fit_estim[estim] = fit_dict[estim]
+                            estim_stats = compute_estim_stats(
+                                    fit_dict[estim],
+                                    confidence=0.95,
+                                    axis=0)
+                            fit_estim[estim] = estim_stats
                     ret["fit_estimates"].append(fit_estim)
 
                 if save_grad_stats:
@@ -287,12 +295,14 @@ class BaseTreeVB(ABC):
 
                     if save_val_history:
                         val_estim = dict()
-                        for estim in ["b", "t", "b1", "r",\
-                                "f", "k"]:
+                        for estim in estim_names:
                             if estim in val_dict:
-                                val_estim[estim]=val_dict[
-                                        estim]
-
+                                estim_stats =\
+                                        compute_estim_stats(
+                                            val_dict[estim],
+                                            confidence=0.95,
+                                            axis=0)
+                                val_estim[estim] = estim_stats
                         ret["val_estimates"].append(val_estim)
         # End of fitting/validating
 

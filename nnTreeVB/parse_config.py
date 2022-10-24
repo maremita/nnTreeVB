@@ -43,8 +43,10 @@ def parse_config(config_file):
     arg.sim = ArgObject()
     arg.sim.sim_data = config.getboolean(
             "sim_data", "sim_data", fallback=True)
-    arg.sim.sim_from_files = config.getboolean(
-            "sim_data", "sim_from_files", fallback=True)
+    arg.sim.seq_from_file = config.getboolean(
+            "sim_data", "seq_from_file", fallback=True)
+    arg.sim.nwk_from_file = config.getboolean(
+            "sim_data", "nwk_from_file", fallback=True)
     arg.sim.nb_sites = config.getint(
             "sim_data", "nb_sites", fallback=100)
     arg.sim.nb_taxa = config.getint(
@@ -168,8 +170,8 @@ def parse_config(config_file):
             "alpha_kl", fallback=0.0001)
     arg.fit.max_iter = config.getint("hyperparams",
             "max_iter", fallback=100)
-    arg.fit.optim = config.get("hyperparams",
-            "optim", fallback="adam")
+    arg.fit.optimizer = config.get("hyperparams",
+            "optimizer", fallback="adam")
     arg.fit.learning_rate = config.getfloat("hyperparams",
             "learning_rate", fallback=0.005)
     arg.fit.weight_decay = config.getfloat("hyperparams",

@@ -182,13 +182,15 @@ def check_verbose(verbose):
                         " and positive integers")
                 print("Verbose is set to 0")
                 return 0
+            else:
+                return v
         except ValueError as e:
             print("\nInvalid value for verbose {}".format(
                 verbose))
             print("Valid values are: True, False, None and"\
                     " positive integers")
-            print("Verbose is set to 1")
-            return 1
+            print("Verbose is set to 0")
+            return 0
 
 def check_sample_size(sample_size):
     
