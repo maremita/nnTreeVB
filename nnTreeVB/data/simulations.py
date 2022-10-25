@@ -21,7 +21,6 @@ def simulate_tree(
         seed=None):
 
     taxa_names = ["T"+str(i) for i in list(range(0, nb_taxa))]
-    post_branches = []
 
     t = Tree()
     t.populate(nb_taxa,
@@ -41,17 +40,13 @@ def simulate_tree(
         for node in t.traverse("postorder"):
             if node.is_leaf():
                 node.dist = branch_dists[0].sample().item()
-                post_branches.append(node.dist)
             elif not node.is_root():
                 node.dist = branch_dists[1].sample().item()
-                post_branches.append(node.dist)
             else:
                 node.dist = 0.
 
-    # Add postorder ranking of nodes:
-    t, taxa, nodes = set_postorder_ranks(t)
-
-    return t, post_branches, taxa, nodes
+    # Add postorder ranking of nodes and return
+    return set_postorder_ranks(t)
 
 def evolve_seqs_full_homogeneity(
         nwk_tree,

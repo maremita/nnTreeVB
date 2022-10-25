@@ -4,6 +4,7 @@ from nnTreeVB.data import evolve_seqs_full_homogeneity as\
         evolve_sequences
 from nnTreeVB.data import simulate_tree
 from nnTreeVB.data import build_tree_from_nwk
+from nnTreeVB.data import get_postorder_branches
 from nnTreeVB.data import TreeSeqCollection
 from nnTreeVB.data import build_msa_categorical
 
@@ -215,7 +216,8 @@ if __name__ == "__main__":
                 if verbose: print("\nExtracting simulated"\
                         " tree from {} ...".format(tree_file))
                 tree_obj, taxa, int_nodes =\
-                        build_tree_from_nwk(tree_file) 
+                        build_tree_from_nwk(tree_file)
+
             else:
                 # if tree file is not given, or 
                 # sim.nwk_from_file is false: simulate a tree
@@ -223,14 +225,16 @@ if __name__ == "__main__":
                 if verbose:print("\nSimulating a new tree...")
 
                 # set seed to numpy here
-                tree_obj, post_branches, taxa, int_nodes =\
-                        simulate_tree(
-                                sim.nb_taxa,
-                                sim.sim_blengths,
-                                unroot=True,
-                                seed=stg.seed)
+                tree_obj, taxa, int_nodes = simulate_tree(
+                        sim.nb_taxa,
+                        sim.sim_blengths,
+                        unroot=True,
+                        seed=stg.seed)
 
                 tree_obj.write(outfile=tree_file, format=1)
+
+            post_branches = get_postorder_branches(
+                    tree_obj)
 
             if not os.path.isfile(fasta_file) or \
                     not sim.seq_from_file:

@@ -14,16 +14,20 @@ __author__ = "amine remita"
 
 
 __all__ = [
-        #"categorical_collections",
+        # categorical_collections
         "FullNucCatCollection",
         "build_cats",
         "MSANucCatCollection", 
         "build_msa_categorical",
-        #"seq_collections", 
+        # seq_collections
         "SeqCollection",
         "TreeSeqCollection",
         "LabeledSeqCollection",
+        # utils functions
         "build_nwk_star_tree",
         "build_tree_from_nwk",
+        "set_postorder_ranks",
+        "get_postorder_branches",
+        # simulation functions
         "evolve_seqs_full_homogeneity"
         ]
