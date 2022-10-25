@@ -396,7 +396,7 @@ if __name__ == "__main__":
     estimates = aggregate_estimate_values(rep_results,
             "{}_estimates".format(hist))
     #print(estimates)
-    #return a dictionary of dictionary of  arrays
+    #return a dictionary of dictionary of arrays
 
     ## Distance between estimated paramerters 
     ## and values given in the config file
@@ -428,12 +428,12 @@ if __name__ == "__main__":
     ## #######################################
     #if verbose: print("\nGenerate reports...")
 
-    #estim_samples = aggregate_sampled_estimates(
-    #        rep_results, "samples")
+    estim_samples = aggregate_sampled_estimates(
+            rep_results, "samples")
 
-    #report_sampled_estimates(
-    #        estim_samples,
-    #        output_path+"/{}_estim_report".format(
-    #            stg.job_name))
+    report_sampled_estimates(
+            estim_samples,
+            output_path+"/{}_estim_report.txt".format(
+                stg.job_name))
 
     print("\nFin normale du programme\n")

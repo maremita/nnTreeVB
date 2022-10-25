@@ -2,6 +2,7 @@ from collections import defaultdict
 import numpy as np
 
 from nnTreeVB.utils import compute_corr
+from nnTreeVB.utils import compute_estim_stats
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -335,6 +336,7 @@ def plot_fit_estim_corr(
 
     params = {
             "b":"Branch lengths",
+            "t":"Tree length",
             "r":"Substitution rates", 
             "f":"Relative frequencies"}
 
@@ -453,11 +455,8 @@ def aggregate_estimate_values(
         for j in range(nb_epochs): # list of epochs
             epoch = replicat[j]
             #print("epoch {}".format(type(epoch)))
-            #for name in names:
-                #if name in epoch:
             for name in estimates:
                 for stat_name in estimates[name]:
-
                     if isinstance(epoch[name][stat_name],
                             torch.Tensor):
                         estimation =epoch[name][stat_name].cpu(
@@ -483,58 +482,22 @@ def aggregate_sampled_estimates(
         rep_results,
         key):
 
-    param_names = [
-            "b", "b_var",
-            "r", "r_var",
-            "f", "f_var",
-            "k", "k_var"]
-
-    names = param_names + ["a", "a_var", "x", "x_var"]
-
     estim_reps = [result[key] for result in rep_results]
 
-    estim_shapes = dict()
-    estimates = dict()
+    estimates = defaultdict(list)
     nb_reps = len(estim_reps)
 
-    for name in names:
-        if name in estim_reps[0]:
-            #print(name)
-            
-            estim = estim_reps[0][name]
-            if name in param_names:
-                shape = list(estim.flatten().shape)
-            else:
-                shape = list(estim.shape)
-            #print(name, shape)
+    for r in range(nb_reps):
+        samples = estim_reps[r]
 
-            estim_shapes[name] = shape
-            #print(shape)
+        for name in samples:
+            sample = samples[name]
+            estimates[name].append(sample)
 
-            estimates[name] = np.zeros((nb_reps, *shape))
-            #print(estimates[name].shape)
+    for name in estimates:
+        estimates[name] = np.stack(estimates[name], axis=0)
 
-    for i, sampling in enumerate(estim_reps): # list of reps
-        #print("sampling {}".format(type(sampling)))
-        for name in names:
-            if name in sampling:
-                if isinstance(sampling[name], torch.Tensor):
-                    estimation = sampling[name].cpu().detach(
-                            ).numpy()
-                elif isinstance(sampling[name], np.ndarray): 
-                    estimation = sampling[name]
-                else:
-                    raise ValueError(
-                            "{} is not tensor or array in {}".format(
-                                name, key))
-
-                if name in param_names:
-                    #print(name, estimation.shape)
-                    estimation = estimation.flatten()
-
-                estimates[name][i] = estimation
-
-    return estimates
+    return dict(estimates)
 
 
 def report_sampled_estimates(
@@ -544,6 +507,7 @@ def report_sampled_estimates(
 
     param_names = {
             "b":"Branch lengths",
+            "t":"Tree length",
             "r":"Substitution rates", 
             "f":"Relative frequencies",
             "k":"Kappa"}
@@ -551,41 +515,65 @@ def report_sampled_estimates(
     rates = ["AG", "AC", "AT", "GC", "GT", "CT"]
     freqs = ["A", "G", "C", "T"]
 
-    chaine =  "evoVGM estimations\n"
-    chaine += "##################\n\n"
+    prob_names = {"elbo":"ELBO", 
+            "logl":"LogL",
+            "logprior":"LogPrior",
+            "logq":"LogQ",
+            "kl_qprior":"KL_QPrior"}
+
+    pkg_name = __name__.split(".")[0]
+    chaine =  "{} estimations\n".format(pkg_name)
+    chaine += "####################\n\n"
+
+    chaine += "Log probabilities and KLs\n"
+    for prob_name in prob_names:
+        prob = estimates[prob_name]
+
+        # TODO Get the full values to compute other statistics
+        if len(prob.shape) > 1: prob = prob.mean()
+        chaine +="{}\t\t{:.4f}\n".format(prob_names[prob_name],
+                prob.mean())
+
+    chaine += "\n"
 
     for name in param_names:
-        var_flag = False
+        #var_flag = False
         if name in estimates:
             chaine += param_names[name] + "\n"
  
-            m_estimate = estimates[name]
-            param_dim = m_estimate.shape[1]
+            # Average by replicates
+            estimate = estimates[name].mean(0)
+            param_dim = estimate.shape[-1]
+            print("param_dim {}".format(param_dim))
 
-            means = m_estimate.mean(0)
-            chaine += "  \tMean"
+            #means = estimate.mean(0)
 
-            if name+"_var" in estimates:
-                var_flag = True
-                v_estimate = estimates[name+"_var"]
-                vars_ = v_estimate.mean(0)
-                chaine += "\tVariance"
-            
+            # Statistics by samples (already averaged by
+            # replicates)
+            estimate_stats = compute_estim_stats(
+                    estimate, confidence=0.95, axis=0)
+
+            # Names of stat columns
+            chaine += "   "
+            for stat_name in estimate_stats:
+                chaine += "\t"+stat_name
             chaine += "\n"
 
             for dim in range(param_dim):
-                the_name = name + str(dim+1)
-
                 if name == "r":
                     the_name = rates[dim]
                 elif name == "f":
                     the_name = freqs[dim]
+                else:
+                    # TODO Get branch names
+                    the_name = name + str(dim+1)
 
-                chaine += the_name + "\t"
-                chaine += "{:.4f}".format(means[dim].item())
-                if var_flag:
-                    chaine += "\t"+"{:.4f}".format(
-                            vars_[dim].item())
+                chaine += the_name
+                
+                for stat_name in estimate_stats:
+                    stats = estimate_stats[stat_name]
+                    chaine +="\t{:.4f}".format(
+                            stats[dim].item())
                 chaine += "\n"
             chaine += "\n"
 
