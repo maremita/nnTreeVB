@@ -62,7 +62,7 @@ using this command line:
 # nntreevb.py evovgm_conf_template.ini
 where <nntreevb_conf_template.ini> is the config file.
 
-The program is adapted from evovgm.py (MIT license)
+The program is adapted from evovgm.py ((c) remita 2022,  MIT license)
 """
 
 ## Evaluation function
@@ -76,15 +76,13 @@ def eval_evomodel(EvoModel, m_args, fit_args):
     ## Fitting and param3ter estimation
     ret = e.fit(**fit_args)
 
-    fit_probs = [
+    overall["fit_probs"] = np.array([
             ret["elbos_list"],
             ret["lls_list"],
             ret["kls_list"]
-            ]
+            ])
 
     overall["fit_estimates"] = ret["fit_estimates"]
-
-    overall["fit_probs"] = np.array(fit_probs)
 
     ## Sampling after fitting
     ## ########################
@@ -222,7 +220,7 @@ if __name__ == "__main__":
                 # if tree file is not given, or 
                 # sim.nwk_from_file is false: simulate a tree
                 # using ete3 populate function
-                if verbose: print("\nSimulating a new tree...")
+                if verbose:print("\nSimulating a new tree...")
 
                 # set seed to numpy here
                 tree_obj, post_branches, taxa, int_nodes =\

@@ -5,7 +5,8 @@ __author__ = "amine"
 
 __all__ = [
         "build_nwk_star_tree",
-        "build_tree_from_nwk"
+        "build_tree_from_nwk",
+        "set_postorder_ranks"
         ]
 
 def build_nwk_star_tree(b_lengths):
@@ -48,6 +49,17 @@ def set_postorder_ranks(tree):
 def build_tree_from_nwk(nwk_tree):
 
     tree = Tree(nwk_tree, format=1)
+    tree.sort_descendants()
 
     return set_postorder_ranks(tree)
 
+def get_postorder_branches(tree):
+    post_branches = []
+
+    for node in tree.traverse("postorder"):
+        if node.is_leaf():
+            post_branches.append(node.dist)
+        elif not node.is_root():
+            post_branches.append(node.dist)
+
+    return post_branches

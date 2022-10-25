@@ -30,6 +30,8 @@ def simulate_tree(
 
     if unroot: t.unroot()
 
+    t.sort_descendants()
+
     if len(branch_dists) == 1:
         # use the same distribution to sample internal edges
         branch_dists.append(branch_dists[0])
