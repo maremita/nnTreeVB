@@ -229,7 +229,9 @@ if __name__ == "__main__":
         ## ################
         if sim.sim_data:
             # Data simulation
-            if os.path.isfile(tree_file) and sim.nwk_from_file:
+
+            if os.path.isfile(tree_file) and\
+                    sim.nwk_from_file:
                 if verbose: print("\nExtracting simulated"\
                         " tree from {} ...".format(tree_file))
                 tree_obj, taxa, int_nodes =\
@@ -249,14 +251,13 @@ if __name__ == "__main__":
 
                 tree_obj.write(outfile=tree_file, format=1)
 
-            post_branches = get_postorder_branches(
-                    tree_obj)
-
+            # TODO sim data based on sim.subs_model
             if not os.path.isfile(fasta_file) or \
                     not sim.seq_from_file:
                 if verbose:
                     print("\nSimulating new sequences...")
                 tree_nwk = tree_obj.write(format=1)
+            
                 # Evolve sequences
                 all_seqdict = evolve_sequences(
                         tree_nwk,
@@ -274,8 +275,11 @@ if __name__ == "__main__":
                     taxon, '', '') for taxon in seq_taxa]
                 SeqIO.write(records, fasta_file, "fasta")
 
-            # sim_params will be used to compare with estimate 
-            # parameters
+            post_branches = get_postorder_branches(
+                    tree_obj)
+
+            # sim_params will be used to compare with
+            # estimated parameters
             result_data["sim_params"] = dict(
                     b=np.array(post_branches),
                     t=np.sum(np.array(post_branches),

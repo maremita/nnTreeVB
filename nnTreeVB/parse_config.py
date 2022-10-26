@@ -53,6 +53,8 @@ def parse_config(config_file):
             "sim_data", "nb_sites", fallback=100)
     arg.sim.nb_taxa = config.getint(
             "sim_data", "nb_taxa", fallback=100)
+    arg.sim.subs_model = config.get(
+            "sim_data", "subs_model", fallback="jc69")
     arg.sim.sim_blengths = check_sim_blengths(config.get(
         "sim_data", "sim_blengths", fallback="0.1,1."))
     arg.sim.sim_rates = check_sim_simplex(config.get(
@@ -65,8 +67,8 @@ def parse_config(config_file):
     # Hyper parameters
     arg.mdl = ArgObject()
     # Evo variational model type
-    arg.mdl.subs_model = config.get("hyperparams",
-            "subs_model", fallback="gtr")
+    arg.mdl.subs_model = config.get(
+            "hyperparams", "subs_model", fallback="jc69")
 
     # Hyper-parameters of prior distributions
     # Branches
