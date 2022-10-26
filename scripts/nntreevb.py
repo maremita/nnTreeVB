@@ -13,15 +13,17 @@ from nnTreeVB.parse_config import parse_config
 from nnTreeVB.utils import timeSince
 from nnTreeVB.utils import write_conf_packages
 from nnTreeVB.utils import update_sim_parameters
+from nnTreeVB.utils import dict_to_numpy, dict_to_tensor
 
-from nnTreeVB.reports import plt_elbo_ll_kl_rep_figure
+from nnTreeVB.reports import plot_elbo_ll_kl
 from nnTreeVB.reports import aggregate_estimate_values
-from nnTreeVB.reports import plot_fit_estim_dist
-from nnTreeVB.reports import plot_fit_estim_corr
+from nnTreeVB.reports import plot_fit_estim_distance
+from nnTreeVB.reports import plot_fit_estim_correlation
 from nnTreeVB.reports import aggregate_sampled_estimates
 from nnTreeVB.reports import report_sampled_estimates
 
 #from nnTreeVB.models import compute_log_likelihood_data 
+from nnTreeVB.models.evo_models import compute_log_likelihood
 from nnTreeVB.models.vb_models import VB_nnTree
 
 import sys
@@ -31,6 +33,7 @@ import time
 from datetime import datetime
 import random
 import argparse
+import copy
 
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
@@ -224,7 +227,7 @@ if __name__ == "__main__":
         ## Data preparation
         ## ################
         if sim.sim_data:
-            
+ 
             # Update sim params based on sim.subs_model
             # (useful to update rates using k (k80, hky))
             update_sim_parameters(sim)
@@ -282,18 +285,26 @@ if __name__ == "__main__":
                 SeqIO.write(records, fasta_file, "fasta")
 
             post_branches = get_postorder_branches(
-                    tree_obj)
+                    tree_obj) # numpy array
 
-            # sim_params will be used to compare with
+            # sim_params_np will be used to compare with
             # estimated parameters
-            result_data["sim_params"] = dict(
-                    b=np.array(post_branches),
-                    t=np.sum(np.array(post_branches),
-                        keepdims=1),
-                    r=np.array(sim.sim_rates),
-                    f=np.array(sim.sim_freqs),
-                    k=np.array([[sim.sim_kappa]])
-                    )
+ 
+            sim_params_np = dict_to_numpy(dict(
+                    b=post_branches,
+                    t=np.sum(post_branches, keepdims=1),
+                    r=sim.sim_rates,
+                    f=sim.sim_freqs,
+                    k=sim.sim_kappa))
+
+            sim_params_tensor = dict_to_tensor(sim_params_np,
+                    dtype=torch.float32)
+
+            for key in sim_params_tensor:
+                sim_params_tensor[key] =\
+                        sim_params_tensor[key].unsqueeze(0)
+
+            result_data["sim_params"] = sim_params_np
 
         if verbose: print("\nLoading data to"\
                 " TreeSeqCollection collection...")
@@ -306,15 +317,21 @@ if __name__ == "__main__":
         X = torch.from_numpy(x_motifs_cats.data).to(device)
         X, X_counts = X.unique(dim=0, return_counts=True)
 
-        #FIXME
-        #logl_data = compute_log_likelihood_data(
-        #        X_unique,
-        #        X_counts, post_branches, sim.sim_rates, 
-        #        sim.sim_freqs)
+        if sim.sim_data:
+            with torch.no_grad():
+                logl_data = (compute_log_likelihood(
+                        copy.deepcopy(tree_obj),
+                        X.unsqueeze(0),
+                        sim.subs_model,
+                        sim_params_tensor,
+                        torch.tensor([sim.sim_freqs]),
+                        rescaled_algo=False) * X_counts).sum()
 
-        #if verbose:
-        #    print("\nLog likelihood of the fitting data"\
-        #            " {}".format(logl_data))
+            result_data["logl_data"] = logl_data
+
+            if verbose:
+                print("\nLog likelihood of the data:"\
+                        " {:.4f}".format(logl_data))
 
         ## Get prior hyper-parameter values
         ## ################################
@@ -355,12 +372,7 @@ if __name__ == "__main__":
             model_args, fit_args) for s in\
                     range(fit.nb_replicates))
         #
-        #result_data = dict(
-        #        rep_results=rep_results, # rep for replicates
-        #        )
         result_data["rep_results"] = rep_results
-
-        #result_data["logl_data"] = logl_data
 
         dump(result_data, results_file,
                 compress=stg.compress_files)
@@ -372,7 +384,7 @@ if __name__ == "__main__":
             write_conf_packages(config, conf_file)
 
     if sim.sim_data:
-        sim_params = result_data["sim_params"] 
+        sim_params_np = result_data["sim_params"] 
 
     ## Report and plot results
     ## #######################
@@ -398,9 +410,15 @@ if __name__ == "__main__":
     ## ###############
     # TODO: Add horizontal line for true logl
     if verbose: print("\nPlotting...")
-    plt_elbo_ll_kl_rep_figure(
+    
+    logl_data = None
+    if "logl_data" in result_data: 
+        logl_data = result_data["logl_data"]
+
+    plot_elbo_ll_kl(
             the_scores,
-            output_path+"/{}_rep_fig".format(stg.job_name),
+            output_path+"/{}_probs_fig".format(stg.job_name),
+            line=logl_data,
             sizefont=plt.size_font,
             usetex=plt.plt_usetex,
             print_xtick_every=plt.print_xtick_every,
@@ -416,9 +434,9 @@ if __name__ == "__main__":
 
         ## Distance between estimated paramerters 
         ## and values given in the config file
-        plot_fit_estim_dist(
+        plot_fit_estim_distance(
                 estimates, 
-                sim_params,
+                sim_params_np,
                 output_path+"/{}_{}_estim_dist".format(
                     stg.job_name, hist),
                 sizefont=plt.size_font,
@@ -429,9 +447,9 @@ if __name__ == "__main__":
 
         ## Correlation between estimated paramerters 
         ## and values given in the config file
-        plot_fit_estim_corr(
+        plot_fit_estim_correlation(
                 estimates, 
-                sim_params,
+                sim_params_np,
                 output_path+"/{}_{}_estim_corr".format(
                     stg.job_name, hist),
                 sizefont=plt.size_font,

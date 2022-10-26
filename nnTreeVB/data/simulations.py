@@ -4,6 +4,8 @@ import random
 
 from pyvolve import read_tree, Model, Partition, Evolver
 from ete3 import Tree
+
+import numpy as np
 import torch
 
 __author__ = "amine"
@@ -84,21 +86,31 @@ def evolve_seqs_full_homogeneity(
             if isinstance(subst_rates, float):
                 rs = {g:subst_rates for g in gtr_r}
 
-            elif isinstance(subst_rates, list):
+            elif isinstance(subst_rates,
+                    (list, np.ndarray, torch.Tensor)):
                 assert len(subst_rates) == 6
                 rs = {g:float(r) for g, r in zip(gtr_r,
                     subst_rates)}
+
+            else:
+                raise ValueError("Rates vector must be "\
+                        "float, list, Tensor or ndarray ")
 
             parameters.update(mu=rs)
 
         if state_freqs is not None:
             # A C G T
-            fs = state_freqs
             if isinstance(state_freqs, float):
-                fs = [state_freqs]*4
+                fs = [state_freqs] * 4
 
-            elif isinstance(state_freqs, list):
+            elif isinstance(state_freqs,
+                    (list, np.ndarray, torch.Tensor)):
                 assert len(state_freqs) == 4
+                fs = [float(s) for s in state_freqs]
+
+            else:
+                raise ValueError("Freqs vector must be "\
+                        "float, list, Tensor or ndarray ")
 
             parameters.update(state_freqs=fs)
 

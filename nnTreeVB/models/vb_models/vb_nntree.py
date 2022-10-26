@@ -2,8 +2,7 @@ from nnTreeVB.models.vb_models import BaseTreeVB
 from nnTreeVB.models.vb_encoders import VB_Encoder
 from nnTreeVB.models.vb_encoders import build_vb_distribution
 from nnTreeVB.models.evo_models import build_transition_matrix
-from nnTreeVB.models.evo_models import pruning_rescaled
-#from nnTreeVB.models.evo_models import pruning
+from nnTreeVB.models.evo_models import compute_log_likelihood
 from nnTreeVB.utils import sum_log_probs
 from nnTreeVB.utils import sum_kls
 from nnTreeVB.checks import check_sample_size
@@ -372,7 +371,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             kl_qpriors.append(r_kl)
 
             ret_values["r"] = r_samples.detach().numpy()
-            tm_args["rates"] = r_samples
+            tm_args["r"] = r_samples
 
         if self.subs_model in ["hky", "gtr"]:
             # Sample f from q_f and compute log prior, log q
@@ -391,7 +390,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
             ret_values["f"] = f_samples.detach().numpy()
             pi = f_samples
-            tm_args["freqs"] = f_samples
+            tm_args["f"] = f_samples
 
         if self.subs_model in ["k80", "hky"]:
             # Sample k from q_d and compute log prior, log q
@@ -410,7 +409,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             kl_qpriors.append(k_kl)
 
             ret_values["k"] = k_samples.detach().numpy()
-            tm_args["kappa"] = k_samples
+            tm_args["k"] = k_samples
 
         # Compute joint logprior, logq and kl
         logprior = sum_log_probs(logpriors, sample_size,
@@ -425,15 +424,16 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
         ## Compute logl
         ## ############
-        tm = build_transition_matrix(self.subs_model, tm_args)
         sites_expanded = sites.expand(
                 [*list(sample_size), n_dim, m_dim, x_dim])
 
-        #logl = pruning(self.tree,
-        #        sites_expanded, tm, pi) * site_counts
-
-        logl = pruning_rescaled(self.tree,
-                sites_expanded, tm, pi) * site_counts
+        logl = compute_log_likelihood(
+                self.tree,
+                sites_expanded,
+                self.subs_model,
+                tm_args,
+                pi,
+                rescaled_algo=False) * site_counts
 
         if sum_by_samples:
             logl = (logl).sum(-1)

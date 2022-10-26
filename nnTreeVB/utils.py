@@ -29,34 +29,33 @@ def update_sim_parameters(sim):
 
     # Update frequencies
     if sim.subs_model in ["jc69", "k80"]:
-        sim.sim_freqs = torch.ones(4)/4
+        sim.sim_freqs = (np.ones(4)/4).tolist()
 
     # Update rates
     if sim.subs_model == "jc69":
-        sim.sim_rates = torch.ones(6)/6
+        sim.sim_rates = (np.ones(6)/6).tolist()
 
     elif sim.subs_model in ["k80", "hky"]:
-        sim.sim_rates = compute_rates_from_kappa(sim.sim_kappa)
+        sim.sim_rates = compute_rates_from_kappa(
+                sim.sim_kappa).tolist()
 
     # Update kappa if model is jc69 or gtr
     #(for information purpose, won't be used)
     if sim.subs_model in ["jc69", "gtr"]:
-        sim.sim_kappa = compute_kappa_from_rates(sim.sim_rates) 
+        sim.sim_kappa = compute_kappa_from_rates(sim.sim_rates)
+
 def compute_rates_from_kappa(kappa):
         """
         "AG", "AC", "AT", "GC", "GT", "CT"
         Multiply AG and CT transition rates by kappa
         See  The Phylogenetic_Handbook page 131
-        (Lemey Salemi Vandamme 2009)
+        (Lemey, Salemi, Vandamme 2009)
         """
 
-        if not isinstance(kappa, torch.Tensor):
-            kappa = torch.tensor(kappa)
+        if not isinstance(kappa, np.ndarray):
+            kappa = np.array(kappa)
 
-        rates = torch.hstack((
-            kappa*1.,
-            (torch.ones(4)), 
-            kappa*1.))
+        rates = np.hstack((kappa*1., (np.ones(4)), kappa*1.))
 
         return rates/rates.sum()
 
@@ -346,6 +345,24 @@ def dict_to_numpy(some_dict):
 
     return new_dict
 
+def dict_to_tensor(some_dict, dtype=torch.float32):
+    new_dict = dict()
+
+    for key in some_dict:
+        if isinstance(some_dict[key], (list, np.ndarray)):
+            new_dict[key] = torch.tensor(some_dict[key],
+                    dtype=dtype)
+        elif isinstance(some_dict[key], (int, float)):
+            new_dict[key] = torch.tensor([some_dict[key]],
+                    dtype=dtype)
+        elif isinstance(some_dict[key], torch.Tensor):
+            new_dict[key] = (some_dict[key]).to(dtype=dtype)
+        else:
+            raise ValueError("{} in dict_to_tensor() should"\
+                    " be tensor, array, list, int or float")
+
+    return new_dict
+
 def write_conf_packages(args, out_file):
 
     with open(out_file, "wt") as f:
@@ -374,4 +391,3 @@ def get_modules_versions():
             versions[module_name] = "Not found"
 
     return versions
-

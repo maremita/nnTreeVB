@@ -86,9 +86,10 @@ def plot_grads_weights_epochs(
     plt.close(f)
 
 
-def plt_elbo_ll_kl_rep_figure(
+def plot_elbo_ll_kl(
         scores,
         out_file,
+        line=None,
         sizefont=16,
         usetex=False,
         print_xtick_every=10,
@@ -101,92 +102,112 @@ def plt_elbo_ll_kl_rep_figure(
 
     fig_file = out_file+"."+fig_format
 
+    kl_fit_finite = np.isfinite(scores[:,2,:]).all()
+    kl_val_finite = False
+    if plot_validation:
+        kl_val_finite = np.isfinite(scores[:,5,:]).all()
+
     plt.rcParams.update({'font.size':sizefont, 
         'text.usetex':usetex})
     plt.subplots_adjust(wspace=0.16, hspace=0.1)
 
     f, ax = plt.subplots(figsize=(8, 5))
-    ax2 = ax.twinx()
+    
+    if kl_fit_finite or kl_val_finite:
+        ax2 = ax.twinx()
 
     nb_iters = scores.shape[2] 
     x = [j for j in range(1, nb_iters+1)]
 
     ax.set_rasterization_zorder(0)
- 
-    elbo_color = "#E9002D"  #sharop red
+
+    line_color = "#c13e4c"
+    elbo_color = "#3EC1B3"  # green
     ll_color =   "#226E9C"  # darker blue
     kl_color =   "#7C1D69"  # pink
 
-    elbo_color_v = "tomato"
+    elbo_color_v = "#6BE619"
     ll_color_v =   "#009ADE" # light blue
     kl_color_v =   "#AF58BA"  # light pink
-    
+ 
     # plot means
     ax.plot(x, scores[:,0,:].mean(0), "-", color=elbo_color, 
             label="ELBO", zorder=6) # ELBO train
-    ax.plot(x, scores[:,1,:].mean(0), "-", color=ll_color,
-            label="LogL", zorder=4) # LL train
-    ax2.plot(x, scores[:,2,:].mean(0), "-", color=kl_color,
-            label="KL_qp", zorder=4) # KL train
-
-    # plot stds 
+    
     ax.fill_between(x,
             scores[:,0,:].mean(0)-scores[:,0,:].std(0), 
             scores[:,0,:].mean(0)+scores[:,0,:].std(0), 
             color=elbo_color,
             alpha=0.2, zorder=5, interpolate=True)
 
+    ax.plot(x, scores[:,1,:].mean(0), "-", color=ll_color,
+            label="LogL", zorder=4) # LL train
+
     ax.fill_between(x,
             scores[:,1,:].mean(0)-scores[:,1,:].std(0), 
             scores[:,1,:].mean(0)+scores[:,1,:].std(0),
             color=ll_color,
             alpha=0.2, zorder=3, interpolate=True)
+    
+    if kl_fit_finite:
+        ax2.plot(x, scores[:,2,:].mean(0), "-", color=kl_color,
+            label="KL_qp", zorder=4) # KL train
 
-    ax2.fill_between(x,
-            scores[:,2,:].mean(0)-scores[:,2,:].std(0), 
-            scores[:,2,:].mean(0)+scores[:,2,:].std(0), 
-            color=kl_color,
-            alpha=0.2, zorder=-6, interpolate=True)
+        ax2.fill_between(x,
+                scores[:,2,:].mean(0)-scores[:,2,:].std(0), 
+                scores[:,2,:].mean(0)+scores[:,2,:].std(0), 
+                color=kl_color,
+                alpha=0.2, zorder=-6, interpolate=True)
 
     # plot validation
     if plot_validation:
         ax.plot(x, scores[:,3,:].mean(0), "-.",
                 color=elbo_color_v,
                 label="ELBO_val", zorder=2) # ELBO val
-        ax.plot(x, scores[:,4,:].mean(0), "-.",
-                color=ll_color_v,
-                label="LogL_val", zorder=0) # LL val
-        ax2.plot(x, scores[:,5,:].mean(0), "-.",
-                color=kl_color_v,
-                label="KL_qp_val", zorder=2) # KL val
-        
+
         ax.fill_between(x,
                 scores[:,3,:].mean(0)-scores[:,3,:].std(0), 
                 scores[:,3,:].mean(0)+scores[:,3,:].std(0), 
                 color=elbo_color_v,
                 alpha=0.1, zorder=1, interpolate=True)
 
+        ax.plot(x, scores[:,4,:].mean(0), "-.",
+                color=ll_color_v,
+                label="LogL_val", zorder=0) # LL val
+ 
         ax.fill_between(x,
                 scores[:,4,:].mean(0)-scores[:,4,:].std(0), 
                 scores[:,4,:].mean(0)+scores[:,4,:].std(0), 
                 color=ll_color_v,
                 alpha=0.1, zorder=2, interpolate=True)
 
-        ax2.fill_between(x,
-                scores[:,5,:].mean(0)-scores[:,5,:].std(0), 
-                scores[:,5,:].mean(0)+scores[:,5,:].std(0), 
-                color= kl_color_v,
-                alpha=0.1, zorder=1, interpolate=True)
+        if kl_val_finite:
+            ax2.plot(x, scores[:,5,:].mean(0), "-.",
+                    color=kl_color_v,
+                    label="KL_qp_val", zorder=2) # KL val
+        
+            ax2.fill_between(x,
+                    scores[:,5,:].mean(0)-scores[:,5,:].std(0), 
+                    scores[:,5,:].mean(0)+scores[:,5,:].std(0), 
+                    color= kl_color_v,
+                    alpha=0.1, zorder=1, interpolate=True)
 
-    #ax.set_zorder(ax2.get_zorder()+1)
-    ax.set_frame_on(False)
+    if line:
+        ax.axhline(y=line, color=line_color, linestyle='-')
+
+    #ax.set_zorder(ax2.get_zorder()+1) 
+    if kl_fit_finite or kl_val_finite:
+        ax.set_frame_on(False)
 
     ax.set_ylim([None, 0])
     ax.set_xticks([t for t in range(1, nb_iters+1) if t==1 or\
             t % print_xtick_every==0])
     ax.set_xlabel("Iterations")
     ax.set_ylabel("ELBO and Log Likelihood")
-    ax2.set_ylabel("KL(q|prior)")
+
+    if kl_fit_finite or kl_val_finite:
+        ax2.set_ylabel("KL(q|prior)")
+
     ax.grid(zorder=-1)
     ax.grid(zorder=-1, visible=True, which='minor', alpha=0.1)
     ax.minorticks_on()
@@ -198,8 +219,6 @@ def plt_elbo_ll_kl_rep_figure(
                 if l not in labels:
                     handles.append(h)
                     labels.append(l)
-        #plt.legend(handles, labels, bbox_to_anchor=(1.105, 1), 
-        #        loc='upper left', borderaxespad=0.)
         plt.legend(handles, labels, loc=legend, framealpha=1,
                 facecolor="white", fancybox=True)
 
@@ -211,7 +230,7 @@ def plt_elbo_ll_kl_rep_figure(
 
     plt.close(f)
 
-def plot_fit_estim_dist(
+def plot_fit_estim_distance(
         scores,
         sim_params,
         out_file,
@@ -304,7 +323,7 @@ def plot_fit_estim_dist(
     plt.close(f)
 
 
-def plot_fit_estim_corr(
+def plot_fit_estim_correlation(
         scores,
         sim_params,
         out_file,

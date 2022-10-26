@@ -1,7 +1,7 @@
 from collections import OrderedDict
 from ete3 import Tree
 
-import torch
+import numpy as np
 
 __author__ = "amine"
 
@@ -97,7 +97,7 @@ def get_postorder_branches(tree):
     Get branch lengths vector using postrank attribute
     """
 
-    post_branches = torch.zeros(len(tree.get_descendants()))
+    post_branches = np.zeros(len(tree.get_descendants()))
 
     for node in tree.traverse("postorder"):
         if not node.is_root():
