@@ -544,7 +544,7 @@ def report_sampled_estimates(
             # Average by replicates
             estimate = estimates[name].mean(0)
             param_dim = estimate.shape[-1]
-            print("param_dim {}".format(param_dim))
+            #print("param_dim {}".format(param_dim))
 
             #means = estimate.mean(0)
 

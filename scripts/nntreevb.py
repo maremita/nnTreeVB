@@ -28,6 +28,8 @@ import os
 from os import makedirs
 import time
 from datetime import datetime
+import random
+import argparse
 
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
@@ -83,7 +85,8 @@ def eval_evomodel(EvoModel, m_args, fit_args):
             ret["kls_list"]
             ])
 
-    overall["fit_estimates"] = ret["fit_estimates"]
+    if fit_args["save_fit_history"]:
+        overall["fit_estimates"] = ret["fit_estimates"]
 
     ## Sampling after fitting
     ## ########################
@@ -100,26 +103,40 @@ def eval_evomodel(EvoModel, m_args, fit_args):
 
 if __name__ == "__main__":
 
-    if len(sys.argv) != 2:
-        print("Config file is missing!!")
-        sys.exit()
+    # Parse command line
+    ####################
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--config-file', type=str,
+            required=True)
+    parser.add_argument('-s', '--seed', type=int)
+    cmd_args = parser.parse_args()
 
-    print("\nRunning {}".format(sys.argv[0]), flush=True)
+    config_file = cmd_args.config_file
+    seed = cmd_args.seed
+
+    print("\nRunning {} with config file: {}".format(
+        sys.argv[0], config_file), flush=True)
+
+    if seed:
+        random.seed(seed)
+        torch.manual_seed(seed)
+        print("\tSeed set to {}".format(seed))
 
     ## Fetch argument values from ini file
     ## ###################################
-    config_file = sys.argv[1]
-    arg, config = parse_config(config_file)
+    cfg_args, config = parse_config(config_file)
 
-    io = arg.io
-    sim = arg.sim
-    mdl = arg.mdl
-    fit = arg.fit
-    stg = arg.stg
-    plt = arg.plt
+    io  = cfg_args.io
+    sim = cfg_args.sim
+    mdl = cfg_args.mdl
+    fit = cfg_args.fit
+    stg = cfg_args.stg
+    plt = cfg_args.plt
 
     verbose = stg.verbose
-    print(verbose)
+
+    if verbose:
+        print("\tVerbose set to {}".format(verbose))
 
     # The order of freqs is different for pyvolve
     # A C G T
@@ -164,7 +181,7 @@ if __name__ == "__main__":
 
     ## Get Fasta and tree file names
     ## #############################
-    if arg.sim.sim_data:
+    if sim.sim_data:
         # Files paths of simulated data
         # training sequences
         fasta_file = output_path+"/{}.fasta".format(
@@ -228,8 +245,7 @@ if __name__ == "__main__":
                 tree_obj, taxa, int_nodes = simulate_tree(
                         sim.nb_taxa,
                         sim.sim_blengths,
-                        unroot=True,
-                        seed=stg.seed)
+                        unroot=True)
 
                 tree_obj.write(outfile=tree_file, format=1)
 
@@ -249,7 +265,7 @@ if __name__ == "__main__":
                         subst_rates=sim.sim_rates,
                         state_freqs=sim_freqs_pyv,
                         return_anc=False,
-                        seed=stg.seed,
+                        seed=seed,
                         verbose=verbose)
      
                 # Write fasta
@@ -272,7 +288,7 @@ if __name__ == "__main__":
         if verbose: print("\nLoading data to"\
                 " TreeSeqCollection collection...")
         treeseqs = TreeSeqCollection(fasta_file, tree_file)
-        tree_obj = treeseqs.tree
+        tree_obj = treeseqs.tree # The tree is sorted
 
         # Transform fitting sequences
         x_motifs_cats = build_msa_categorical(treeseqs,
@@ -308,30 +324,17 @@ if __name__ == "__main__":
 
         #print(model_args)
 
-        save_fit_history=True
-
         # Fitting the parameters 
         if fit.K_grad_samples > 1:
-            grad_samples = [fit.grad_samples,
+            fit.grad_samples = [fit.grad_samples,
                     fit.K_grad_samples]
-        else:
-            grad_samples = fit.grad_samples
 
         fit_args = {
                 "X":X,
                 "X_counts":X_counts,
-                "elbo_type":fit.elbo_type,
-                "grad_samples":grad_samples,
-                "nb_samples":fit.nb_samples,
-                "alpha_kl":fit.alpha_kl,
-                "max_iter":fit.max_iter,
-                "optimizer":fit.optimizer,
-                "learning_rate":fit.learning_rate,
-                "weight_decay":fit.weight_decay,
-                #"scheduler_lambda":fit.scheduler_lambda,
-                "save_fit_history":save_fit_history,
-                "verbose":not sim.sim_data
-                #"verbose":verbose
+                "verbose":not sim.sim_data,
+                #"verbose":verbose,
+                **fit.to_dict()
                 }
 
         parallel = Parallel(n_jobs=fit.nb_replicates, 
@@ -394,37 +397,38 @@ if __name__ == "__main__":
             title=None,
             plot_validation=False)
 
-    hist = "fit" # [fit | val]
-    estimates = aggregate_estimate_values(rep_results,
-            "{}_estimates".format(hist))
-    #print(estimates)
-    #return a dictionary of dictionary of arrays
+    if fit.save_fit_history or fit.save_val_history:
+        hist = "fit" # [fit | val]
+        estimates = aggregate_estimate_values(rep_results,
+                "{}_estimates".format(hist))
+        #print(estimates)
+        #return a dictionary of dictionary of arrays
 
-    ## Distance between estimated paramerters 
-    ## and values given in the config file
-    plot_fit_estim_dist(
-            estimates, 
-            sim_params,
-            output_path+"/{}_{}_estim_dist".format(
-                stg.job_name, hist),
-            sizefont=plt.size_font,
-            usetex=plt.plt_usetex,
-            print_xtick_every=plt.print_xtick_every,
-            y_limits=[-0.1, 1.1],
-            legend='upper right')
+        ## Distance between estimated paramerters 
+        ## and values given in the config file
+        plot_fit_estim_dist(
+                estimates, 
+                sim_params,
+                output_path+"/{}_{}_estim_dist".format(
+                    stg.job_name, hist),
+                sizefont=plt.size_font,
+                usetex=plt.plt_usetex,
+                print_xtick_every=plt.print_xtick_every,
+                y_limits=[-0.1, 1.1],
+                legend='upper right')
 
-    ## Correlation between estimated paramerters 
-    ## and values given in the config file
-    plot_fit_estim_corr(
-            estimates, 
-            sim_params,
-            output_path+"/{}_{}_estim_corr".format(
-                stg.job_name, hist),
-            sizefont=plt.size_font,
-            usetex=plt.plt_usetex,
-            print_xtick_every=plt.print_xtick_every,
-            y_limits=[-1.1, 1.1],
-            legend='lower right')
+        ## Correlation between estimated paramerters 
+        ## and values given in the config file
+        plot_fit_estim_corr(
+                estimates, 
+                sim_params,
+                output_path+"/{}_{}_estim_corr".format(
+                    stg.job_name, hist),
+                sizefont=plt.size_font,
+                usetex=plt.plt_usetex,
+                print_xtick_every=plt.print_xtick_every,
+                y_limits=[-1.1, 1.1],
+                legend='lower right')
 
     ## Generate report file from sampling step
     ## #######################################

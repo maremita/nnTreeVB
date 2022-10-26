@@ -44,7 +44,7 @@ def check_sim_blengths(sim_blengths):
 
         if dist_name in torch_dist_names:
             blen_dists.append(build_torch_distribution(
-                dist_name, param_list))
+                dist_name, param_list, dtype=torch.float64))
         else:
             raise ValueError("{} distribution name "\
                     "is not valid".format(dist_name))
@@ -79,7 +79,7 @@ def check_sim_float(sim_float):
 
         if dist_name in torch_dist_names:
             torch_dist = build_torch_distribution(
-                dist_name, param_list)
+                dist_name, param_list, dtype=torch.float64)
 
             with torch.no_grad():
                 return torch_dist.sample().item()
@@ -106,8 +106,8 @@ def check_sim_simplex(sim_simplex, nb_params):
                 sim_simplex))
 
         rates_dist = build_torch_distribution(
-                dist_name, param_list)
-        
+                dist_name, param_list, dtype=torch.float64)
+
         with torch.no_grad():
             values = rates_dist.sample().numpy()
 
@@ -119,7 +119,7 @@ def check_sim_simplex(sim_simplex, nb_params):
             raise ValueError("[{}] lacks values".format(
                 sim_simplex))
 
-    values = values/values.sum()
+    values = values/values.sum(0)
 
     assert np.isclose(values.sum(), 1.)
 
@@ -162,6 +162,34 @@ def check_dist_transform(dist_transform):
     else:
         raise ValueError("{} transform is not valide".format(
             dist_transform))
+
+def check_seed(seed):
+    s = seed.lower()
+
+    if s == "false":
+        return None
+    elif s == "none":
+        return None
+    else:
+        try:
+            s = int(seed)
+            if s < 0:
+                print("\nInvalid value for seef"\
+                        " {}".format(seed))
+                print("Valid values are: False, None"\
+                        " and positive integers")
+                print("Seed is set to None")
+                return None
+            # TODO Check the max value for seed
+            else:
+                return s
+        except ValueError as e:
+            print("\nInvalid value for seed {}".format(
+                seed))
+            print("Valid values are: False, None and"\
+                    " positive integers")
+            print("Seed is set to None")
+            return None
 
 def check_verbose(verbose):
     v = verbose.lower()

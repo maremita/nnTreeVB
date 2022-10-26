@@ -4,6 +4,7 @@ import configparser
 from nnTreeVB.checks import check_sim_blengths
 from nnTreeVB.checks import check_sim_simplex
 from nnTreeVB.checks import check_sim_float
+#from nnTreeVB.checks import check_seed
 from nnTreeVB.checks import check_verbose
 from nnTreeVB.checks import check_dist_type
 from nnTreeVB.checks import check_dist_params
@@ -26,6 +27,7 @@ def parse_config(config_file):
 
     with open(config_file, "r") as cf:
         config.read_file(cf)
+
 
     # IO files
     arg.io = ArgObject()
@@ -56,7 +58,7 @@ def parse_config(config_file):
     arg.sim.sim_rates = check_sim_simplex(config.get(
         "sim_data", "sim_rates", fallback="0.16"), 6)
     arg.sim.sim_freqs = check_sim_simplex(config.get(
-        "sim_data", "sim_fres", fallback="0.25"), 4)
+        "sim_data", "sim_freqs", fallback="0.25"), 4)
     arg.sim.sim_kappa = check_sim_float(config.get(
         "sim_data", "sim_kappa", fallback="1."))
 
@@ -176,13 +178,17 @@ def parse_config(config_file):
             "learning_rate", fallback=0.005)
     arg.fit.weight_decay = config.getfloat("hyperparams",
             "weight_decay", fallback=0.00001)
+    arg.fit.save_fit_history = config.getboolean("hyperparams",
+            "save_fit_history", fallback=False)
+    arg.fit.save_val_history = config.getboolean("hyperparams",
+            "save_val_history", fallback=False)
 
     # setting parameters
     arg.stg = ArgObject()
     arg.stg.job_name = config.get("settings", "job_name",
             fallback=None)
-    arg.stg.seed = config.getint("settings", "seed",
-            fallback=42)
+    #arg.stg.seed = check_seed(config.get("settings", "seed",
+    #        fallback=None))
     arg.stg.device = config.get("settings", "device",
             fallback="cpu")
     arg.stg.verbose = check_verbose(config.get("settings", 

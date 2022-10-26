@@ -1,8 +1,9 @@
 from .utils import set_postorder_ranks
 
+import random 
+
 from pyvolve import read_tree, Model, Partition, Evolver
 from ete3 import Tree
-
 import torch
 
 __author__ = "amine"
@@ -17,8 +18,7 @@ __all__ = [
 def simulate_tree(
         nb_taxa, 
         branch_dists,
-        unroot=True,
-        seed=None):
+        unroot=True):
 
     taxa_names = ["T"+str(i) for i in list(range(0, nb_taxa))]
 
@@ -36,7 +36,8 @@ def simulate_tree(
         branch_dists.append(branch_dists[0])
 
     # Populate branches 
-    with torch.no_grad():
+    # Using torch distributions
+    with torch.no_grad(): 
         for node in t.traverse("postorder"):
             if node.is_leaf():
                 node.dist = branch_dists[0].sample().item()
@@ -69,8 +70,9 @@ def evolve_seqs_full_homogeneity(
     gtr_r = ["AG", "AC", "AT", "GC", "GT", "CT"]
  
     # Evolve sequences
-    if verbose: print("Evolving new sequences with the"\
-            " amazing Pyvolve for {}".format(fasta_file))
+    if verbose: 
+        print("Evolving sequences with the amazing Pyvolve")
+
     pytree = read_tree(tree=nwk_tree)
 
     parameters = None

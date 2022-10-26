@@ -16,8 +16,9 @@ torch_dist_names = [
 
 def build_torch_distribution(
         dist_type:str,
-        dist_params:list)->TorchDistribution:
-    
+        dist_params:list,
+        dtype:torch.dtype = torch.float64)->TorchDistribution:
+ 
     build_dist = {
         "normal":build_Normal,
         "lognormal":build_LogNormal,
@@ -28,13 +29,14 @@ def build_torch_distribution(
         "uniform":build_Uniform
             }
 
-    return build_dist[dist_type.lower()](dist_params)
+    return build_dist[dist_type.lower()](dist_params, dtype)
 
 
 def build_Normal(
-        params: list)->TorchDistribution:
+        params: list,
+        dtype:torch.dtype = torch.float64)->TorchDistribution:
 
-    dist_params = torch.tensor(params)
+    dist_params = torch.tensor(params, dtype=dtype)
 
     assert dist_params.shape[-1] == 2
 
@@ -45,9 +47,10 @@ def build_Normal(
 
 
 def build_LogNormal(
-        params: list)->TorchDistribution:
+        params: list,
+        dtype:torch.dtype = torch.float64)->TorchDistribution:
 
-    dist_params = torch.tensor(params)
+    dist_params = torch.tensor(params, dtype=dtype)
 
     assert dist_params.shape[-1] == 2
 
@@ -58,9 +61,10 @@ def build_LogNormal(
 
 
 def build_Gamma(
-        params: list)->TorchDistribution:
+        params: list,
+        dtype:torch.dtype = torch.float64)->TorchDistribution:
 
-    dist_params = torch.tensor(params)
+    dist_params = torch.tensor(params, dtype=dtype)
 
     assert dist_params.shape[-1] == 2
 
@@ -71,34 +75,39 @@ def build_Gamma(
 
 
 def build_Dirichlet(
-        params: list)->TorchDistribution:
+        params: list,
+        dtype:torch.dtype = torch.float64)->TorchDistribution:
 
-    alphas = torch.tensor(params)
+    dist_params = torch.tensor(params, dtype=dtype)
 
-    return torch.distributions.dirichlet.Dirichlet(alphas)
+    return torch.distributions.dirichlet.Dirichlet(dist_params)
 
 
 def build_Categorical(
-        params: list)->TorchDistribution:
+        params: list,
+        dtype:torch.dtype = torch.float64)->TorchDistribution:
 
-    probs = torch.tensor(params)
+    dist_params = torch.tensor(params, dtype=dtype)
 
     return torch.distributions.categorical.Categorical(
-            probs=probs)
+            probs=dist_params)
 
 
 def build_Exponential(
-        params: list)->TorchDistribution:
+        params: list,
+        dtype:torch.dtype = torch.float64)->TorchDistribution:
 
-    rate = torch.tensor(params)
+    dist_params = torch.tensor(params, dtype=dtype)
 
-    return torch.distributions.exponential.Exponential(rate)
+    return torch.distributions.exponential.Exponential(
+            dist_params)
 
 
 def build_Uniform(
-        params: list)->TorchDistribution:
+        params: list,
+        dtype:torch.dtype = torch.float64)->TorchDistribution:
 
-    dist_params = torch.tensor(params)
+    dist_params = torch.tensor(params, dtype=dtype)
 
     assert dist_params.shape[-1] == 2
 
