@@ -17,6 +17,52 @@ import torch
 import torch.nn as nn
 
 
+def update_sim_parameters(sim):
+    """
+    sim is an object with attributes:
+        subs_model
+        sim_blengths (not used here)
+        sim_rates
+        sim_freqs
+        sim_kappa
+    """
+
+    # Update frequencies
+    if sim.subs_model in ["jc69", "k80"]:
+        sim.sim_freqs = torch.ones(4)/4
+
+    # Update rates
+    if sim.subs_model == "jc69":
+        sim.sim_rates = torch.ones(6)/6
+
+    elif sim.subs_model in ["k80", "hky"]:
+        sim.sim_rates = compute_rates_from_kappa(sim.sim_kappa)
+
+    # Update kappa if model is jc69 or gtr
+    #(for information purpose, won't be used)
+    if sim.subs_model in ["jc69", "gtr"]:
+        sim.sim_kappa = compute_kappa_from_rates(sim.sim_rates) 
+def compute_rates_from_kappa(kappa):
+        """
+        "AG", "AC", "AT", "GC", "GT", "CT"
+        Multiply AG and CT transition rates by kappa
+        See  The Phylogenetic_Handbook page 131
+        (Lemey Salemi Vandamme 2009)
+        """
+
+        if not isinstance(kappa, torch.Tensor):
+            kappa = torch.tensor(kappa)
+
+        rates = torch.hstack((
+            kappa*1.,
+            (torch.ones(4)), 
+            kappa*1.))
+
+        return rates/rates.sum()
+
+def compute_kappa_from_rates(r):
+    return (r[0]+r[-1])/2/((sum(r[1:-1])/4))
+
 def freeze_model_params(model):
     for param in model.parameters():
         param.requires_grad = False

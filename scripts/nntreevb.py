@@ -12,6 +12,7 @@ from nnTreeVB.parse_config import parse_config
 
 from nnTreeVB.utils import timeSince
 from nnTreeVB.utils import write_conf_packages
+from nnTreeVB.utils import update_sim_parameters
 
 from nnTreeVB.reports import plt_elbo_ll_kl_rep_figure
 from nnTreeVB.reports import aggregate_estimate_values
@@ -138,11 +139,6 @@ if __name__ == "__main__":
     if verbose:
         print("\tVerbose set to {}".format(verbose))
 
-    # The order of freqs is different for pyvolve
-    # A C G T
-    sim_freqs_pyv = [sim.sim_freqs[0], sim.sim_freqs[2],
-            sim.sim_freqs[1], sim.sim_freqs[3]]
-
     if mdl.subs_model not in ["jc69", "k80", "hky", "gtr"]:
         print("\nsubs_model should be jc69|k80|hky|gtr,"\
                 " not {}".format(mdl.subs_model),
@@ -228,7 +224,10 @@ if __name__ == "__main__":
         ## Data preparation
         ## ################
         if sim.sim_data:
-            # Data simulation
+            
+            # Update sim params based on sim.subs_model
+            # (useful to update rates using k (k80, hky))
+            update_sim_parameters(sim)
 
             if os.path.isfile(tree_file) and\
                     sim.nwk_from_file:
@@ -251,13 +250,20 @@ if __name__ == "__main__":
 
                 tree_obj.write(outfile=tree_file, format=1)
 
-            # TODO sim data based on sim.subs_model
             if not os.path.isfile(fasta_file) or \
                     not sim.seq_from_file:
                 if verbose:
                     print("\nSimulating new sequences...")
                 tree_nwk = tree_obj.write(format=1)
-            
+ 
+                # The order of freqs is different for pyvolve
+                # A C G T
+                sim_freqs_pyv = [
+                        sim.sim_freqs[0],
+                        sim.sim_freqs[2],
+                        sim.sim_freqs[1],
+                        sim.sim_freqs[3]]
+
                 # Evolve sequences
                 all_seqdict = evolve_sequences(
                         tree_nwk,
