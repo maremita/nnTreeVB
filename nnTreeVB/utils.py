@@ -292,7 +292,6 @@ def compute_corr(main, batch, verbose=False):
 
     return corrs
 
-
 def mean_confidence_interval(data, confidence=0.95, axis=0):
     a = 1.0 * np.array(data)
     n = np.size(a, axis=axis)

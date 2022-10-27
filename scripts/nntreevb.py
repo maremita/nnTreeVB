@@ -123,11 +123,12 @@ if __name__ == "__main__":
 
     if seed:
         random.seed(seed)
+        np.random.seed(seed)
         torch.manual_seed(seed)
         print("\tSeed set to {}".format(seed))
 
-    ## Fetch argument values from ini file
-    ## ###################################
+    ## Parse config file
+    ## #################
     cfg_args, config = parse_config(config_file)
 
     io  = cfg_args.io
@@ -183,16 +184,15 @@ if __name__ == "__main__":
     if sim.sim_data:
         # Files paths of simulated data
         # training sequences
-        fasta_file = output_path+"/{}.fasta".format(
+        fasta_file = output_path+"/{}_input.fasta".format(
                 stg.job_name)
-        tree_file = output_path+"/{}.nwk".format(
+        tree_file = output_path+"/{}_input.nwk".format(
                 stg.job_name)
     else:
         # Files paths of given FASTA files
         fasta_file = io.seq_file
         tree_file = io.nwk_file
 
-        # TODO check if files exist or raise Exception
         if not os.path.isfile(fasta_file):
             raise FileNotFoundError("Fasta file {} does not "\
                     "exist".format(fasta_file))
@@ -245,7 +245,6 @@ if __name__ == "__main__":
                 # using ete3 populate function
                 if verbose:print("\nSimulating a new tree...")
 
-                # set seed to numpy here
                 tree_obj, taxa, int_nodes = simulate_tree(
                         sim.nb_taxa,
                         sim.sim_blengths,
@@ -349,12 +348,12 @@ if __name__ == "__main__":
                 **mdl.to_dict()
                 }
 
-        #print(model_args)
-
         # Fitting the parameters 
         if fit.K_grad_samples > 1:
             fit.grad_samples = [fit.grad_samples,
                     fit.K_grad_samples]
+        else:
+            fit.grad_samples = [fit.grad_samples]
 
         fit_args = {
                 "X":X,

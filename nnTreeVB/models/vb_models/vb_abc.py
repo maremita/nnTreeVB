@@ -4,6 +4,7 @@ from nnTreeVB.utils import get_weight_stats
 from nnTreeVB.utils import apply_on_submodules
 from nnTreeVB.utils import compute_estim_stats
 from nnTreeVB.checks import check_finite_grads
+from nnTreeVB.checks import check_sample_size
 
 from abc import ABC 
 import time
@@ -132,10 +133,18 @@ class BaseTreeVB(ABC):
             ret["lqs_val_list"] = []
             ret["kls_val_list"] = []
 
-        m_axis = 0
-        if isinstance(val_samples, (torch.Size, list)) and\
-                len(val_samples) == 2 or val_samples==2:
-            m_axis = (0,1)
+        grad_samples = check_sample_size(grad_samples)
+        val_samples = check_sample_size(val_samples)
+
+        grad_axes = 0
+        tgs = grad_samples[0] # total number of grad samples
+        tvs = val_samples[0]  # total number of val samples
+
+        if len(grad_samples) == 2:
+            grad_axes = (0,1)
+            tgs *= grad_samples[1]
+        if len(val_samples) == 2:
+            tvs *= val_samples[1]
 
         optim_nb = 0
         for epoch in range(1, max_iter + 1):
@@ -246,8 +255,8 @@ class BaseTreeVB(ABC):
                             for estim in estim_names:
                                 if estim in fit_dict:
                                     estim_vals = fit_dict[
-                                        estim].mean(
-                                            m_axis).squeeze() 
+                                        estim].mean(grad_axes
+                                                ).squeeze()
                                     chaine += estim + ": "\
                                             +str(estim_vals)
                                     if estim == "b" and "t"\
@@ -269,7 +278,8 @@ class BaseTreeVB(ABC):
                     for estim in estim_names:
                         if estim in fit_dict:
                             estim_stats = compute_estim_stats(
-                                    fit_dict[estim],
+                                    fit_dict[estim].reshape(
+                                        tgs, -1),
                                     confidence=0.95,
                                     axis=0)
                             fit_estim[estim] = estim_stats
@@ -298,8 +308,10 @@ class BaseTreeVB(ABC):
                         for estim in estim_names:
                             if estim in val_dict:
                                 estim_stats =\
-                                        compute_estim_stats(
-                                            val_dict[estim],
+                                    compute_estim_stats(
+                                        val_dict[estim]\
+                                                .reshape(
+                                                    tvs, -1),
                                             confidence=0.95,
                                             axis=0)
                                 val_estim[estim] = estim_stats

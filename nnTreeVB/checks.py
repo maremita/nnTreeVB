@@ -221,7 +221,7 @@ def check_verbose(verbose):
             return 0
 
 def check_sample_size(sample_size):
-    
+ 
     if isinstance(sample_size, torch.Size):
         return sample_size
 

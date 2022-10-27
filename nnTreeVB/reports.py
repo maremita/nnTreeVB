@@ -381,8 +381,8 @@ def plot_fit_estim_correlation(
             corrs = compute_corr(sim_param, estim_scores)
             #print(name, corrs.shape)
 
-            m = corrs.mean(0)
-            s = corrs.std(0)
+            m = corrs.mean(0) # average by replicate
+            s = corrs.std(0)  # std by replicate
             ax.plot(x, m, "-", color=colors[name],
                     label=params[name])
 
