@@ -22,7 +22,6 @@ from nnTreeVB.reports import plot_fit_estim_correlation
 from nnTreeVB.reports import aggregate_sampled_estimates
 from nnTreeVB.reports import report_sampled_estimates
 
-#from nnTreeVB.models import compute_log_likelihood_data 
 from nnTreeVB.models.evo_models import compute_log_likelihood
 from nnTreeVB.models.vb_models import VB_nnTree
 
@@ -83,18 +82,15 @@ def eval_evomodel(EvoModel, m_args, fit_args):
     ## Fitting and param3ter estimation
     ret = e.fit(**fit_args)
 
-    overall["fit_probs"] = np.array([
+    ret["fit_probs"] = np.array([
             ret["elbos_list"],
             ret["lls_list"],
             ret["kls_list"]
             ])
 
-    if fit_args["save_fit_history"]:
-        overall["fit_estimates"] = ret["fit_estimates"]
-
     ## Sampling after fitting
     ## ########################
-    overall["samples"] = e.sample(
+    ret["samples"] = e.sample(
             fit_args["X"],
             fit_args["X_counts"],
             elbo_type=fit_args["elbo_type"],
@@ -102,7 +98,7 @@ def eval_evomodel(EvoModel, m_args, fit_args):
             alpha_kl=fit_args["alpha_kl"]
             )
 
-    return overall
+    return ret
 
 
 if __name__ == "__main__":
