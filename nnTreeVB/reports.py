@@ -15,10 +15,11 @@ __author__ = "amine remita"
 estim_names = ["b", "t", "b1", "r", "f", "k"]
 stat_names = ["mean", "cimin", "cimax", "var", "min", "max"]
 
-def plot_grads_weights_epochs(
+def plot_weights_grads_epochs(
         data,
         module_name,
         out_file=False,
+        epochs=slice(0,-1),
         fig_size=(10, 4),
         sizefont=16,
         usetex=False,
@@ -32,48 +33,84 @@ def plot_grads_weights_epochs(
 
     plt.rcParams.update({'font.size':sizefont,
         'text.usetex':usetex})
-    plt.subplots_adjust(wspace=0.16, hspace=0.1)
+    plt.subplots_adjust(wspace=0.1, hspace=0.1)
 
-    w_means = []
-    w_vars = []
-    g_means = []
-    g_vars = []
- 
-    for e in data["grad_stats"]:
-        g_means.append(e[module_name]["mean"])
-        g_vars.append(e[module_name]["var"])
+    params = list(data["grad_stats"][0][module_name].keys())
+    nb_params = len(params)
+
+    w_means = defaultdict(list)
+    w_vars = defaultdict(list)
 
     for e in data["weight_stats"]:
-        w_means.append(e[module_name]["mean"])
-        w_vars.append(e[module_name]["var"])
+        submodule = e[module_name]
 
-    g_means = np.array(g_means)
-    g_stds = np.sqrt(np.array(g_vars))
-    w_means = np.array(w_means)
-    w_stds = np.sqrt(np.array(w_vars))
+        for param in submodule:
+            w_means[param].append(submodule[param]["mean"])
+            w_vars[param].append(submodule[param]["var"])
 
-    f, axs = plt.subplots(1, 2, figsize=fig_size)
+    g_means = defaultdict(list)
+    g_vars = defaultdict(list)
 
-    nb_iters = len(g_means)
-    x = [j for j in range(1, nb_iters+1)]
-    
-    axs[0].plot(x, g_means, label='gradients', color="red")
-    axs[0].fill_between(x,
-        g_means-g_stds,
-        g_means+g_stds,
-        alpha=0.2, color="red")
+    for e in data["grad_stats"]: # e for epoch, is a dict
+        submodule = e[module_name]
 
-    axs[0].grid(zorder=-1)
-    axs[0].legend()
+        for param in submodule:
+            g_means[param].append(submodule[param]["mean"])
+            g_vars[param].append(submodule[param]["var"])
 
-    axs[1].plot(x, w_means, label='weights')
-    axs[1].fill_between(x,
-            w_means-w_stds,
-            w_means+w_stds,
-            alpha=0.2)
+    f, axs = plt.subplots(nb_params, 2, 
+            figsize=(fig_size[0], fig_size[1]*nb_params))
 
-    axs[1].grid(zorder=-1)
-    axs[1].legend()
+    if len(axs.shape)>1:
+        axs = np.concatenate(axs)
+
+    nb_iters = len(data["grad_stats"][epochs])
+    start = epochs.start + 1
+    end = epochs.stop
+    if end == -1: end = nb_iters
+    x = [j for j in range(start, end+1)]
+
+    ind = 0
+    for i, param in enumerate(params): 
+        # weights
+        w_m = np.array(w_means[param])[epochs]
+        w_s = np.sqrt(np.array(w_vars[param]))[epochs]
+
+        axs[ind].plot(x, w_m, color="green")
+
+        axs[ind].fill_between(x,
+                w_m-w_s,
+                w_m+w_s,
+                color="green",
+                alpha=0.2)
+
+        axs[ind].grid(zorder=-1)
+        axs[ind].set_ylabel(param)
+        #axs[ind].legend()
+
+        # gradients
+        g_m = np.array(g_means[param])[epochs]
+        g_s = np.sqrt(np.array(g_vars[param]))[epochs]
+
+        axs[ind+1].plot(x, g_m, color="red")
+
+        axs[ind+1].fill_between(x,
+            g_m-g_s,
+            g_m+g_s,
+            alpha=0.2, color="red")
+
+        axs[ind+1].grid(zorder=-1)
+        #axs[ind+1].legend()
+        
+        if ind < 2:
+            axs[ind].set_title("Weights")
+            axs[ind+1].set_title("Gradients")
+
+        if ind >= nb_params-1:
+            axs[ind].set_xlabel("Iterations")
+            axs[ind+1].set_xlabel("Iterations")
+
+        ind +=2
 
     plt.suptitle(module_name)
  

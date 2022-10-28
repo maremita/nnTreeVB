@@ -221,16 +221,66 @@ def get_lognorm_params(m, s):
     std = np.sqrt(np.log(s**2 + m**2) - np.log(m**2))
     return [mu, std]
 
-def get_grad_stats(module):
+def get_all_grad_stats(module):
     grads = []
     for param in module.parameters():
         if param.grad is not None:
             grads.append(param.grad.view(-1))
     grads = torch.cat(grads).detach().cpu().numpy()
+
     return {"mean":np.nanmean(grads), 
             "var": np.nanvar(grads),
             "min": np.nanmin(grads),
             "max": np.nanmax(grads)}
+
+def get_all_weight_stats(module):
+    poids = []
+    for param in module.parameters():
+        poids.append(param.data.view(-1))
+    poids = torch.cat(poids).detach().cpu().numpy()
+
+    return {"mean": np.nanmean(poids),
+            "var": np.nanvar(poids),
+            "min": np.nanmin(poids),
+            "max": np.nanmax(poids)}
+
+def get_named_grad_stats(module):
+    grads = dict()
+    stats = dict()
+    for name, param in module.named_parameters():
+        # If module has a network, concatenate the gradients
+        # of the whole network
+        name = name.split(".")[0]
+
+        if param.grad is not None:
+            if not name in grads: grads[name] = []
+            grads[name].append(param.grad.view(-1))
+
+    for name in grads:
+        grads[name] = torch.cat(
+                grads[name]).detach().cpu().numpy()
+        stats[name] = compute_estim_stats(grads[name])
+
+    return stats
+
+def get_named_weight_stats(module):
+    poids = dict()
+    stats = dict()
+    for name, param in module.named_parameters():
+        # If module has a network, concatenate the gradients
+        # of the whole network
+        name = name.split(".")[0]
+
+        if param.data is not None:
+            if not name in poids: poids[name] = []
+            poids[name].append(param.data.view(-1))
+
+    for name in poids:
+        poids[name] = torch.cat(
+                poids[name]).detach().cpu().numpy()
+        stats[name] = compute_estim_stats(poids[name])
+
+    return stats
 
 def get_grad_list(module):
     grads = []
@@ -242,16 +292,6 @@ def get_grad_list(module):
         grads = torch.cat(grads)
 
     return grads
-
-def get_weight_stats(module):
-    poids = []
-    for param in module.parameters():
-        poids.append(param.data.view(-1))
-    poids = torch.cat(poids).detach().cpu().numpy()
-    return {"mean": np.nanmean(poids),
-            "var": np.nanvar(poids),
-            "min": np.nanmin(poids),
-            "max": np.nanmax(poids)}
 
 def get_weight_list(module):
     poids = []

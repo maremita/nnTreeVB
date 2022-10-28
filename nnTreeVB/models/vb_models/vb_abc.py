@@ -1,6 +1,6 @@
 from nnTreeVB.utils import timeSince, dict_to_numpy
-from nnTreeVB.utils import get_grad_stats
-from nnTreeVB.utils import get_weight_stats
+from nnTreeVB.utils import get_named_grad_stats
+from nnTreeVB.utils import get_named_weight_stats
 from nnTreeVB.utils import apply_on_submodules
 from nnTreeVB.utils import compute_estim_stats
 from nnTreeVB.checks import check_finite_grads
@@ -288,12 +288,12 @@ class BaseTreeVB(ABC):
                 if save_grad_stats:
                     ret["grad_stats"].append(
                             apply_on_submodules(
-                                get_grad_stats, self))
+                                get_named_grad_stats, self))
 
                 if save_weight_stats:
                     ret["weight_stats"].append(
                             apply_on_submodules(
-                                get_weight_stats, self))
+                                get_named_weight_stats, self))
 
                 if X_val is not None:
                     ret["elbos_val_list"].append(
