@@ -19,6 +19,7 @@ from nnTreeVB.reports import plot_elbo_ll_kl
 from nnTreeVB.reports import aggregate_estimate_values
 from nnTreeVB.reports import plot_fit_estim_distance
 from nnTreeVB.reports import plot_fit_estim_correlation
+from nnTreeVB.reports import plot_weights_grads_epochs
 from nnTreeVB.reports import aggregate_sampled_estimates
 from nnTreeVB.reports import report_sampled_estimates
 
@@ -170,6 +171,9 @@ if __name__ == "__main__":
     output_path = os.path.join(io.output_path,
             mdl.subs_model, stg.job_name)
     makedirs(output_path, mode=0o700, exist_ok=True)
+
+    pg_path = os.path.join(output_path, "params_grads")
+    makedirs(pg_path, mode=0o700, exist_ok=True)
 
     if verbose:
         print("\nExperiment output: {}".format(
@@ -420,7 +424,7 @@ if __name__ == "__main__":
             title=None,
             plot_validation=False)
 
-    if fit.save_fit_history or fit.save_val_history:
+    if fit.save_fit_history:
         hist = "fit" # [fit | val]
         estimates = aggregate_estimate_values(rep_results,
                 "{}_estimates".format(hist))
@@ -453,9 +457,28 @@ if __name__ == "__main__":
                 y_limits=[-1.1, 1.1],
                 legend='lower right')
 
+    # Plot weights and grads for each learned distribution and 
+    # for each replicate
+    if fit.save_grad_stats and fit.save_weight_stats:
+        # get the names of learned distributions
+        distrs = [d for d in rep_results[0]["grad_stats"][0]]
+        for n_rep in range(fit.nb_replicates):
+            for dist_name in distrs:
+                out_file = pg_path+"/{}_{}_{}".format(
+                        stg.job_name, n_rep, dist_name)
+
+                plot_weights_grads_epochs(
+                        rep_results[n_rep],
+                        dist_name,
+                        out_file,
+                        epochs=slice(0, -1), # 0(,min_iter)
+                        fig_size=(10, 3),
+                        sizefont=plt.size_font
+                        )
+
     ## Generate report file from sampling step
     ## #######################################
-    #if verbose: print("\nGenerate reports...")
+    if verbose: print("\nGenerate reports...")
 
     estim_samples = aggregate_sampled_estimates(
             rep_results, "samples")

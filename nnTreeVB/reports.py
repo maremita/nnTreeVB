@@ -15,6 +15,7 @@ __author__ = "amine remita"
 estim_names = ["b", "t", "b1", "r", "f", "k"]
 stat_names = ["mean", "cimin", "cimax", "var", "min", "max"]
 
+
 def plot_weights_grads_epochs(
         data,
         module_name,
@@ -33,7 +34,7 @@ def plot_weights_grads_epochs(
 
     plt.rcParams.update({'font.size':sizefont,
         'text.usetex':usetex})
-    plt.subplots_adjust(wspace=0.1, hspace=0.1)
+    plt.subplots_adjust(wspace=0.15, hspace=0.15)
 
     params = list(data["grad_stats"][0][module_name].keys())
     nb_params = len(params)
@@ -103,7 +104,7 @@ def plot_weights_grads_epochs(
         #axs[ind+1].legend()
         
         if ind < 2:
-            axs[ind].set_title("Weights")
+            axs[ind].set_title("Parameters")
             axs[ind+1].set_title("Gradients")
 
         if ind >= nb_params-1:

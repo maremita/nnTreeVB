@@ -308,7 +308,8 @@ def apply_on_submodules(func, nn_module):
         #if len(get_weight_list(sub_module))>0:
         #TODO: Try another way to check the type 
         # values to be collected (grads or weigths)
-        if len(get_grad_list(sub_module))>0:
+        if len(get_grad_list(sub_module))>0\
+                and "_dist_" in name:
             ret[name]=func(sub_module)
 
     return ret
