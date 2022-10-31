@@ -153,7 +153,7 @@ def check_dist_transform(dist_transform):
     transform = dist_transform.lower()
     
     # TODO implement other transofmations
-    if transform == "none":
+    if transform in ["none", "false"]:
         return None
     elif transform == "lower_0":
         return torch.distributions.ExpTransform()
