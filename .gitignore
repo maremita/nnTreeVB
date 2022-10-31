@@ -1,3 +1,7 @@
+#
+results/
+exps/
+
 # vim
 *.swp
 

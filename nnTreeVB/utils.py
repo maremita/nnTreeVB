@@ -7,6 +7,7 @@ import platform
 import importlib
 import configparser
 from pprint import pformat
+import itertools
 
 import numpy as np
 from joblib import Parallel, delayed
@@ -212,6 +213,11 @@ def fasta2list(fasta_file, verbose=False):
         fasta_file))
     seqRec_list = SeqCollection.read_bio_file(fasta_file)
     return [str(seqRec.seq._data) for seqRec in seqRec_list] 
+
+def dictLists2combinations(data):
+    keys, values = zip(*data.items())
+    return [tuple(zip(keys, v)) for v in\
+            itertools.product(*values)]
 
 def get_lognorm_params(m, s):
     # to produce a distribution with desired mean m

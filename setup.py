@@ -16,6 +16,10 @@ setup(
             'Model for Phylogenetic Parameter Estimation',
     author='Amine Remita',
     packages=find_packages(),
-    scripts=["scripts/nntreevb.py"],
+    scripts=[
+        "scripts/nntreevb.py",
+        "scripts/write_run_nntreevb_exps.py",
+        "scripts/slurm_exps.sh",
+        ],
     install_requires=INSTALL_REQUIRES
 )

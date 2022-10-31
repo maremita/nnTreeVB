@@ -140,6 +140,9 @@ if __name__ == "__main__":
     if verbose:
         print("\tVerbose set to {}".format(verbose))
 
+    if seed:
+        config.set("settings", "seed", str(settings))
+
     if mdl.subs_model not in ["jc69", "k80", "hky", "gtr"]:
         print("\nsubs_model should be jc69|k80|hky|gtr,"\
                 " not {}".format(mdl.subs_model),
@@ -169,7 +172,7 @@ if __name__ == "__main__":
     ## output path 
     ## ###########
     output_path = os.path.join(io.output_path,
-            mdl.subs_model, stg.job_name)
+            stg.job_name)
     makedirs(output_path, mode=0o700, exist_ok=True)
 
     pg_path = os.path.join(output_path, "params_grads")
