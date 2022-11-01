@@ -127,6 +127,11 @@ if __name__ == '__main__':
 
     #
     eval_combins = dictLists2combinations(evaluations)
+    
+    # Dump the combinations into a file for post tracking
+    eval_dict = {i:e for i, e in enumerate(eval_combins)}
+    with open(output_dir+"eval_combinations.txt", "w") as fh:
+        json.dump(eval_dict, fh, indent=2)
 
     for ind, eval_combin in enumerate(eval_combins):
         # Create a new copy of config object to keep default
@@ -138,7 +143,7 @@ if __name__ == '__main__':
             option, section = eval_option[0].split("@")
             cfg_eval.set(section, option, str(eval_option[1]))
 
-        exp_name = "{}".format(ind)
+        exp_name = "{}".format(str(ind))
         cfg_eval.set("settings", "job_name", exp_name)
 
         # write it on a file
@@ -201,5 +206,5 @@ if __name__ == '__main__':
             print("\n", exp_name)
             if run_jobs:
                 print(cmd)
-                #os.system(cmd)
+                os.system(cmd)
 

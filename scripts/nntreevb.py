@@ -112,7 +112,7 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--seed', type=int)
     cmd_args = parser.parse_args()
 
-    config_file = cmd_args.config_file
+    config_file = cmd_args.config_file.strip()
     seed = cmd_args.seed
 
     print("\nRunning {} with config file: {}".format(
@@ -141,7 +141,7 @@ if __name__ == "__main__":
         print("\tVerbose set to {}".format(verbose))
 
     if seed:
-        config.set("settings", "seed", str(settings))
+        config.set("settings", "seed", str(seed))
 
     if mdl.subs_model not in ["jc69", "k80", "hky", "gtr"]:
         print("\nsubs_model should be jc69|k80|hky|gtr,"\
@@ -467,7 +467,7 @@ if __name__ == "__main__":
         distrs = [d for d in rep_results[0]["grad_stats"][0]]
         for n_rep in range(fit.nb_replicates):
             for dist_name in distrs:
-                out_file = pg_path+"/{}_{}_{}".format(
+                out_file = pg_path+"/{}_r{}_{}".format(
                         stg.job_name, n_rep, dist_name)
 
                 plot_weights_grads_epochs(
