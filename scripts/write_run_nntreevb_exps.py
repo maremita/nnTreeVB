@@ -93,6 +93,12 @@ if __name__ == '__main__':
     evaluations = json.loads(config.get("evaluation",
         "evaluations"))
 
+    try:
+        eval_codes = json.loads(config.get("evaluation",
+            "eval_codes"))
+    except:
+        eval_codes = None
+
     ## Remove slurm and evaluation sections from the config
     ## object to not include them in the config files of
     ## nntreevb.py
@@ -133,12 +139,29 @@ if __name__ == '__main__':
 
     #
     eval_combins = dictLists2combinations(evaluations)
-    
+    nb_combins = len(eval_combins)
+
+    if eval_codes:
+        eval_code_combins = dictLists2combinations(eval_codes)
+        name_combins = []
+        for i, combin in enumerate(eval_code_combins):
+            combin_str = "{}_".format(i)
+            for ev in combin:
+                combin_str += "".join(ev)+"_"
+            name_combins.append(combin_str.rstrip("_"))
+    else:
+        name_combins = [str(i) for i in range(nb_combins)]
+
+    assert len(eval_combins) == len(name_combins)
+
     # Dump the combinations into a file for post tracking
-    eval_dict = {i:e for i, e in enumerate(eval_combins)}
-    with open(output_dir+"eval_combinations.txt", "w") as fh:
+    eval_dict = {name_combins[i]:e for i, e\
+            in enumerate(eval_combins)}
+
+    with open(output_dir+"/eval_combinations.txt", "w") as fh:
         json.dump(eval_dict, fh, indent=2)
 
+    # Start evaluations
     for ind, eval_combin in enumerate(eval_combins):
         # Create a new copy of config object to keep default
         # options
@@ -149,7 +172,7 @@ if __name__ == '__main__':
             option, section = eval_option[0].split("@")
             cfg_eval.set(section, option, str(eval_option[1]))
 
-        exp_name = "{}".format(str(ind))
+        exp_name = "{}".format(name_combins[ind])
         cfg_eval.set("settings", "job_name", exp_name)
 
         # write it on a file
@@ -201,7 +224,7 @@ if __name__ == '__main__':
             ## to be evaluated in the config file to 
             ## reduce the number of scenarios.
             ## ######################################
-            cmd = "{} -c {} -s {} &".format(program,
+            cmd = "{} -c {} -s {} &".format(program,
                     config_file, seed)
 
         res_file = output_dir+\
@@ -213,4 +236,3 @@ if __name__ == '__main__':
             if run_jobs:
                 print(cmd)
                 os.system(cmd)
-
