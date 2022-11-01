@@ -83,6 +83,9 @@ if __name__ == '__main__':
     # config files but it won't launch the jobs.
     # If run_jobs=True: it runs the jobs
 
+    # Main output folder (contains configs, output and jobs)
+    output_eval = config.get("evaluation", "output_eval")
+
     max_iter = config.get("evaluation", "n_epochs")
     # needs to be str
     n_reps = config.get("evaluation", "nb_replicates")
@@ -100,13 +103,16 @@ if __name__ == '__main__':
 
     ## Output directories
     ## ##################
-    output_dir = "../exps/exp_outputs/{}/".format(jobs_code)
+    output_dir = os.path.join(output_eval, "exp_outputs/",
+            jobs_code)
     makedirs(output_dir, mode=0o700, exist_ok=True)
 
-    config_dir = "../exps/exp_configs/{}/".format(jobs_code)
+    config_dir = os.path.join(output_eval,"exp_configs/",
+            jobs_code)
     makedirs(config_dir, mode=0o700, exist_ok=True)
 
-    job_dir = "../exps/exp_jobs/{}/".format(jobs_code)
+    job_dir = os.path.join(output_eval, "exp_jobs/", 
+            jobs_code)
     makedirs(job_dir, mode=0o700, exist_ok=True)
 
     ## Update options of config file
