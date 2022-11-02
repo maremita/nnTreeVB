@@ -12,9 +12,32 @@ import torch
 __author__ = "amine remita"
 
 
-estim_names = ["b", "t", "b1", "r", "f", "k"]
+estim_list = ["b", "t", "b1", "r", "f", "k"]
+
 stat_names = ["mean", "cimin", "cimax", "var", "min", "max"]
 
+estim_names = {
+        "b":"Branch lengths",
+        "t":"Tree length",
+        "r":"Substitution rates", 
+        "f":"Relative frequencies",
+        "k":"Kappa"}
+
+estim_colors = { 
+        "b":"#226E9C",
+        "t":"#226E9C",
+        "r":"#D12959", 
+        "f":"#40AD5A",
+        "k":"#FFAA00"}
+
+prob_names = {"elbo":"ELBO", 
+        "logl":"LogL",
+        "logprior":"LogPrior",
+        "logq":"LogQ",
+        "kl_qprior":"KL_QPrior"}
+
+rates_list = ["AG", "AC", "AT", "GC", "GT", "CT"]
+freqs_list = ["A", "G", "C", "T"]
 
 def plot_weights_grads_epochs(
         data,
@@ -297,22 +320,8 @@ def plot_fit_estim_distance(
     nb_iters = scores["b"]["mean"].shape[1]
     x = [j for j in range(1, nb_iters+1)]
 
-    params = {
-            "b":"Branch lengths",
-            "t":"Tree length",
-            "r":"Substitution rates", 
-            "f":"Relative frequencies",
-            "k":"Kappa"}
-
-    colors = { 
-            "b":"#226E9C",
-            "t":"#226E9C",
-            "r":"#D12959", 
-            "f":"#40AD5A",
-            "k":"#FFAA00"}
-
     for ind, name in enumerate(scores):
-        if name in params:
+        if name in estim_names:
             estim_scores = scores[name]["mean"]
             sim_param = sim_params[name].reshape(1, 1, -1)
 
@@ -324,11 +333,11 @@ def plot_fit_estim_distance(
             m = dists.mean(0)
             s = dists.std(0)
 
-            ax.plot(x, m, "-", color=colors[name],
-                    label=params[name])
+            ax.plot(x, m, "-", color=estim_colors[name],
+                    label=estim_names[name])
 
             ax.fill_between(x, m-s, m+s, 
-                    color=colors[name],
+                    color=estim_colors[name],
                     alpha=0.2, interpolate=True)
         
     ax.set_xticks([t for t in range(1, nb_iters+1) if t==1 or\
@@ -347,8 +356,6 @@ def plot_fit_estim_distance(
                 if l not in labels:
                     handles.append(h)
                     labels.append(l)
-        #plt.legend(handles, labels, bbox_to_anchor=(1.02, 1), 
-        #        loc='upper left', borderaxespad=0.)
         plt.legend(handles, labels, loc=legend, framealpha=1,
                 facecolor="white", fancybox=True)
 
@@ -360,6 +367,189 @@ def plot_fit_estim_distance(
 
     plt.close(f)
 
+def plot_fit_estim_distances(
+        exp_scores,
+        exp_values,
+        sim_param_exps,
+        out_file,
+        sizefont=14,
+        y_limits=[0., None],
+        usetex=False,
+        print_xtick_every=20,
+        legend='best',
+        title=None):
+
+    fig_format= "png"
+    fig_dpi = 300
+
+    fig_file = out_file+"."+fig_format
+
+    #nb_evals = len(list(exp_scores.keys()))
+    nb_evals = len(exp_scores)
+
+    f, axs = plt.subplots(1, nb_evals,
+            figsize=(7*nb_evals, 5))
+
+    plt.rcParams.update({'font.size':sizefont,
+        'text.usetex':usetex})
+    plt.subplots_adjust(wspace=0.07, hspace=0.1)
+
+    #nb_iters= exp_scores[exp_values[0]]["b"]["mean"].shape[1]
+    nb_iters = exp_scores[0]["b"]["mean"].shape[1]
+    x = [j for j in range(1, nb_iters+1)]
+
+    for i, exp_value in enumerate(exp_values):
+        scores = exp_scores[i]
+        sim_params = sim_param_exps[exp_value]
+
+        for ind, name in enumerate(scores):
+            if name in estim_names:
+                estim_scores = scores[name]["mean"]
+                sim_param = sim_params[name].reshape(1,1,-1)
+                #print(name, estim_scores.shape)
+
+                # eucl dist
+                dists = np.linalg.norm(
+                        sim_param - estim_scores, axis=-1)
+                #print(name, dists.shape)
+
+                m = dists.mean(0)
+                s = dists.std(0)
+
+                axs[i].plot(x, m, "-", 
+                        color=estim_colors[name],
+                        label=estim_names[name])
+
+                axs[i].fill_between(x, m-s, m+s, 
+                        color=estim_colors[name],
+                        alpha=0.2, interpolate=True)
+    
+        axs[i].set_title(exp_value)
+        axs[i].set_xticks([t for t in range(1, nb_iters+1) if\
+                t==1 or t % print_xtick_every==0])
+        axs[i].set_ylim(y_limits)
+        axs[i].set_xlabel("Iterations")
+        axs[i].grid(zorder=-2)
+        axs[i].grid(zorder=-2, visible=True, which='minor',
+                alpha=0.1)
+        axs[i].minorticks_on()
+ 
+        if i != 0:
+            axs[i].set(yticklabels=[])
+        else:
+            axs[i].set_ylabel("Euclidean distance")
+
+    if legend:
+        handles,labels = [],[]
+        for ax in f.axes:
+            for h,l in zip(*ax.get_legend_handles_labels()):
+                if l not in labels:
+                    handles.append(h)
+                    labels.append(l)
+        plt.legend(handles, labels, loc=legend, framealpha=1,
+                facecolor="white", fancybox=True)
+
+    if title:
+        plt.suptitle(title)
+
+    plt.savefig(fig_file, bbox_inches="tight", 
+            format=fig_format, dpi=fig_dpi)
+
+    plt.close(f)
+
+def plot_fit_estim_correlations(
+        exp_scores,
+        exp_values,
+        sim_param_exps,
+        out_file,
+        sizefont=14,
+        y_limits=[0., None],
+        usetex=False,
+        print_xtick_every=20,
+        legend='best',
+        title=None):
+
+    fig_format= "png"
+    fig_dpi = 300
+
+    fig_file = out_file+"."+fig_format
+
+    nb_evals = len(exp_scores)
+
+    f, axs = plt.subplots(1, nb_evals, 
+            figsize=(7*nb_evals, 5))
+
+    plt.rcParams.update({'font.size':sizefont,
+        'text.usetex':usetex})
+    plt.subplots_adjust(wspace=0.07, hspace=0.1)
+
+    nb_iters = exp_scores[0]["b"]["mean"].shape[1]
+    x = [j for j in range(1, nb_iters+1)]
+
+    for i, exp_value in enumerate(exp_values):
+        scores = exp_scores[i]
+        sim_params = sim_param_exps[exp_value]
+
+        # Don't compute correlation if vector has the
+        # same values
+        skip = []
+        for name in sim_params:
+            if np.all(sim_params[name]==sim_params[name][0]):
+                skip.append(name)
+
+        for ind, name in enumerate(scores):
+            if name in estim_names and name not in skip:
+                estim_scores = scores[name]["mean"]
+                sim_param = sim_params[name]
+                #print(name, estim_scores.shape)
+
+                # pearson correlation coefficient
+                corrs = compute_corr(sim_param, estim_scores)
+                #print(name, corrs.shape)
+
+                m = corrs.mean(0)
+                s = corrs.std(0)
+
+                axs[i].plot(x, m, "-",
+                        color=estim_colors[name],
+                        label=estim_names[name])
+
+                axs[i].fill_between(x, m-s, m+s, 
+                        color=estim_colors[name],
+                        alpha=0.2, interpolate=True)
+
+        axs[i].set_title(exp_value)
+        axs[i].set_xticks([t for t in range(1, nb_iters+1) if\
+                t==1 or t % print_xtick_every==0])
+        axs[i].set_ylim(y_limits)
+        axs[i].set_xlabel("Iterations")
+        axs[i].grid(zorder=-2)
+        axs[i].grid(zorder=-2, visible=True, which='minor',
+                alpha=0.1)
+        axs[i].minorticks_on()
+ 
+        if i != 0:
+            axs[i].set(yticklabels=[])
+        else:
+            axs[i].set_ylabel("Correlation coefficient")
+
+    if legend:
+        handles,labels = [],[]
+        for ax in f.axes:
+            for h,l in zip(*ax.get_legend_handles_labels()):
+                if l not in labels:
+                    handles.append(h)
+                    labels.append(l)
+        plt.legend(handles, labels, loc=legend, framealpha=1,
+                facecolor="white", fancybox=True)
+
+    if title:
+        plt.suptitle(title)
+
+    plt.savefig(fig_file, bbox_inches="tight", 
+            format=fig_format, dpi=fig_dpi)
+
+    plt.close(f)
 
 def plot_fit_estim_correlation(
         scores,
@@ -374,7 +564,7 @@ def plot_fit_estim_correlation(
         
     """
     scores here is a dictionary of estimate arrays.
-    Each array has the shape:(nb_reps, nb_epochs, *estim_shape)
+    Each array has the shape:(nb_reps,nb_epochs,*estim_shape)
     """
 
     fig_format= "png"
@@ -391,18 +581,6 @@ def plot_fit_estim_correlation(
     nb_iters = scores["b"]["mean"].shape[1]
     x = [j for j in range(1, nb_iters+1)]
 
-    params = {
-            "b":"Branch lengths",
-            "t":"Tree length",
-            "r":"Substitution rates", 
-            "f":"Relative frequencies"}
-
-    colors = { 
-            "b":"#226E9C",
-            "r":"#D12959", 
-            "f":"#40AD5A",
-            "k":"#FFAA00"}
-
     # Don't compute correlation if vector has the same values
     skip = []
     for name in sim_params:
@@ -410,7 +588,7 @@ def plot_fit_estim_correlation(
             skip.append(name)
 
     for ind, name in enumerate(scores):
-        if name in params and name not in skip:
+        if name in estim_names and name not in skip:
             estim_scores = scores[name]["mean"]
             sim_param = sim_params[name]
             #print(name, estim_scores.shape)
@@ -421,13 +599,13 @@ def plot_fit_estim_correlation(
 
             m = corrs.mean(0) # average by replicate
             s = corrs.std(0)  # std by replicate
-            ax.plot(x, m, "-", color=colors[name],
-                    label=params[name])
+            ax.plot(x, m, "-", color=estim_colors[name],
+                    label=estim_names[name])
 
             ax.fill_between(x, m-s, m+s, 
-                    color=colors[name],
+                    color=estim_colors[name],
                     alpha=0.2, interpolate=True)
-    
+
     ax.set_xticks([t for t in range(1, nb_iters+1) if t==1 or\
             t % print_xtick_every==0])
     ax.set_ylim(y_limits)
@@ -444,8 +622,6 @@ def plot_fit_estim_correlation(
                 if l not in labels:
                     handles.append(h)
                     labels.append(l)
-        #plt.legend(handles, labels, bbox_to_anchor=(1.01, 1), 
-        #        loc='upper left', borderaxespad=0.)
         plt.legend(handles, labels, loc=legend, framealpha=1,
                 facecolor="white", fancybox=True)
 
@@ -470,7 +646,7 @@ def aggregate_estimate_values(
     # (estimate names) of dicitonaries (estimate stats)
     estim_reps = [result[key] for result in rep_results]
 
-    param_names = estim_names
+    param_names = estim_list
     names = param_names+[
             "a", "x", 
             "a_hamming", "a_euclidean",
@@ -562,22 +738,6 @@ def report_sampled_estimates(
         out_file
         ):
 
-    param_names = {
-            "b":"Branch lengths",
-            "t":"Tree length",
-            "r":"Substitution rates", 
-            "f":"Relative frequencies",
-            "k":"Kappa"}
-
-    rates = ["AG", "AC", "AT", "GC", "GT", "CT"]
-    freqs = ["A", "G", "C", "T"]
-
-    prob_names = {"elbo":"ELBO", 
-            "logl":"LogL",
-            "logprior":"LogPrior",
-            "logq":"LogQ",
-            "kl_qprior":"KL_QPrior"}
-
     pkg_name = __name__.split(".")[0]
     chaine =  "{} estimations\n".format(pkg_name)
     chaine += "####################\n\n"
@@ -593,11 +753,11 @@ def report_sampled_estimates(
 
     chaine += "\n"
 
-    for name in param_names:
+    for name in estim_names:
         #var_flag = False
         if name in estimates:
-            chaine += param_names[name] + "\n"
- 
+            chaine += estim_names[name] + "\n"
+
             # Average by replicates
             estimate = estimates[name].mean(0)
             param_dim = estimate.shape[-1]
@@ -618,9 +778,9 @@ def report_sampled_estimates(
 
             for dim in range(param_dim):
                 if name == "r":
-                    the_name = rates[dim]
+                    the_name = rates_list[dim]
                 elif name == "f":
-                    the_name = freqs[dim]
+                    the_name = freqs_list[dim]
                 else:
                     # TODO Get branch names
                     the_name = name + str(dim+1)

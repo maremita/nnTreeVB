@@ -2,7 +2,7 @@
 
 from nnTreeVB.utils import dictLists2combinations
 
-import sys
+#import sys
 import os
 import os.path
 from os import makedirs
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     # Main output folder (contains configs, output and jobs)
     output_eval = config.get("evaluation", "output_eval")
 
-    max_iter = config.get("evaluation", "n_epochs")
+    max_iter = config.get("evaluation", "max_iter")
     # needs to be str
     n_reps = config.get("evaluation", "nb_replicates")
 
@@ -125,8 +125,8 @@ if __name__ == '__main__':
     ## #############################
     config.set("io", "output_path", output_dir)
     config.set("io", "scores_from_file", scores_from_file)
-    
-    config.set("hyperparams", "n_epochs", max_iter)
+ 
+    config.set("hyperparams", "max_iter", max_iter)
     config.set("hyperparams", "nb_replicates", n_reps)
 
     # config gpu
@@ -143,12 +143,12 @@ if __name__ == '__main__':
 
     if eval_codes:
         eval_code_combins = dictLists2combinations(eval_codes)
-        name_combins = []
-        for i, combin in enumerate(eval_code_combins):
-            combin_str = "{}_".format(i)
-            for ev in combin:
-                combin_str += "".join(ev)+"_"
-            name_combins.append(combin_str.rstrip("_"))
+        # [(('d','jc69'), ('l','100'), ('t','8')), 
+        #  (('d','jc69'), ('l','100'), ('t','16')), ... ]
+        name_combins = [str(j)+"_"+"_".join(["".join(i)\
+                for i in p])\
+                for j, p in enumerate(eval_code_combins)]
+        # ['0_djc69_l100_t8', '1_djc69_l100_t16', ... ]
     else:
         name_combins = [str(i) for i in range(nb_combins)]
 
@@ -227,9 +227,8 @@ if __name__ == '__main__':
             cmd = "{} -c {} -s {} &".format(program,
                     config_file, seed)
 
-        res_file = output_dir+\
-                "{}/{}_results.pkl".format(
-                        exp_name, exp_name)
+        res_file = output_dir+ "{}/{}_results.pkl".format(
+                exp_name, exp_name)
 
         if not os.path.isfile(res_file):
             print("\n", exp_name)

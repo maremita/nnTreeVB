@@ -428,9 +428,9 @@ if __name__ == "__main__":
             plot_validation=False)
 
     if fit.save_fit_history:
-        hist = "fit" # [fit | val]
+        history = "fit" # [fit | val]
         estimates = aggregate_estimate_values(rep_results,
-                "{}_estimates".format(hist))
+                "{}_estimates".format(history))
         #print(estimates)
         #return a dictionary of dictionary of arrays
 
@@ -440,7 +440,7 @@ if __name__ == "__main__":
                 estimates, 
                 sim_params_np,
                 output_path+"/{}_{}_estim_dist".format(
-                    stg.job_name, hist),
+                    stg.job_name, history),
                 sizefont=plt.size_font,
                 usetex=plt.plt_usetex,
                 print_xtick_every=plt.print_xtick_every,
@@ -453,7 +453,7 @@ if __name__ == "__main__":
                 estimates, 
                 sim_params_np,
                 output_path+"/{}_{}_estim_corr".format(
-                    stg.job_name, hist),
+                    stg.job_name, history),
                 sizefont=plt.size_font,
                 usetex=plt.plt_usetex,
                 print_xtick_every=plt.print_xtick_every,
