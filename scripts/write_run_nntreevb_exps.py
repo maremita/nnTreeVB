@@ -93,11 +93,8 @@ if __name__ == '__main__':
     evaluations = json.loads(config.get("evaluation",
         "evaluations"))
 
-    try:
-        eval_codes = json.loads(config.get("evaluation",
-            "eval_codes"))
-    except:
-        eval_codes = None
+    eval_codes = json.loads(config.get("evaluation",
+        "eval_codes"))
 
     ## Remove slurm and evaluation sections from the config
     ## object to not include them in the config files of
@@ -141,16 +138,13 @@ if __name__ == '__main__':
     eval_combins = dictLists2combinations(evaluations)
     nb_combins = len(eval_combins)
 
-    if eval_codes:
-        eval_code_combins = dictLists2combinations(eval_codes)
-        # [(('d','jc69'), ('l','100'), ('t','8')), 
-        #  (('d','jc69'), ('l','100'), ('t','16')), ... ]
-        name_combins = [str(j)+"_"+"_".join(["".join(i)\
-                for i in p])\
-                for j, p in enumerate(eval_code_combins)]
-        # ['0_djc69_l100_t8', '1_djc69_l100_t16', ... ]
-    else:
-        name_combins = [str(i) for i in range(nb_combins)]
+    eval_code_combins = dictLists2combinations(eval_codes)
+    # [(('d','jc69'), ('l','100'), ('t','8')), 
+    #  (('d','jc69'), ('l','100'), ('t','16')), ... ]
+    name_combins = [str(j)+"_"+"_".join(["".join(i)\
+            for i in p])\
+            for j, p in enumerate(eval_code_combins)]
+    # ['0_djc69_l100_t8', '1_djc69_l100_t16', ... ]
 
     assert len(eval_combins) == len(name_combins)
 

@@ -39,6 +39,16 @@ prob_names = {"elbo":"ELBO",
 rates_list = ["AG", "AC", "AT", "GC", "GT", "CT"]
 freqs_list = ["A", "G", "C", "T"]
 
+line_color = "#c13e4c"
+elbo_color = "#3EC1B3"  # green
+ll_color =   "#226E9C"  # darker blue
+kl_color =   "#7C1D69"  # pink
+
+elbo_color_v = "#6BE619"
+ll_color_v =   "#009ADE" # light blue
+kl_color_v =   "#AF58BA"  # light pink
+
+
 def plot_weights_grads_epochs(
         data,
         module_name,
@@ -182,16 +192,6 @@ def plot_elbo_ll_kl(
 
     ax.set_rasterization_zorder(0)
 
-    line_color = "#c13e4c"
-    elbo_color = "#3EC1B3"  # green
-    ll_color =   "#226E9C"  # darker blue
-    kl_color =   "#7C1D69"  # pink
-
-    elbo_color_v = "#6BE619"
-    ll_color_v =   "#009ADE" # light blue
-    kl_color_v =   "#AF58BA"  # light pink
- 
-    # plot means
     ax.plot(x, scores[:,0,:].mean(0), "-", color=elbo_color, 
             label="ELBO", zorder=6) # ELBO train
     
@@ -272,6 +272,171 @@ def plot_elbo_ll_kl(
     ax.grid(zorder=-1)
     ax.grid(zorder=-1, visible=True, which='minor', alpha=0.1)
     ax.minorticks_on()
+
+    if legend:
+        handles,labels = [],[]
+        for ax in f.axes:
+            for h,l in zip(*ax.get_legend_handles_labels()):
+                if l not in labels:
+                    handles.append(h)
+                    labels.append(l)
+        plt.legend(handles, labels, loc=legend, framealpha=1,
+                facecolor="white", fancybox=True)
+
+    if title:
+        plt.suptitle(title)
+
+    plt.savefig(fig_file, bbox_inches="tight", 
+            format=fig_format, dpi=fig_dpi)
+
+    plt.close(f)
+
+def plot_elbos_lls_kls(
+        exp_scores,
+        exp_values,
+        out_file,
+        lines=None,
+        sizefont=14,
+        usetex=False,
+        print_xtick_every=20,
+        title=None,
+        legend='best',
+        plot_validation=False):
+
+    fig_format= "png"
+    fig_dpi = 300
+
+    fig_file = out_file+"."+fig_format
+
+    if not isinstance(exp_scores, np.ndarray):
+        exp_scores = np.array(exp_scores)
+
+    nb_evals = len(exp_scores)
+
+    f, axs = plt.subplots(1, nb_evals,
+            figsize=(7*nb_evals, 5))
+
+    plt.rcParams.update({'font.size':sizefont, 
+        'text.usetex':usetex})
+    plt.subplots_adjust(wspace=0.07, hspace=0.1)
+
+    nb_iters = exp_scores[0].shape[-1]
+    x = [j for j in range(1, nb_iters+1)]
+ 
+    for i, exp_value in enumerate(exp_values):
+        scores = exp_scores[i,...]
+
+        kl_fit_finite = np.isfinite(scores[:,2,:]).all()
+        kl_val_finite = False
+        if plot_validation:
+            kl_val_finite = np.isfinite(scores[:,5,:]).all()
+
+        if kl_fit_finite or kl_val_finite:
+            ax2 = axs[i].twinx()
+
+        # ELBO train
+        axs[i].plot(x, scores[:,0,:].mean(0), "-",
+                color=elbo_color,  label="ELBO", zorder=6) 
+
+        axs[i].fill_between(x,
+                scores[:,0,:].mean(0)-scores[:,0,:].std(0), 
+                scores[:,0,:].mean(0)+scores[:,0,:].std(0), 
+                color=elbo_color,
+                alpha=0.2, zorder=5, interpolate=True)
+
+        # LL train
+        axs[i].plot(x, scores[:,1,:].mean(0), "-",
+                color=ll_color, label="LogL", zorder=4) 
+
+        axs[i].fill_between(x,
+                scores[:,1,:].mean(0)-scores[:,1,:].std(0), 
+                scores[:,1,:].mean(0)+scores[:,1,:].std(0),
+                color=ll_color,
+                alpha=0.2, zorder=3, interpolate=True)
+
+        if kl_fit_finite:
+            # KL train
+            ax2.plot(x, scores[:,2,:].mean(0), "-",
+                    color=kl_color, label="KL_qp", zorder=4)
+
+            ax2.fill_between(x,
+                    scores[:,2,:].mean(0)-scores[:,2,:].std(0),
+                    scores[:,2,:].mean(0)+scores[:,2,:].std(0),
+                    color=kl_color,
+                    alpha=0.2, zorder=-6, interpolate=True)
+
+        # plot validation
+        if plot_validation:
+            axs[i].plot(x, scores[:,3,:].mean(0), "-.",
+                    color=elbo_color_v,
+                    label="ELBO_val", zorder=2) # ELBO val
+
+            axs[i].fill_between(x,
+                    scores[:,3,:].mean(0)-scores[:,3,:].std(0),
+                    scores[:,3,:].mean(0)+scores[:,3,:].std(0),
+                    color=elbo_color_v,
+                    alpha=0.1, zorder=1, interpolate=True)
+
+            axs[i].plot(x, scores[:,4,:].mean(0), "-.",
+                    color=ll_color_v,
+                    label="LogL_val", zorder=0) # LL val
+
+            axs[i].fill_between(x,
+                    scores[:,4,:].mean(0)-scores[:,4,:].std(0),
+                    scores[:,4,:].mean(0)+scores[:,4,:].std(0),
+                    color=ll_color_v,
+                    alpha=0.1, zorder=2, interpolate=True)
+
+            if kl_fit_finite:
+                ax2.plot(x, scores[:,5,:].mean(0), "-.", 
+                        color=kl_color_v,
+                        label="KL_qp_val", zorder=2) # KL val
+                
+                ax2.fill_between(x,
+                        scores[:,5,:].mean(0)\
+                                -scores[:,5,:].std(0),
+                        scores[:,5,:].mean(0)\
+                                +scores[:,5,:].std(0),
+                        color= kl_color_v,
+                        alpha=0.1, zorder=1, interpolate=True)
+
+        if lines:
+            axs[i].axhline(y=lines[i], color=line_color,
+                    linestyle='-')
+
+        #axs[i].set_zorder(ax2.get_zorder()+1)
+        if kl_fit_finite or kl_val_finite:
+            axs[i].set_frame_on(False)
+
+        axs[i].set_title(exp_value)
+        #axs[i].set_ylim(y_limits)
+        #axs[i].set_ylim([None, 0])
+        #axs[i].set_ylim([-10000, 0])
+        axs[i].set_ylim([np.min(
+            exp_scores[...,0,:].flatten()), 0])
+        axs[i].set_xticks([t for t in range(1, nb_iters+1) if\
+                t==1 or t % print_xtick_every==0])
+        axs[i].set_xlabel("Iterations")
+        axs[i].grid(zorder=-2)
+        axs[i].grid(zorder=-2, visible=True, which='minor',
+                alpha=0.1)
+        axs[i].minorticks_on()
+
+        if kl_fit_finite:
+            ax2.set_ylim([ 
+                np.min(exp_scores[...,2,:].flatten()),
+                np.max(exp_scores[...,2,:].flatten())])
+
+        if i != 0:
+            axs[i].set(yticklabels=[])
+        else:
+            axs[i].set_ylabel("ELBO and Log Likelihood")
+
+        if kl_fit_finite:
+            if i != nb_evals - 1:
+                ax2.set(yticklabels=[])
+            else:
+                ax2.set_ylabel("KL(q|prior)")
 
     if legend:
         handles,labels = [],[]
@@ -384,7 +549,6 @@ def plot_fit_estim_distances(
 
     fig_file = out_file+"."+fig_format
 
-    #nb_evals = len(list(exp_scores.keys()))
     nb_evals = len(exp_scores)
 
     f, axs = plt.subplots(1, nb_evals,
@@ -394,7 +558,6 @@ def plot_fit_estim_distances(
         'text.usetex':usetex})
     plt.subplots_adjust(wspace=0.07, hspace=0.1)
 
-    #nb_iters= exp_scores[exp_values[0]]["b"]["mean"].shape[1]
     nb_iters = exp_scores[0]["b"]["mean"].shape[1]
     x = [j for j in range(1, nb_iters+1)]
 
@@ -438,6 +601,88 @@ def plot_fit_estim_distances(
             axs[i].set(yticklabels=[])
         else:
             axs[i].set_ylabel("Euclidean distance")
+
+    if legend:
+        handles,labels = [],[]
+        for ax in f.axes:
+            for h,l in zip(*ax.get_legend_handles_labels()):
+                if l not in labels:
+                    handles.append(h)
+                    labels.append(l)
+        plt.legend(handles, labels, loc=legend, framealpha=1,
+                facecolor="white", fancybox=True)
+
+    if title:
+        plt.suptitle(title)
+
+    plt.savefig(fig_file, bbox_inches="tight", 
+            format=fig_format, dpi=fig_dpi)
+
+    plt.close(f)
+
+def plot_fit_estim_correlation(
+        scores,
+        sim_params,
+        out_file,
+        sizefont=16,
+        usetex=False,
+        print_xtick_every=10,
+        y_limits=[-1., 1.],
+        legend='lower right',
+        title=None):
+        
+    """
+    scores here is a dictionary of estimate arrays.
+    Each array has the shape:(nb_reps,nb_epochs,*estim_shape)
+    """
+
+    fig_format= "png"
+    fig_dpi = 300
+
+    fig_file = out_file+"."+fig_format
+
+    f, ax = plt.subplots(figsize=(8, 5))
+
+    plt.rcParams.update({'font.size':sizefont,
+        'text.usetex':usetex})
+    plt.subplots_adjust(wspace=0.16, hspace=0.1)
+
+    nb_iters = scores["b"]["mean"].shape[1]
+    x = [j for j in range(1, nb_iters+1)]
+
+    # Don't compute correlation if vector has the same values
+    skip = []
+    for name in sim_params:
+        if np.all(sim_params[name]==sim_params[name][0]):
+            skip.append(name)
+
+    for ind, name in enumerate(scores):
+        if name in estim_names and name not in skip:
+            estim_scores = scores[name]["mean"]
+            sim_param = sim_params[name]
+            #print(name, estim_scores.shape)
+
+            # pearson correlation coefficient
+            corrs = compute_corr(sim_param, estim_scores)
+            #print(name, corrs.shape)
+
+            m = corrs.mean(0) # average by replicate
+            s = corrs.std(0)  # std by replicate
+            ax.plot(x, m, "-", color=estim_colors[name],
+                    label=estim_names[name])
+
+            ax.fill_between(x, m-s, m+s, 
+                    color=estim_colors[name],
+                    alpha=0.2, interpolate=True)
+
+    ax.set_xticks([t for t in range(1, nb_iters+1) if t==1 or\
+            t % print_xtick_every==0])
+    ax.set_ylim(y_limits)
+    ax.set_xlabel("Iterations")
+    ax.set_ylabel("Correlation coefficient")
+    ax.grid(zorder=-1)
+    ax.grid(zorder=-1, visible=True, which='minor', alpha=0.1)
+    ax.minorticks_on()
 
     if legend:
         handles,labels = [],[]
@@ -532,88 +777,6 @@ def plot_fit_estim_correlations(
             axs[i].set(yticklabels=[])
         else:
             axs[i].set_ylabel("Correlation coefficient")
-
-    if legend:
-        handles,labels = [],[]
-        for ax in f.axes:
-            for h,l in zip(*ax.get_legend_handles_labels()):
-                if l not in labels:
-                    handles.append(h)
-                    labels.append(l)
-        plt.legend(handles, labels, loc=legend, framealpha=1,
-                facecolor="white", fancybox=True)
-
-    if title:
-        plt.suptitle(title)
-
-    plt.savefig(fig_file, bbox_inches="tight", 
-            format=fig_format, dpi=fig_dpi)
-
-    plt.close(f)
-
-def plot_fit_estim_correlation(
-        scores,
-        sim_params,
-        out_file,
-        sizefont=16,
-        usetex=False,
-        print_xtick_every=10,
-        y_limits=[-1., 1.],
-        legend='lower right',
-        title=None):
-        
-    """
-    scores here is a dictionary of estimate arrays.
-    Each array has the shape:(nb_reps,nb_epochs,*estim_shape)
-    """
-
-    fig_format= "png"
-    fig_dpi = 300
-
-    fig_file = out_file+"."+fig_format
-
-    f, ax = plt.subplots(figsize=(8, 5))
-
-    plt.rcParams.update({'font.size':sizefont,
-        'text.usetex':usetex})
-    plt.subplots_adjust(wspace=0.16, hspace=0.1)
-
-    nb_iters = scores["b"]["mean"].shape[1]
-    x = [j for j in range(1, nb_iters+1)]
-
-    # Don't compute correlation if vector has the same values
-    skip = []
-    for name in sim_params:
-        if np.all(sim_params[name]==sim_params[name][0]):
-            skip.append(name)
-
-    for ind, name in enumerate(scores):
-        if name in estim_names and name not in skip:
-            estim_scores = scores[name]["mean"]
-            sim_param = sim_params[name]
-            #print(name, estim_scores.shape)
-
-            # pearson correlation coefficient
-            corrs = compute_corr(sim_param, estim_scores)
-            #print(name, corrs.shape)
-
-            m = corrs.mean(0) # average by replicate
-            s = corrs.std(0)  # std by replicate
-            ax.plot(x, m, "-", color=estim_colors[name],
-                    label=estim_names[name])
-
-            ax.fill_between(x, m-s, m+s, 
-                    color=estim_colors[name],
-                    alpha=0.2, interpolate=True)
-
-    ax.set_xticks([t for t in range(1, nb_iters+1) if t==1 or\
-            t % print_xtick_every==0])
-    ax.set_ylim(y_limits)
-    ax.set_xlabel("Iterations")
-    ax.set_ylabel("Correlation coefficient")
-    ax.grid(zorder=-1)
-    ax.grid(zorder=-1, visible=True, which='minor', alpha=0.1)
-    ax.minorticks_on()
 
     if legend:
         handles,labels = [],[]

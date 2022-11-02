@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from nnTreeVB.reports import plot_elbos_lls_kls
 from nnTreeVB.reports import aggregate_estimate_values
 from nnTreeVB.reports import plot_fit_estim_distances
 from nnTreeVB.reports import plot_fit_estim_correlations
@@ -16,6 +17,7 @@ import json
 import argparse
 from collections import defaultdict
 
+import numpy as np
 from joblib import dump, load
 
 __author__ = "amine"
@@ -66,11 +68,8 @@ if __name__ == '__main__':
     evaluations = json.loads(config.get("evaluation",
         "evaluations"))
 
-    try:
-        eval_codes = json.loads(config.get("evaluation",
-            "eval_codes"))
-    except:
-        eval_codes = None
+    eval_codes = json.loads(config.get("evaluation",
+        "eval_codes"))
 
     ## Output directories
     ## ##################
@@ -87,16 +86,13 @@ if __name__ == '__main__':
     eval_combins = dictLists2combinations(evaluations)
     nb_combins = len(eval_combins)
 
-    if eval_codes:
-        eval_code_combins = dictLists2combinations(eval_codes)
-        # [(('d','jc69'), ('l','100'), ('t','8')), 
-        #  (('d','jc69'), ('l','100'), ('t','16')), ... ]
-        name_combins = [str(j)+"_"+"_".join(["".join(i)\
-                for i in p])\
-                for j, p in enumerate(eval_code_combins)]
-        # ['0_djc69_l100_t8', '1_djc69_l100_t16', ... ]
-    else:
-        name_combins = [str(i) for i in range(nb_combins)]
+    eval_code_combins = dictLists2combinations(eval_codes)
+    # [(('d','jc69'), ('l','100'), ('t','8')), 
+    #  (('d','jc69'), ('l','100'), ('t','16')), ... ]
+    name_combins = [str(j)+"_"+"_".join(["".join(i)\
+            for i in p])\
+            for j, p in enumerate(eval_code_combins)]
+    # ['0_djc69_l100_t8', '1_djc69_l100_t16', ... ]
 
     assert len(eval_combins) == len(name_combins)
 
@@ -104,6 +100,8 @@ if __name__ == '__main__':
     #sys.exit() 
 
     history = "fit" # [fit | val]
+    prob_exps = dict()
+    logl_data_exps = dict()
     estimate_exps = dict()
     sim_param_exps = dict()
 
@@ -111,14 +109,28 @@ if __name__ == '__main__':
         exp_name = "{}".format(name_combins[ind])
  
         res_file = os.path.join(output_dir, 
-                "{}/{}_results.pkl".format(exp_name, exp_name))
+                "{}/{}_results.pkl".format(exp_name,
+                    exp_name))
 
         result_data = load(res_file)
         rep_results=result_data["rep_results"]
 
+        the_scores = [result["fit_probs"] for\
+                result in rep_results]
+
+        # get min number of epoch of all reps 
+        # (maybe some reps stopped before max_iter)
+        # to slice the list of epochs with the same length 
+        # and be able to cast the list in ndarray
+        the_scores=np.array(the_scores)[...,:report_n_epochs] 
+        #print(the_scores.shape)
+        # (nb_reps, nb_measures, nb_epochs)
+
+        prob_exps[exp_name] = the_scores
+
         logl_data = None
         if "logl_data" in result_data:
-            logl_data=result_data["logl_data"]
+            logl_data_exps[exp_name]=result_data["logl_data"]
 
         estimates = aggregate_estimate_values(
                 rep_results,
@@ -139,10 +151,19 @@ if __name__ == '__main__':
             xp = exp_name.split("_")
             xp.pop(0) # remove the indice of the combination
             combins["_".join([xp[i] for i,_ in\
-                    enumerate(xp) if i!=ind])].append(exp_name)
+                    enumerate(xp) if i!=ind])].append(
+                            exp_name)
         #{'djc69_t8':['0_djc69_l100_t8','2_djc69_l1000_t8']...
 
-        # Get the estimates data for each case
+        # Get the prob results for each case
+        prob_combins = {c:[prob_exps[x] for x in\
+                combins[c]] for c in combins}
+
+        # Get the logl of sim data for each case
+        logl_data_combins = {c:[logl_data_exps[x] for x in\
+                combins[c]] for c in combins}
+
+        # Get the estimates results for each case
         estim_combins = {c:[estimate_exps[x] for x in\
                 combins[c]] for c in combins}
 
@@ -150,6 +171,24 @@ if __name__ == '__main__':
         # unique case
  
         for combin in combins:
+
+            # Probabilities (elbo, logl, kl)
+            out_file = os.path.join(output_case,
+                    "{}_probs_fig_itr{}".format(combin, 
+                        report_n_epochs))
+
+            plot_elbos_lls_kls(
+                    prob_combins[combin],
+                    combins[combin],
+                    out_file,
+                    lines=logl_data_combins[combin],
+                    sizefont=size_font,
+                    print_xtick_every=print_xtick_every,
+                    title=None,
+                    legend=legend_elbo,
+                    plot_validation=False)
+
+            # Distances of estimates with sim params
             out_file = os.path.join(output_case,
                     "{}_estim_dist_itr{}".format(combin, 
                         report_n_epochs))
@@ -166,6 +205,7 @@ if __name__ == '__main__':
                     legend=legend_dist,
                     title=None)
 
+            # Correlations of estimates with sim params
             out_file = os.path.join(output_case, 
                     "{}_estim_corr_itr{}".format(combin,
                         report_n_epochs))
