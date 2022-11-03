@@ -25,8 +25,8 @@ from joblib import dump, load
 __author__ = "amine"
 
 """
-python sum_plot_nntreevb_exps.py nntreevb_exps_config.ini\
-        jobs_code
+python sum_plot_nntreevb_exps.py -c nntreevb_exps_config.ini\
+        -j jobs_code
 """
 
 if __name__ == '__main__':
@@ -54,32 +54,31 @@ if __name__ == '__main__':
     with open(config_file, "r") as cf:
         config.read_file(cf)
 
+    # Main output folder (contains configs, output and jobs)
+    output_eval = config.get("evaluation", "output_eval")
+    evaluations = json.loads(config.get("evaluation",
+        "evaluations"))
+    eval_codes = json.loads(config.get("evaluation",
+        "eval_codes"))
     max_iter = config.getint("evaluation", "max_iter")
     report_n_epochs = config.getint("evaluation",
             "report_n_epochs", fallback=max_iter)
 
-    print_xtick_every = 100
-    size_font = 16
+    print_xtick_every = config.getint("plotting",
+            "print_xtick_every", fallback=100)
+    size_font = config.getint("plotting", "size_font",
+            fallback=16)
+    plt_usetex = config.getboolean("plotting",
+            "plt_usetex", fallback=False)
+
     legend_elbo = 'lower right'
     legend_dist = False
     legend_corr = 'lower right'
-
-    # Main output folder (contains configs, output and jobs)
-    output_eval = config.get("evaluation", "output_eval")
-
-    evaluations = json.loads(config.get("evaluation",
-        "evaluations"))
-
-    eval_codes = json.loads(config.get("evaluation",
-        "eval_codes"))
 
     ## Output directories
     ## ##################
     output_dir = os.path.join(output_eval, "exp_outputs/",
             jobs_code)
-
-    #config_dir = os.path.join(output_eval,"exp_configs/",
-    #        jobs_code)
 
     output_sum = os.path.join(output_dir,"summarize")
     makedirs(output_sum, mode=0o700, exist_ok=True)
@@ -224,7 +223,7 @@ if __name__ == '__main__':
                     sizefont=size_font,
                     print_xtick_every=print_xtick_every,
                     y_limits=[-0.1, 1.1],
-                    usetex=False,
+                    usetex=plt_usetex,
                     legend=legend_dist,
                     title=None)
 
@@ -242,6 +241,6 @@ if __name__ == '__main__':
                     sizefont=size_font,
                     print_xtick_every=print_xtick_every,
                     y_limits=[-1.1, 1.1],
-                    usetex=False,
+                    usetex=plt_usetex,
                     legend=legend_corr,
                     title=None)
