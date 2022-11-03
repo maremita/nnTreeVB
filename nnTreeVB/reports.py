@@ -1,13 +1,19 @@
-from collections import defaultdict
-import numpy as np
-
 from nnTreeVB.utils import compute_corr
 from nnTreeVB.utils import compute_estim_stats
+
+from collections import defaultdict
+
+import numpy as np
+import pandas as pd
+
+from scipy.stats.stats import pearsonr
+from scipy.spatial.distance import pdist
+
+import torch
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
-import torch
 
 __author__ = "amine remita"
 
@@ -917,7 +923,6 @@ def report_sampled_estimates(
     chaine += "\n"
 
     for name in estim_names:
-        #var_flag = False
         if name in estimates:
             chaine += estim_names[name] + "\n"
 
@@ -959,3 +964,138 @@ def report_sampled_estimates(
 
     with open(out_file, "w") as fh:
         fh.write(chaine)
+
+def summarize_sampled_estimates(
+        sample_combins,
+        combins,
+        x_names,
+        sim_param_exps,
+        out_file,
+        logl_data_combins = None
+        ):
+
+    ckey = list(combins.keys())[0]
+
+    probs_dict = dict()
+    estim_dict = dict()
+    row_index = [c_name for c_name in combins]
+
+    for name in prob_names:
+        if name in sample_combins[ckey][0]:
+            col_index = pd.MultiIndex.from_product(
+                    [x_names, ['Mean','STD']])
+ 
+            logl_real = False
+            if name == "logl" and logl_data_combins != None:
+                logl_real = True
+                col_index = pd.MultiIndex.from_product(
+                        [x_names, ['Real','Mean','STD']])
+
+            df = pd.DataFrame("", index=row_index,
+                    columns=col_index)
+
+            for c_name in combins:
+                #exp_names = combins[c_name]
+                for i, exp_scores in \
+                        enumerate(sample_combins[c_name]):
+                    
+                    scores = exp_scores[name]
+
+                    df[x_names[i], "Mean"].loc[c_name] =\
+                            scores.mean().item()
+                    df[x_names[i], "STD"].loc[c_name] =\
+                            scores.std().item()
+
+                    if logl_real:
+                        df[x_names[i], "Real"].loc[c_name] =\
+                                logl_data_combins[c_name][
+                                        i].item()
+
+            probs_dict[prob_names[name]] = df
+
+    write_dict_dfs(probs_dict, out_file+"_probs.txt")
+
+    for estim_name in estim_names:
+        if estim_name in sample_combins[ckey][0]:
+            #estim_shape = 
+            if estim_name in ["b", "r", "f"]:
+                col_index = pd.MultiIndex.from_product(
+                        [x_names, ['Dist', 'Corr', 'Pval']])
+
+                df = pd.DataFrame("", index=row_index,
+                        columns=col_index)
+
+                for c_name in combins:
+                    exp_names = combins[c_name]
+     
+                    for i, exp_scores in \
+                            enumerate(sample_combins[c_name]):
+
+                        scores = exp_scores[estim_name].mean(
+                                (0,1))
+                        sim_param = sim_param_exps[
+                                exp_names[i]][estim_name]
+
+                        #sim_param = sim_params[estim_name]
+
+                        # eucl distance
+                        dist = np.linalg.norm(
+                                sim_param - scores, 
+                                axis=-1).mean()
+ 
+                        # correlation
+                        corr = [np.nan, np.nan]
+                        if len(np.unique(sim_param)) > 1:
+                            corr = pearsonr(sim_param, scores)
+
+                        df[x_names[i], "Dist"].loc[c_name] =\
+                                dist
+                        df[x_names[i], "Corr"].loc[c_name] =\
+                                corr[0]
+                        df[x_names[i], "Pval"].loc[c_name] =\
+                                corr[1]
+
+            elif estim_name in ["t", "k"]:
+                col_index = pd.MultiIndex.from_product(
+                        [x_names, ['Value']])
+
+                df = pd.DataFrame("", index=row_index,
+                        columns=col_index)
+
+                for c_name in combins:
+                    #exp_names = combins[c_name]
+                    for i, exp_scores in \
+                            enumerate(sample_combins[c_name]):
+                        scores = exp_scores[estim_name].mean(
+                                (0,1))
+                        df[x_names[i], "Value"].loc[c_name] =\
+                                scores.mean()
+
+            estim_dict[estim_names[estim_name]] = df
+
+    write_dict_dfs(estim_dict, out_file+"_estim.txt")
+
+def write_dict_dfs(dict_df, filename):
+    with pd.option_context(
+            'display.max_rows', None,
+            'display.max_columns', None):
+        pd.options.display.float_format = '{:.3f}'.format
+        with open(filename, "w") as fh:
+            for code in dict_df:
+                fh.write(code)
+                fh.write("\n\n")
+                #fh.write(dict_df[code].to_csv(
+                #    float_format='%.3f'))
+                #fh.write("\n")
+                #fh.write("\n")
+                df = dict_df[code]
+                #if "pval" in df.columns.get_level_values(1):
+                #    df = df.drop("pval", axis=1, level=1)
+                fh.write(df.style.to_latex())
+                fh.write("\n")
+                fh.write(dict_df[code].to_string())
+                fh.write("\n")
+                fh.write("\n")
+                fh.write("#" * 69)
+                fh.write("\n")
+                fh.write("\n")
