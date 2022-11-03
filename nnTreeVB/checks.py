@@ -1,6 +1,7 @@
 from nnTreeVB.typing import dist_types
 from nnTreeVB.utils import str2floats
 from nnTreeVB.utils import str2values
+from nnTreeVB.utils import getboolean
 from nnTreeVB.models.torch_distributions import\
         build_torch_distribution, torch_dist_names
 
@@ -162,6 +163,42 @@ def check_dist_transform(dist_transform):
     else:
         raise ValueError("{} transform is not valide".format(
             dist_transform))
+
+def check_prior_option(option_str):
+    """
+    option_str = "exponential|10.|False"
+    """
+    values = re.split("\|", option_str.strip())
+
+    assert len(values) > 2
+
+    dist = check_dist_type(values[0])
+    params = check_dist_params(values[1])
+    learn = getboolean(values[2])
+
+    lr = False
+    if len(values) > 3 and values[3].strip() != "":
+        lr = values[3]
+
+    return dist, params, learn, lr
+
+def check_var_option(option_str):
+    """
+    option_str = "normal|0.1,0.1|lower_0"
+    """
+    values = re.split("\|", option_str.strip())
+
+    assert len(values) > 2
+
+    dist = check_dist_type(values[0])
+    params = check_dist_params(values[1])
+    transform = check_dist_transform(values[2])
+
+    lr = False
+    if len(values) > 3 and values[3].strip() != "":
+        lr = values[3]
+
+    return dist, params, transform, lr
 
 def check_seed(seed):
     s = seed.lower()

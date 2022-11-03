@@ -6,10 +6,8 @@ from nnTreeVB.checks import check_sim_simplex
 from nnTreeVB.checks import check_sim_float
 #from nnTreeVB.checks import check_seed
 from nnTreeVB.checks import check_verbose
-from nnTreeVB.checks import check_dist_type
-from nnTreeVB.checks import check_dist_params
-from nnTreeVB.checks import check_dist_transform
-from nnTreeVB.utils import getboolean
+from nnTreeVB.checks import check_prior_option
+from nnTreeVB.checks import check_var_option
 
 import re
 
@@ -69,85 +67,98 @@ def parse_config(config_file):
 
     # Hyper parameters
     arg.mdl = ArgObject()
+
+    lr = dict() # For learning rates for each distr type
+
     # Evo variational model type
     arg.mdl.subs_model = config.get(
             "hyperparams", "subs_model", fallback="jc69")
 
     # Hyper-parameters of prior distributions
     # Branches
-    b_prior = re.split("\|", config.get("hyperparams",
-        "b_prior", fallback="exponential(10.)False").strip())
+    b_prior = check_prior_option(config.get("hyperparams",
+        "b_prior", fallback="exponential|10.|False"))
 
-    arg.mdl.b_prior_dist = check_dist_type(b_prior[0])
-    arg.mdl.b_prior_params = check_dist_params(b_prior[1])
-    arg.mdl.b_learn_prior = getboolean(b_prior[2])
+    arg.mdl.b_prior_dist = b_prior[0]
+    arg.mdl.b_prior_params = b_prior[1]
+    arg.mdl.b_learn_prior = b_prior[2]
+    if b_prior[3]: lr.update({"b_dist_p": b_prior[3]})
 
-    b_var = re.split("\|", config.get("hyperparams",
-        "b_var", fallback="normal(0.1,0.1)lower_0").strip())
+    b_var = check_var_option(config.get("hyperparams",
+        "b_var", fallback="normal|0.1,0.1|lower_0"))
 
-    arg.mdl.b_var_dist = check_dist_type(b_var[0])
-    arg.mdl.b_var_params = check_dist_params(b_var[1])
-    arg.mdl.b_var_transform = check_dist_transform(b_var[2])
+    arg.mdl.b_var_dist = b_var[0]
+    arg.mdl.b_var_params = b_var[1]
+    arg.mdl.b_var_transform = b_var[2]
+    if b_var[3]: lr.update({"b_dist_q": b_var[3]})
 
     ## Tree length
-    t_prior = re.split("\|", config.get("hyperparams",
-        "t_prior", fallback="gamma(1.,1.)False").strip())
+    t_prior = check_prior_option(config.get("hyperparams",
+        "t_prior", fallback="gamma|1.,1.|False"))
 
-    arg.mdl.t_prior_dist = check_dist_type(t_prior[0])
-    arg.mdl.t_prior_params = check_dist_params(t_prior[1])
-    arg.mdl.t_learn_prior = getboolean(t_prior[2])
+    arg.mdl.t_prior_dist = t_prior[0]
+    arg.mdl.t_prior_params = t_prior[1]
+    arg.mdl.t_learn_prior = t_prior[2]
+    if t_prior[3]: lr.update({"t_dist_p": t_prior[3]})
 
-    t_var = re.split("\|", config.get("hyperparams",
-        "t_var", fallback="normal(0.1,0.1)lower_0").strip())
+    t_var = check_var_option(config.get("hyperparams",
+        "t_var", fallback="normal|0.1,0.1|lower_0"))
 
-    arg.mdl.t_var_dist = check_dist_type(t_var[0])
-    arg.mdl.t_var_params = check_dist_params(t_var[1])
-    arg.mdl.t_var_transform = check_dist_transform(t_var[2])
+    arg.mdl.t_var_dist = t_var[0]
+    arg.mdl.t_var_params = t_var[1]
+    arg.mdl.t_var_transform = t_var[2]
+    if t_var[3]: lr.update({"t_dist_q": t_var[3]})
 
     ## Rates
-    r_prior = re.split("\|", config.get("hyperparams",
-        "r_prior", fallback="dirichlet(uniform)False").strip())
+    r_prior = check_prior_option(config.get("hyperparams",
+        "r_prior", fallback="dirichlet|uniform|False"))
 
-    arg.mdl.r_prior_dist = check_dist_type(r_prior[0])
-    arg.mdl.r_prior_params = check_dist_params(r_prior[1])
-    arg.mdl.r_learn_prior = getboolean(r_prior[2])
+    arg.mdl.r_prior_dist = r_prior[0]
+    arg.mdl.r_prior_params = r_prior[1]
+    arg.mdl.r_learn_prior = r_prior[2]
+    if r_prior[3]: lr.update({"r_dist_p": r_prior[3]})
 
-    r_var = re.split("\|", config.get("hyperparams",
-        "r_var", fallback="normal(0.1,0.1)simplex").strip())
+    r_var = check_var_option(config.get("hyperparams",
+        "r_var", fallback="normal|0.1,0.1|simplex"))
 
-    arg.mdl.r_var_dist = check_dist_type(r_var[0])
-    arg.mdl.r_var_params = check_dist_params(r_var[1])
-    arg.mdl.r_var_transform = check_dist_transform(r_var[2])
+    arg.mdl.r_var_dist = r_var[0]
+    arg.mdl.r_var_params = r_var[1]
+    arg.mdl.r_var_transform = r_var[2]
+    if r_var[3]: lr.update({"r_dist_q": r_var[3]})
 
     ## Frequencies
-    f_prior = re.split("\|", config.get("hyperparams",
-        "f_prior", fallback="dirichlet(uniform)False").strip())
+    f_prior = check_prior_option(config.get("hyperparams",
+        "f_prior", fallback="dirichlet|uniform|False"))
 
-    arg.mdl.f_prior_dist = check_dist_type(f_prior[0])
-    arg.mdl.f_prior_params = check_dist_params(f_prior[1])
-    arg.mdl.f_learn_prior = getboolean(f_prior[2])
+    arg.mdl.f_prior_dist = f_prior[0]
+    arg.mdl.f_prior_params = f_prior[1]
+    arg.mdl.f_learn_prior = f_prior[2]
+    if f_prior[3]: lr.update({"f_dist_p": f_prior[3]})
 
-    f_var = re.split("\|", config.get("hyperparams",
-        "f_var", fallback="normal(0.1,0.1)simplex").strip())
+    f_var = check_var_option(config.get("hyperparams",
+        "f_var", fallback="normal|0.1,0.1|simplex"))
 
-    arg.mdl.f_var_dist = check_dist_type(f_var[0])
-    arg.mdl.f_var_params = check_dist_params(f_var[1])
-    arg.mdl.f_var_transform = check_dist_transform(f_var[2])
+    arg.mdl.f_var_dist = f_var[0]
+    arg.mdl.f_var_params = f_var[1]
+    arg.mdl.f_var_transform = f_var[2]
+    if f_var[3]: lr.update({"f_dist_q": f_var[3]})
 
     ## Kappa
-    k_prior = re.split("\|", config.get("hyperparams",
-        "k_prior", fallback="gamma(1.,1.)False").strip())
+    k_prior = check_prior_option(config.get("hyperparams",
+        "k_prior", fallback="gamma|1.,1.|False"))
 
-    arg.mdl.k_prior_dist = check_dist_type(k_prior[0])
-    arg.mdl.k_prior_params = check_dist_params(k_prior[1])
-    arg.mdl.k_learn_prior = getboolean(k_prior[2])
+    arg.mdl.k_prior_dist = k_prior[0]
+    arg.mdl.k_prior_params = k_prior[1]
+    arg.mdl.k_learn_prior = k_prior[2]
+    if k_prior[3]: lr.update({"k_dist_p": k_prior[3]})
 
-    k_var = re.split("\|", config.get("hyperparams",
-        "k_var", fallback="normal(0.1,0.1)lower_0").strip())
+    k_var = check_var_option(config.get("hyperparams",
+        "k_var", fallback="normal|0.1,0.1|lower_0"))
 
-    arg.mdl.k_var_dist = check_dist_type(k_var[0])
-    arg.mdl.k_var_params = check_dist_params(k_var[1])
-    arg.mdl.k_var_transform = check_dist_transform(k_var[2])
+    arg.mdl.k_var_dist = k_var[0]
+    arg.mdl.k_var_params = k_var[1]
+    arg.mdl.k_var_transform = k_var[2]
+    if k_var[3]: lr.update({"k_dist_q": k_var[3]})
 
     # Neural net hyperparameters
     arg.mdl.h_dim = config.getint("hyperparams",
@@ -172,17 +183,18 @@ def parse_config(config_file):
     arg.fit.K_grad_samples = config.getint(
             "hyperparams", "K_grad_samples", fallback=0)
     arg.fit.nb_samples = config.getint(
-            "hyperparams", "nb_samples", fallback=10)
+            "hyperparams", "nb_samples", fallback=100)
     arg.fit.alpha_kl = config.getfloat(
-            "hyperparams", "alpha_kl", fallback=0.0001)
+            "hyperparams", "alpha_kl", fallback=1.)
     arg.fit.max_iter = config.getint(
             "hyperparams", "max_iter", fallback=100)
     arg.fit.optimizer = config.get(
             "hyperparams", "optimizer", fallback="adam")
-    arg.fit.learning_rate = config.getfloat(
-            "hyperparams", "learning_rate", fallback=0.005)
+    lr.update({"default": config.getfloat(
+            "hyperparams", "learning_rate", fallback=0.1)})
+    arg.fit.learning_rate = lr
     arg.fit.weight_decay = config.getfloat(
-            "hyperparams", "weight_decay", fallback=0.00001)
+            "hyperparams", "weight_decay", fallback=0.)
     arg.fit.save_fit_history = config.getboolean(
             "hyperparams", "save_fit_history", fallback=False)
     arg.fit.save_val_history = config.getboolean(

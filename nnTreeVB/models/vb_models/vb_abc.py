@@ -47,8 +47,8 @@ class BaseTreeVB(ABC):
             alpha_kl=1.,
             max_iter:int = 100,
             optimizer="adam",
-            learning_rate=0.005, 
-            weight_decay=0.1,
+            learning_rate=0.1, 
+            weight_decay=0.,
             scheduler_lambda=lambda e:1.,
             X_val=None,
             # If not None, a validation stpe will be done
@@ -70,7 +70,7 @@ class BaseTreeVB(ABC):
             optim_algo = torch.optim.Adam
 
         optim_params = self.parameters()
-        lr_default = 0.01
+        lr_default = 0.1
 
         if isinstance(learning_rate, dict):
             optim_params = []
@@ -80,6 +80,9 @@ class BaseTreeVB(ABC):
                     ps = {'params': encoder.parameters(),
                             'lr': learning_rate[name]}
                     optim_params.append(ps)
+
+            if len(optim_params) == 0:
+                optim_params = self.parameters()
 
             if 'default' in learning_rate:
                 lr_default = learning_rate['default']
