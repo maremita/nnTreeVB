@@ -14,7 +14,9 @@ from .vb_gamma import *
 from .vb_log_normal import *
 from .vb_normal import *
 
-from nnTreeVB.typing import *
+from nnTreeVB.typing import TorchTransform 
+from nnTreeVB.typing import TorchDistribution
+from nnTreeVB.typing import dist_types
 
 import torch
 
@@ -23,11 +25,15 @@ __author__ = "amine remita"
 __all__ = [
         "VB_Encoder",
         "get_distribution",
-        "build_distribution",
+        "build_vb_distribution"
         ]
 
 def get_distribution(dist_type="gamma"):
     dist_type = dist_type.lower()
+
+    if not dist_type in dist_types:
+        raise ValueError("{} distribution is not"\
+                " supported".format(dist_type))
 
     if dist_type == "gamma":
         distribution = VB_Gamma
@@ -65,14 +71,9 @@ def get_distribution(dist_type="gamma"):
     elif dist_type == "fixed":
         distribution = VB_Fixed
 
-    else:
-        print("warning distribution type {}".format(dist_type))
-        distribution = VB_Fixed
-
     return distribution
 
-
-def build_distribution(
+def build_vb_distribution(
         in_shape: list,
         out_shape: list,
         dist_type: str = "gamma", # gamma

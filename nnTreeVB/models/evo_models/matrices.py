@@ -16,21 +16,20 @@ def build_JC69_matrix(rate=1.0/3):
 
     return rate_matrix
 
-def build_JC69_transition_matrix(b=1.):
+def build_JC69_transition_matrix(b):
 
     rateM = build_JC69_matrix()
     # print("rateM shape {}".format(rateM.shape))
     #[x_dim, x_dim]
     # print(rateM)
 
-    #print(torch.matrix_exp(torch.einsum("ij,bc->bcij", (rateM, b))).shape)
-
     tm = torch.matrix_exp(
             #torch.einsum("ij,bc->bcij", (rateM, b))).clamp(
             torch.einsum("ij,...c->...cij", (rateM, b))).clamp(
                     min=0.0, max=1.0)
 
-    # print("\ntm sahpe {}".format(tm.shape)) # [sample_size, x_dim, x_dim]
+    # print("\ntm sahpe {}".format(tm.shape))
+    # [sample_size, x_dim, x_dim]
     #print(tm)
 
     return tm
@@ -76,7 +75,7 @@ def build_K80_matrix(kappa):
     return rate_matrix
 
 
-def build_K80_transition_matrix(b=1., kappa=1.):
+def build_K80_transition_matrix(b, kappa):
     rateM = build_K80_matrix(kappa)
     #print("rateM shape {}".format(rateM.shape))
     #[sample_size, x_dim, x_dim]
@@ -137,7 +136,7 @@ def build_HKY_matrix(freqs, kappa):
     return rate_matrix
 
 
-def build_HKY_transition_matrix(b=1., freqs=0.25, kappa=1.):
+def build_HKY_transition_matrix(b, freqs, kappa):
     #print("b.shape {}".format(b.shape))
     rateM = build_HKY_matrix(freqs, kappa)
     #print("rateM shape {}".format(rateM.shape))
@@ -230,7 +229,7 @@ def build_GTR_matrix(rates, freqs):
 
     return rate_matrix
 
-def build_GTR_transition_matrix(b, rates=0.16, freqs=0.25):
+def build_GTR_transition_matrix(b, rates, freqs):
     #print("\nb shape {}".format(b.shape))
     # [sample_size, b_dim, 1]
     # print(b)
@@ -254,19 +253,27 @@ def build_transition_matrix(subs_model, args):
 
     if subs_model == "jc69":
         # args = {b}
-        tm = build_JC69_transition_matrix(**args)
+        tm = build_JC69_transition_matrix(b=args["b"])
 
     elif subs_model == "k80":
         # args = {b, kappa}
-        tm = build_K80_transition_matrix(**args)
+        tm = build_K80_transition_matrix(
+                b=args["b"],
+                kappa=args["k"])
 
     elif subs_model == "hky":
         # args ={b, freqs, kappa}
-        tm = build_HKY_transition_matrix(**args)
+        tm = build_HKY_transition_matrix(
+                b=args["b"],
+                freqs=args["f"],
+                kappa=args["k"])
 
     elif subs_model == "gtr":
         # args = {b, rates, freqs}
-        tm = build_GTR_transition_matrix(**args)
+        tm = build_GTR_transition_matrix(
+                b=args["b"],
+                rates=args["r"],
+                freqs=args["f"])
 
     else:
         raise ValueError("Substitution model key {}"\

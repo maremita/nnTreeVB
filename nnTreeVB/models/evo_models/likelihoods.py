@@ -1,3 +1,6 @@
+#from nnTreeVB.models.evo_models import build_transition_matrix
+from .matrices import build_transition_matrix
+
 import torch
 
 __author__ = "amine remita"
@@ -5,6 +8,7 @@ __author__ = "amine remita"
 __all__ = [
         "pruning",
         "pruning_rescaled",
+        "compute_log_likelihood"
         ]
 
 def pruning(arbre, x, tm, pi):
@@ -175,3 +179,18 @@ def pruning_rescaled(arbre, x, tm, pi):
     #print(logl)
 
     return logl
+
+def compute_log_likelihood(
+        arbre,
+        x,
+        subs_model,
+        tm_args,
+        pi,
+        rescaled_algo=False):
+
+        logl_algo = pruning
+        if rescaled_algo: logl_algo = pruning_rescaled
+
+        tm = build_transition_matrix(subs_model, tm_args)
+
+        return logl_algo(arbre, x, tm, pi)

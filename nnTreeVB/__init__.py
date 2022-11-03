@@ -8,6 +8,13 @@
 #################################
 
 __author__ = "amine remita"
-__date__ = "20221014"
-__version__ = "0.2.12.1"
-__all__ = ["data", "models", "utils"]
+__date__ = "20221103"
+__version__ = "0.2.13"
+__all__ = [
+        "data", 
+        "models",
+        "utils",
+        "reports",
+        "check", 
+        "parse_config"
+        ]

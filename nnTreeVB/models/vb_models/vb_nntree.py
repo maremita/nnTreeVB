@@ -1,12 +1,11 @@
 from nnTreeVB.models.vb_models import BaseTreeVB
 from nnTreeVB.models.vb_encoders import VB_Encoder
-from nnTreeVB.models.vb_encoders import build_distribution
+from nnTreeVB.models.vb_encoders import build_vb_distribution
 from nnTreeVB.models.evo_models import build_transition_matrix
-from nnTreeVB.models.evo_models import pruning_rescaled
-#from nnTreeVB.models.evo_models import pruning
+from nnTreeVB.models.evo_models import compute_log_likelihood
 from nnTreeVB.utils import sum_log_probs
 from nnTreeVB.utils import sum_kls
-from nnTreeVB.utils import check_sample_size
+from nnTreeVB.checks import check_sample_size
 
 import math
 import copy
@@ -61,7 +60,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             r_learn_prior=False,
             # Variational distribution:
             # fixed | dirichlet | normal
-            r_var_dist="dirichlet_ind",
+            r_var_dist="dirichlet",
             r_var_params=[1.]*6, 
             # if not nn: list of 6 floats
             # if nn: list of 6 floats, uniform, normal or False
@@ -76,7 +75,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             f_learn_prior=False,
             # Variational distribution:
             # fixed | dirichlet | normal
-            f_var_dist="dirichlet_ind",  # 
+            f_var_dist="dirichlet",  # 
             f_var_params=[1.]*4, 
             # if not nn: list of 6 floats
             # if nn: list of 6 floats, uniform, normal or False
@@ -91,7 +90,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             k_learn_prior=False,
             # Variational distribution:
             # fixed | gamma | lognormal | normal
-            k_var_dist="gamma_ind",
+            k_var_dist="gamma",
             k_var_params=[0.1, 0.1], 
             # if not nn: list of 2 floats
             # if nn: list of 2 floats, uniform, normal or False
@@ -135,7 +134,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             self.b_compound = True
 
         # Initialize branch length prior distribution
-        self.b_dist_p = build_distribution(
+        self.b_dist_p = build_vb_distribution(
                 [self.b_dim],
                 [self.b_dim],
                 dist_type=b_prior_dist,
@@ -145,7 +144,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                 **common_args)
 
         # Initialize branch length variational distribution
-        self.b_dist_q = build_distribution(
+        self.b_dist_q = build_vb_distribution(
                 [self.b_dim],
                 [self.b_dim],
                 dist_type=b_var_dist,
@@ -161,7 +160,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         if self.b_compound:
             # Using a Compound Dirichlet Gamma distribution
             # Initialize tree length prior distribution
-            self.t_dist_p = build_distribution(
+            self.t_dist_p = build_vb_distribution(
                     [self.t_dim],
                     [self.t_dim],
                     dist_type=t_prior_dist,
@@ -171,7 +170,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     **common_args)
 
             # Initialize tree length variational distribution
-            self.t_dist_q = build_distribution(
+            self.t_dist_q = build_vb_distribution(
                     [self.t_dim],
                     [self.t_dim],
                     dist_type=t_var_dist,
@@ -186,7 +185,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
         if self.subs_model in ["gtr"]:
             # Initialize rates prior distribution
-            self.r_dist_p = build_distribution(
+            self.r_dist_p = build_vb_distribution(
                     [self.r_dim],
                     [self.r_dim],
                     dist_type=r_prior_dist,
@@ -196,7 +195,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     **common_args)
 
             # Initialize rates variational distribution
-            self.r_dist_q = build_distribution(
+            self.r_dist_q = build_vb_distribution(
                     [self.r_dim],
                     [self.r_dim],
                     dist_type=r_var_dist,
@@ -211,7 +210,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
         if self.subs_model in ["hky", "gtr"]:
             # Initialize frequencies prior distribution
-            self.f_dist_p = build_distribution(
+            self.f_dist_p = build_vb_distribution(
                     [self.f_dim],
                     [self.f_dim],
                     dist_type=f_prior_dist,
@@ -221,7 +220,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     **common_args)
 
             # Initialize frequencies variational distribution
-            self.f_dist_q = build_distribution(
+            self.f_dist_q = build_vb_distribution(
                     [self.f_dim],
                     [self.f_dim],
                     dist_type=f_var_dist,
@@ -236,7 +235,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
         if self.subs_model in ["k80", "hky"]:
             # Initialize kappa prior distribution
-            self.k_dist_p = build_distribution(
+            self.k_dist_p = build_vb_distribution(
                     [self.k_dim],
                     [self.k_dim],
                     dist_type=k_prior_dist,
@@ -246,7 +245,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                     **common_args)
 
             # Initialize kappa variational distribution
-            self.k_dist_q = build_distribution(
+            self.k_dist_q = build_vb_distribution(
                     [self.k_dim],
                     [self.k_dim],
                     dist_type=k_var_dist,
@@ -264,8 +263,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             site_counts,
             elbo_type="elbo",
             sample_size=torch.Size([1]),
-            alpha_kl=1.,
-            shuffle_sites=True):
+            alpha_kl=1.):
 
         eps = torch.finfo().eps
 
@@ -373,7 +371,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             kl_qpriors.append(r_kl)
 
             ret_values["r"] = r_samples.detach().numpy()
-            tm_args["rates"] = r_samples
+            tm_args["r"] = r_samples
 
         if self.subs_model in ["hky", "gtr"]:
             # Sample f from q_f and compute log prior, log q
@@ -392,7 +390,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
             ret_values["f"] = f_samples.detach().numpy()
             pi = f_samples
-            tm_args["freqs"] = f_samples
+            tm_args["f"] = f_samples
 
         if self.subs_model in ["k80", "hky"]:
             # Sample k from q_d and compute log prior, log q
@@ -411,7 +409,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             kl_qpriors.append(k_kl)
 
             ret_values["k"] = k_samples.detach().numpy()
-            tm_args["kappa"] = k_samples
+            tm_args["k"] = k_samples
 
         # Compute joint logprior, logq and kl
         logprior = sum_log_probs(logpriors, sample_size,
@@ -426,15 +424,16 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
         ## Compute logl
         ## ############
-        tm = build_transition_matrix(self.subs_model, tm_args)
         sites_expanded = sites.expand(
                 [*list(sample_size), n_dim, m_dim, x_dim])
 
-        #logl = pruning(self.tree,
-        #        sites_expanded, tm, pi) * site_counts
-
-        logl = pruning_rescaled(self.tree,
-                sites_expanded, tm, pi) * site_counts
+        logl = compute_log_likelihood(
+                self.tree,
+                sites_expanded,
+                self.subs_model,
+                tm_args,
+                pi,
+                rescaled_algo=False) * site_counts
 
         if sum_by_samples:
             logl = (logl).sum(-1)

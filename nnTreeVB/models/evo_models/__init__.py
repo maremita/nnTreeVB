@@ -15,4 +15,5 @@ __all__ = [
         "build_transition_matrix",
         "pruning",
         "pruning_rescaled",
+        "compute_log_likelihood"
         ]

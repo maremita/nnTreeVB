@@ -1,11 +1,13 @@
 from nnTreeVB.data import SeqCollection 
 
+import copy
 import time
 import math
 import platform
 import importlib
 import configparser
 from pprint import pformat
+import itertools
 
 import numpy as np
 from joblib import Parallel, delayed
@@ -15,8 +17,51 @@ from scipy.stats.stats import pearsonr#, spearmanr
 import torch
 import torch.nn as nn
 
-__author__ = "amine remita"
 
+def update_sim_parameters(sim):
+    """
+    sim is an object with attributes:
+        subs_model
+        sim_blengths (not used here)
+        sim_rates
+        sim_freqs
+        sim_kappa
+    """
+
+    # Update frequencies
+    if sim.subs_model in ["jc69", "k80"]:
+        sim.sim_freqs = (np.ones(4)/4).tolist()
+
+    # Update rates
+    if sim.subs_model == "jc69":
+        sim.sim_rates = (np.ones(6)/6).tolist()
+
+    elif sim.subs_model in ["k80", "hky"]:
+        sim.sim_rates = compute_rates_from_kappa(
+                sim.sim_kappa).tolist()
+
+    # Update kappa if model is jc69 or gtr
+    #(for information purpose, won't be used)
+    if sim.subs_model in ["jc69", "gtr"]:
+        sim.sim_kappa = compute_kappa_from_rates(sim.sim_rates)
+
+def compute_rates_from_kappa(kappa):
+        """
+        "AG", "AC", "AT", "GC", "GT", "CT"
+        Multiply AG and CT transition rates by kappa
+        See  The Phylogenetic_Handbook page 131
+        (Lemey, Salemi, Vandamme 2009)
+        """
+
+        if not isinstance(kappa, np.ndarray):
+            kappa = np.array(kappa)
+
+        rates = np.hstack((kappa*1., (np.ones(4)), kappa*1.))
+
+        return rates/rates.sum()
+
+def compute_kappa_from_rates(r):
+    return (r[0]+r[-1])/2/((sum(r[1:-1])/4))
 
 def freeze_model_params(model):
     for param in model.parameters():
@@ -70,7 +115,6 @@ def build_neuralnet(
 
     return nn.Sequential(*layers)
 
-
 def init_parameters(init_params, nb_params):
     if isinstance(init_params, (list)):
         assert len(init_params) == nb_params
@@ -85,22 +129,6 @@ def init_parameters(init_params, nb_params):
 
     return init_input
 
-
-def check_sample_size(sample_size):
-    
-    if isinstance(sample_size, torch.Size):
-        return sample_size
-
-    if isinstance(sample_size, int):
-        return torch.Size([sample_size])
-
-    elif isinstance(sample_size, list):
-        return torch.Size(sample_size)
-
-    else:
-        raise ValueError("Sample size type is not valid")
-
-
 def sum_kls(kls):
     sumkls = torch.zeros(1)
 
@@ -108,7 +136,6 @@ def sum_kls(kls):
         sumkls += kl.sum()
 
     return sumkls
-
 
 def sum_log_probs(log_probs, sample_size, sum_by_samples=True):
 
@@ -135,7 +162,6 @@ def sum_log_probs(log_probs, sample_size, sum_by_samples=True):
 
     return joint
 
-
 def min_max_clamp(x, min_clamp=False, max_clamp=False):
     if not isinstance(min_clamp, bool):
         if isinstance(min_clamp, (float, int)):
@@ -147,11 +173,9 @@ def min_max_clamp(x, min_clamp=False, max_clamp=False):
 
     return x
 
-
 def getboolean(value):
     return configparser.RawConfigParser()._convert_to_boolean(
             value)
-
 
 def timeSince(since):
     now = time.time()
@@ -160,56 +184,8 @@ def timeSince(since):
     s -= m * 60
     return '%dm %ds' % (m, s)
 
-def get_categorical_prior(conf, prior_type, verbose=False):
-    priors = []
-
-    if prior_type in ["ancestor", "freqs"]:
-        nb_categories = 4
-    elif prior_type == "rates":
-        nb_categories = 6
-    else:
-        raise ValueError(
-                "prior type value should be ancestor, freqs or rates")
-
-    if conf == "uniform":
-        priors = torch.ones(nb_categories)/nb_categories
-    elif "," in conf:
-        priors = str2float_tensor(conf, ',', nb_categoriesi,
-                prior_type)
-    #elif conf == "empirical": # to be implemented
-    #    pass
-    else:
-        raise ValueError(
-                "Check {} prior config values".format(prior_type))
-
-    if verbose:
-        print("{} prior hyper-parameters: {}".format(
-            prior_type, priors))
-
-    return priors
-
-def get_branch_prior(conf, verbose=False):
-    priors = str2float_tensor(conf, ",", 2, "branch")
-
-    if verbose:
-        print("Branch prior hyper-parameters: {}".format(priors))
-
-    return priors 
-
-def get_kappa_prior(conf, verbose=False):
-    priors = str2float_tensor(conf, ",", 2, "kappa")
-
-    if verbose:
-        print("Kappa prior hyper-parameters: {}".format(priors))
-
-    return priors 
-
-def str2float_tensor(chaine, sep, nb_values, prior_type):
+def str2tensor(chaine, sep=","):
     values = [float(v) for v in chaine.strip().split(sep)]
-    if len(values) != nb_values:
-        raise ValueError(
-                "the Number of prior values for {} "\
-                        "is not correct".format(prior_type))
     return torch.FloatTensor(values)
 
 def str2ints(chaine, sep=","):
@@ -218,25 +194,30 @@ def str2ints(chaine, sep=","):
 def str2floats(chaine, sep=","):
     return [float(s) for s in chaine.strip().split(sep)]
 
-def fasta_to_list(fasta_file, verbose=False):
-    # fetch sequences from fasta
-    if verbose: print("Fetching sequences from {}".format(fasta_file))
-    seqRec_list = SeqCollection.read_bio_file(fasta_file)
-    return [str(seqRec.seq._data) for seqRec in seqRec_list] 
-
-def str_to_list(chaine, sep=",", cast=None):
+def str2list(chaine, sep=",", cast=None):
     c = lambda x: x
     if cast: c = cast
 
     return [c(i.strip()) for i in chaine.strip().split(sep)]
 
-def str_to_values(chaine, nb_repeat=1, sep=",", cast=None):
+def str2values(chaine, nb_repeat=1, sep=",", cast=None):
     chaine = chaine.rstrip(sep)
-    values = str_to_list(chaine, sep=sep, cast=cast)
+    values = str2list(chaine, sep=sep, cast=cast)
     if len(values)==1 : values = values * nb_repeat
 
     return values
 
+def fasta2list(fasta_file, verbose=False):
+    # fetch sequences from fasta
+    if verbose: print("Fetching sequences from {}".format(
+        fasta_file))
+    seqRec_list = SeqCollection.read_bio_file(fasta_file)
+    return [str(seqRec.seq._data) for seqRec in seqRec_list] 
+
+def dictLists2combinations(data):
+    keys, values = zip(*data.items())
+    return [tuple(zip(keys, v)) for v in\
+            itertools.product(*values)]
 
 def get_lognorm_params(m, s):
     # to produce a distribution with desired mean m
@@ -246,16 +227,66 @@ def get_lognorm_params(m, s):
     std = np.sqrt(np.log(s**2 + m**2) - np.log(m**2))
     return [mu, std]
 
-def get_grad_stats(module):
+def get_all_grad_stats(module):
     grads = []
     for param in module.parameters():
         if param.grad is not None:
             grads.append(param.grad.view(-1))
     grads = torch.cat(grads).detach().cpu().numpy()
+
     return {"mean":np.nanmean(grads), 
             "var": np.nanvar(grads),
             "min": np.nanmin(grads),
             "max": np.nanmax(grads)}
+
+def get_all_weight_stats(module):
+    poids = []
+    for param in module.parameters():
+        poids.append(param.data.view(-1))
+    poids = torch.cat(poids).detach().cpu().numpy()
+
+    return {"mean": np.nanmean(poids),
+            "var": np.nanvar(poids),
+            "min": np.nanmin(poids),
+            "max": np.nanmax(poids)}
+
+def get_named_grad_stats(module):
+    grads = dict()
+    stats = dict()
+    for name, param in module.named_parameters():
+        # If module has a network, concatenate the gradients
+        # of the whole network
+        name = name.split(".")[0]
+
+        if param.grad is not None:
+            if not name in grads: grads[name] = []
+            grads[name].append(param.grad.view(-1))
+
+    for name in grads:
+        grads[name] = torch.cat(
+                grads[name]).detach().cpu().numpy()
+        stats[name] = compute_estim_stats(grads[name])
+
+    return stats
+
+def get_named_weight_stats(module):
+    poids = dict()
+    stats = dict()
+    for name, param in module.named_parameters():
+        # If module has a network, concatenate the gradients
+        # of the whole network
+        name = name.split(".")[0]
+
+        if param.data is not None:
+            if not name in poids: poids[name] = []
+            poids[name].append(param.data.view(-1))
+
+    for name in poids:
+        poids[name] = torch.cat(
+                poids[name]).detach().cpu().numpy()
+        stats[name] = compute_estim_stats(poids[name])
+
+    return stats
 
 def get_grad_list(module):
     grads = []
@@ -267,16 +298,6 @@ def get_grad_list(module):
         grads = torch.cat(grads)
 
     return grads
-
-def get_weight_stats(module):
-    poids = []
-    for param in module.parameters():
-        poids.append(param.data.view(-1))
-    poids = torch.cat(poids).detach().cpu().numpy()
-    return {"mean": np.nanmean(poids),
-            "var": np.nanvar(poids),
-            "min": np.nanmin(poids),
-            "max": np.nanmax(poids)}
 
 def get_weight_list(module):
     poids = []
@@ -293,7 +314,8 @@ def apply_on_submodules(func, nn_module):
         #if len(get_weight_list(sub_module))>0:
         #TODO: Try another way to check the type 
         # values to be collected (grads or weigths)
-        if len(get_grad_list(sub_module))>0:
+        if len(get_grad_list(sub_module))>0\
+                and "_dist_" in name:
             ret[name]=func(sub_module)
 
     return ret
@@ -317,33 +339,30 @@ def compute_corr(main, batch, verbose=False):
 
     return corrs
 
-
 def mean_confidence_interval(data, confidence=0.95, axis=0):
     a = 1.0 * np.array(data)
     n = np.size(a, axis=axis)
 
-    m, se = np.mean(a, axis=axis), scipy.stats.sem(a, axis=axis)
+    m, se = np.mean(a, axis=axis), scipy.stats.sem(a,
+            axis=axis)
     h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
 
     return m, m-h, m+h
 
+def compute_estim_stats(
+        sample,
+        confidence=0.95,
+        axis=0):
 
-def check_finite_grads(model, epoch, verbose=False):
+    stats = dict()
 
-    finite = True
-    for name, param in model.named_parameters():
-        if param.grad is None or\
-                not torch.isfinite(param.grad).all():
-            finite = False
+    stats["mean"],stats["cimin"],stats["cimax"] =\
+            mean_confidence_interval(sample, confidence, axis)
+    stats["var"] = np.var(sample, axis=axis)
+    stats["min"] = np.min(sample, axis=axis)
+    stats["max"] = np.max(sample, axis=axis)
 
-            if verbose:
-                print("{} Nonfinit grad {} : {}".format(epoch,
-                    name, param.grad))
-            else:
-                return finite
-
-    if not finite and verbose: print()
-    return finite
+    return stats
 
 def dict_to_cpu(some_dict):
     new_dict = dict()
@@ -358,7 +377,8 @@ def dict_to_numpy(some_dict):
 
     for key in some_dict:
         if isinstance(some_dict[key], torch.Tensor):
-            new_dict[key] = some_dict[key].cpu().detach().numpy()
+            new_dict[key] = some_dict[
+                    key].cpu().detach().numpy()
         elif isinstance(some_dict[key], list):
             new_dict[key] = np.array(some_dict[key])
         elif isinstance(some_dict[key], (int, float)):
@@ -368,6 +388,24 @@ def dict_to_numpy(some_dict):
         else:
             raise ValueError("{} in dict_to_numpy() should be"\
                     " tensor, array, list, int or float")
+
+    return new_dict
+
+def dict_to_tensor(some_dict, dtype=torch.float32):
+    new_dict = dict()
+
+    for key in some_dict:
+        if isinstance(some_dict[key], (list, np.ndarray)):
+            new_dict[key] = torch.tensor(some_dict[key],
+                    dtype=dtype)
+        elif isinstance(some_dict[key], (int, float)):
+            new_dict[key] = torch.tensor([some_dict[key]],
+                    dtype=dtype)
+        elif isinstance(some_dict[key], torch.Tensor):
+            new_dict[key] = (some_dict[key]).to(dtype=dtype)
+        else:
+            raise ValueError("{} in dict_to_tensor() should"\
+                    " be tensor, array, list, int or float")
 
     return new_dict
 
@@ -399,4 +437,3 @@ def get_modules_versions():
             versions[module_name] = "Not found"
 
     return versions
-
