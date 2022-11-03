@@ -90,10 +90,10 @@ if __name__ == '__main__':
     eval_code_combins = dictLists2combinations(eval_codes)
     # [(('d','jc69'), ('l','100'), ('t','8')), 
     #  (('d','jc69'), ('l','100'), ('t','16')), ... ]
-    name_combins = [str(j)+"_"+"_".join(["".join(i)\
+    name_combins = [str(j)+"_"+"_".join(["-".join(i)\
             for i in p])\
             for j, p in enumerate(eval_code_combins)]
-    # ['0_djc69_l100_t8', '1_djc69_l100_t16', ... ]
+    # ['0_d-jc69_l-100_t-8', '1_d-jc69_l-100_t-16', ... ]
 
     assert len(eval_combins) == len(name_combins)
 
@@ -155,7 +155,8 @@ if __name__ == '__main__':
             combins["_".join([xp[i] for i,_ in\
                     enumerate(xp) if i!=ind])].append(
                             exp_name)
-        #{'djc69_t8':['0_djc69_l100_t8','2_djc69_l1000_t8']...
+        #{'d-jc69_t-8':['0_d-jc69_l-100_t-8',
+        #    '2_d-jc69_l-1000_t-8']...
         akey = list(combins.keys())[0]
         x_names = [c.split("_")[ind+1] for c in combins[akey]]
 

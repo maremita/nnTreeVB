@@ -75,14 +75,14 @@ def parse_config(config_file):
 
     # Hyper-parameters of prior distributions
     # Branches
-    b_prior = re.split("\(|\)", config.get("hyperparams",
+    b_prior = re.split("\|", config.get("hyperparams",
         "b_prior", fallback="exponential(10.)False").strip())
 
     arg.mdl.b_prior_dist = check_dist_type(b_prior[0])
     arg.mdl.b_prior_params = check_dist_params(b_prior[1])
     arg.mdl.b_learn_prior = getboolean(b_prior[2])
 
-    b_var = re.split("\(|\)", config.get("hyperparams",
+    b_var = re.split("\|", config.get("hyperparams",
         "b_var", fallback="normal(0.1,0.1)lower_0").strip())
 
     arg.mdl.b_var_dist = check_dist_type(b_var[0])
@@ -90,14 +90,14 @@ def parse_config(config_file):
     arg.mdl.b_var_transform = check_dist_transform(b_var[2])
 
     ## Tree length
-    t_prior = re.split("\(|\)", config.get("hyperparams",
+    t_prior = re.split("\|", config.get("hyperparams",
         "t_prior", fallback="gamma(1.,1.)False").strip())
 
     arg.mdl.t_prior_dist = check_dist_type(t_prior[0])
     arg.mdl.t_prior_params = check_dist_params(t_prior[1])
     arg.mdl.t_learn_prior = getboolean(t_prior[2])
 
-    t_var = re.split("\(|\)", config.get("hyperparams",
+    t_var = re.split("\|", config.get("hyperparams",
         "t_var", fallback="normal(0.1,0.1)lower_0").strip())
 
     arg.mdl.t_var_dist = check_dist_type(t_var[0])
@@ -105,14 +105,14 @@ def parse_config(config_file):
     arg.mdl.t_var_transform = check_dist_transform(t_var[2])
 
     ## Rates
-    r_prior = re.split("\(|\)", config.get("hyperparams",
+    r_prior = re.split("\|", config.get("hyperparams",
         "r_prior", fallback="dirichlet(uniform)False").strip())
 
     arg.mdl.r_prior_dist = check_dist_type(r_prior[0])
     arg.mdl.r_prior_params = check_dist_params(r_prior[1])
     arg.mdl.r_learn_prior = getboolean(r_prior[2])
 
-    r_var = re.split("\(|\)", config.get("hyperparams",
+    r_var = re.split("\|", config.get("hyperparams",
         "r_var", fallback="normal(0.1,0.1)simplex").strip())
 
     arg.mdl.r_var_dist = check_dist_type(r_var[0])
@@ -120,14 +120,14 @@ def parse_config(config_file):
     arg.mdl.r_var_transform = check_dist_transform(r_var[2])
 
     ## Frequencies
-    f_prior = re.split("\(|\)", config.get("hyperparams",
+    f_prior = re.split("\|", config.get("hyperparams",
         "f_prior", fallback="dirichlet(uniform)False").strip())
 
     arg.mdl.f_prior_dist = check_dist_type(f_prior[0])
     arg.mdl.f_prior_params = check_dist_params(f_prior[1])
     arg.mdl.f_learn_prior = getboolean(f_prior[2])
 
-    f_var = re.split("\(|\)", config.get("hyperparams",
+    f_var = re.split("\|", config.get("hyperparams",
         "f_var", fallback="normal(0.1,0.1)simplex").strip())
 
     arg.mdl.f_var_dist = check_dist_type(f_var[0])
@@ -135,14 +135,14 @@ def parse_config(config_file):
     arg.mdl.f_var_transform = check_dist_transform(f_var[2])
 
     ## Kappa
-    k_prior = re.split("\(|\)", config.get("hyperparams",
+    k_prior = re.split("\|", config.get("hyperparams",
         "k_prior", fallback="gamma(1.,1.)False").strip())
 
     arg.mdl.k_prior_dist = check_dist_type(k_prior[0])
     arg.mdl.k_prior_params = check_dist_params(k_prior[1])
     arg.mdl.k_learn_prior = getboolean(k_prior[2])
 
-    k_var = re.split("\(|\)", config.get("hyperparams",
+    k_var = re.split("\|", config.get("hyperparams",
         "k_var", fallback="normal(0.1,0.1)lower_0").strip())
 
     arg.mdl.k_var_dist = check_dist_type(k_var[0])

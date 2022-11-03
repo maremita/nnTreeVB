@@ -415,7 +415,7 @@ def plot_elbos_lls_kls(
         if kl_fit_finite or kl_val_finite:
             axs[i].set_frame_on(False)
 
-        axs[i].set_title(x_names[i])
+        axs[i].set_title(x_names[i].split("-")[1])
         #axs[i].set_ylim(y_limits)
         #axs[i].set_ylim([None, 0])
         #axs[i].set_ylim([-10000, 0])
@@ -595,7 +595,7 @@ def plot_fit_estim_distances(
                         color=estim_colors[name],
                         alpha=0.2, interpolate=True)
     
-        axs[i].set_title(x_names[i])
+        axs[i].set_title(x_names[i].split("-")[1])
         axs[i].set_xticks([t for t in range(1, nb_iters+1) if\
                 t==1 or t % print_xtick_every==0])
         axs[i].set_ylim(y_limits)
@@ -772,7 +772,7 @@ def plot_fit_estim_correlations(
                         color=estim_colors[name],
                         alpha=0.2, interpolate=True)
 
-        axs[i].set_title(x_names[i])
+        axs[i].set_title(x_names[i].split("-")[1])
         axs[i].set_xticks([t for t in range(1, nb_iters+1) if\
                 t==1 or t % print_xtick_every==0])
         axs[i].set_ylim(y_limits)

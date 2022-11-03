@@ -141,10 +141,10 @@ if __name__ == '__main__':
     eval_code_combins = dictLists2combinations(eval_codes)
     # [(('d','jc69'), ('l','100'), ('t','8')), 
     #  (('d','jc69'), ('l','100'), ('t','16')), ... ]
-    name_combins = [str(j)+"_"+"_".join(["".join(i)\
+    name_combins = [str(j)+"_"+"_".join(["-".join(i)\
             for i in p])\
             for j, p in enumerate(eval_code_combins)]
-    # ['0_djc69_l100_t8', '1_djc69_l100_t16', ... ]
+    # ['0_d-jc69_l-100_t-8', '1_d-jc69_l-100_t-16', ... ]
 
     assert len(eval_combins) == len(name_combins)
 
