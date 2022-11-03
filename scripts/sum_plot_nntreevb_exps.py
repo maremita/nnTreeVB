@@ -8,7 +8,7 @@ from nnTreeVB.reports import plot_fit_estim_correlations
 from nnTreeVB.reports import summarize_sampled_estimates
 from nnTreeVB.utils import dictLists2combinations
 
-import sys
+#import sys
 #import os
 import os.path
 from os import makedirs
@@ -98,9 +98,6 @@ if __name__ == '__main__':
 
     assert len(eval_combins) == len(name_combins)
 
-    #print(name_combins)
-    #sys.exit() 
-
     history = "fit" # [fit | val]
     prob_exps = dict()
     logl_data_exps = dict()
@@ -146,7 +143,8 @@ if __name__ == '__main__':
                 rep_results, "samples")
 
     for ind, eval_code in enumerate(eval_codes):
- 
+        print("\nSummarizing {} results".format(eval_code))
+
         output_case = os.path.join(output_sum, eval_code)
         makedirs(output_case, mode=0o700, exist_ok=True)
 
@@ -176,7 +174,8 @@ if __name__ == '__main__':
 
         sample_combins = {c:[samples_exps[x] for x in\
                 combins[c]] for c in combins}
-        
+
+        print("\tSummarizing probs and samplinge stimates...")
         out_file = os.path.join(output_sum,
                 "{}_sampling".format(eval_code))
 
@@ -191,54 +190,58 @@ if __name__ == '__main__':
         # Plot estimate distances and correlations for each
         # unique case 
 
-        #for combin in combins:
+        print("\tPloting...")
+        for combin in combins:
 
-        #    # Probabilities (elbo, logl, kl)
-        #    out_file = os.path.join(output_case,
-        #            "{}_probs_fig_itr{}".format(combin, 
-        #                report_n_epochs))
+            # Probabilities (elbo, logl, kl)
+            out_file = os.path.join(output_case,
+                    "{}_probs_fig_itr{}".format(combin, 
+                        report_n_epochs))
 
-        #    plot_elbos_lls_kls(
-        #            prob_combins[combin],
-        #            combins[combin],
-        #            out_file,
-        #            lines=logl_data_combins[combin],
-        #            sizefont=size_font,
-        #            print_xtick_every=print_xtick_every,
-        #            title=None,
-        #            legend=legend_elbo,
-        #            plot_validation=False)
+            plot_elbos_lls_kls(
+                    prob_combins[combin],
+                    combins[combin],
+                    x_names,
+                    out_file,
+                    lines=logl_data_combins[combin],
+                    sizefont=size_font,
+                    print_xtick_every=print_xtick_every,
+                    title=None,
+                    legend=legend_elbo,
+                    plot_validation=False)
 
-        #    # Distances of estimates with sim params
-        #    out_file = os.path.join(output_case,
-        #            "{}_estim_dist_itr{}".format(combin, 
-        #                report_n_epochs))
+            # Distances of estimates with sim params
+            out_file = os.path.join(output_case,
+                    "{}_estim_dist_itr{}".format(combin, 
+                        report_n_epochs))
 
-        #    plot_fit_estim_distances(
-        #            estim_combins[combin],
-        #            combins[combin],
-        #            sim_param_exps,
-        #            out_file,
-        #            sizefont=size_font,
-        #            print_xtick_every=print_xtick_every,
-        #            y_limits=[-0.1, 1.1],
-        #            usetex=False,
-        #            legend=legend_dist,
-        #            title=None)
+            plot_fit_estim_distances(
+                    estim_combins[combin],
+                    combins[combin],
+                    x_names,
+                    sim_param_exps,
+                    out_file,
+                    sizefont=size_font,
+                    print_xtick_every=print_xtick_every,
+                    y_limits=[-0.1, 1.1],
+                    usetex=False,
+                    legend=legend_dist,
+                    title=None)
 
-        #    # Correlations of estimates with sim params
-        #    out_file = os.path.join(output_case, 
-        #            "{}_estim_corr_itr{}".format(combin,
-        #                report_n_epochs))
+            # Correlations of estimates with sim params
+            out_file = os.path.join(output_case, 
+                    "{}_estim_corr_itr{}".format(combin,
+                        report_n_epochs))
 
-        #    plot_fit_estim_correlations(
-        #            estim_combins[combin],
-        #            combins[combin],
-        #            sim_param_exps,
-        #            out_file,
-        #            sizefont=size_font,
-        #            print_xtick_every=print_xtick_every,
-        #            y_limits=[-1.1, 1.1],
-        #            usetex=False,
-        #            legend=legend_corr,
-        #            title=None)
+            plot_fit_estim_correlations(
+                    estim_combins[combin],
+                    combins[combin],
+                    x_names,
+                    sim_param_exps,
+                    out_file,
+                    sizefont=size_font,
+                    print_xtick_every=print_xtick_every,
+                    y_limits=[-1.1, 1.1],
+                    usetex=False,
+                    legend=legend_corr,
+                    title=None)

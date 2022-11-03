@@ -300,6 +300,7 @@ def plot_elbo_ll_kl(
 def plot_elbos_lls_kls(
         exp_scores,
         exp_values,
+        x_names,
         out_file,
         lines=None,
         sizefont=14,
@@ -414,7 +415,7 @@ def plot_elbos_lls_kls(
         if kl_fit_finite or kl_val_finite:
             axs[i].set_frame_on(False)
 
-        axs[i].set_title(exp_value)
+        axs[i].set_title(x_names[i])
         #axs[i].set_ylim(y_limits)
         #axs[i].set_ylim([None, 0])
         #axs[i].set_ylim([-10000, 0])
@@ -541,6 +542,7 @@ def plot_fit_estim_distance(
 def plot_fit_estim_distances(
         exp_scores,
         exp_values,
+        x_names,
         sim_param_exps,
         out_file,
         sizefont=14,
@@ -593,7 +595,7 @@ def plot_fit_estim_distances(
                         color=estim_colors[name],
                         alpha=0.2, interpolate=True)
     
-        axs[i].set_title(exp_value)
+        axs[i].set_title(x_names[i])
         axs[i].set_xticks([t for t in range(1, nb_iters+1) if\
                 t==1 or t % print_xtick_every==0])
         axs[i].set_ylim(y_limits)
@@ -711,6 +713,7 @@ def plot_fit_estim_correlation(
 def plot_fit_estim_correlations(
         exp_scores,
         exp_values,
+        x_names,
         sim_param_exps,
         out_file,
         sizefont=14,
@@ -769,7 +772,7 @@ def plot_fit_estim_correlations(
                         color=estim_colors[name],
                         alpha=0.2, interpolate=True)
 
-        axs[i].set_title(exp_value)
+        axs[i].set_title(x_names[i])
         axs[i].set_xticks([t for t in range(1, nb_iters+1) if\
                 t==1 or t % print_xtick_every==0])
         axs[i].set_ylim(y_limits)
