@@ -178,7 +178,7 @@ def check_prior_option(option_str):
 
     lr = False
     if len(values) > 3 and values[3].strip() != "":
-        lr = values[3]
+        lr = float(values[3])
 
     return dist, params, learn, lr
 
@@ -196,7 +196,7 @@ def check_var_option(option_str):
 
     lr = False
     if len(values) > 3 and values[3].strip() != "":
-        lr = values[3]
+        lr = float(values[3])
 
     return dist, params, transform, lr
 

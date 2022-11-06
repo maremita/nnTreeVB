@@ -2,7 +2,6 @@
 
 from nnTreeVB.utils import dictLists2combinations
 
-#import sys
 import os
 import os.path
 from os import makedirs
@@ -15,8 +14,8 @@ import argparse
 __author__ = "amine"
 
 """
-python write_run_nntreevb_exps.py nntreevb_exps_config.ini\
-        jobs_code
+python write_run_nntreevb_exps.py -c nntreevb_conf_exps.ini\
+        -j jobs_code
 """
 
 if __name__ == '__main__':
@@ -30,6 +29,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config-file', type=str,
             required=True)
+    # TODO: do not require seed
     parser.add_argument('-s', '--seed', type=int,
             required=True)
     parser.add_argument('-j', '--job-code', type=str)
@@ -141,10 +141,9 @@ if __name__ == '__main__':
     eval_code_combins = dictLists2combinations(eval_codes)
     # [(('d','jc69'), ('l','100'), ('t','8')), 
     #  (('d','jc69'), ('l','100'), ('t','16')), ... ]
-    name_combins = [str(j)+"_"+"_".join(["-".join(i)\
-            for i in p])\
-            for j, p in enumerate(eval_code_combins)]
-    # ['0_d-jc69_l-100_t-8', '1_d-jc69_l-100_t-16', ... ]
+    name_combins = ["_".join(["-".join(i) for i in p])\
+            for p in eval_code_combins]
+    # ['d-jc69_l-100_t-8', 'd-jc69_l-100_t-16', ... ]
 
     assert len(eval_combins) == len(name_combins)
 

@@ -8,8 +8,6 @@ from nnTreeVB.reports import plot_fit_estim_correlations
 from nnTreeVB.reports import summarize_sampled_estimates
 from nnTreeVB.utils import dictLists2combinations
 
-#import sys
-#import os
 import os.path
 from os import makedirs
 import copy
@@ -25,7 +23,7 @@ from joblib import dump, load
 __author__ = "amine"
 
 """
-python sum_plot_nntreevb_exps.py -c nntreevb_exps_config.ini\
+python sum_plot_nntreevb_exps.py -c nntreevb_conf_exps.ini\
         -j jobs_code
 """
 
@@ -90,10 +88,9 @@ if __name__ == '__main__':
     eval_code_combins = dictLists2combinations(eval_codes)
     # [(('d','jc69'), ('l','100'), ('t','8')), 
     #  (('d','jc69'), ('l','100'), ('t','16')), ... ]
-    name_combins = [str(j)+"_"+"_".join(["-".join(i)\
-            for i in p])\
-            for j, p in enumerate(eval_code_combins)]
-    # ['0_d-jc69_l-100_t-8', '1_d-jc69_l-100_t-16', ... ]
+    name_combins = ["_".join(["-".join(i) for i in p])\
+            for p in eval_code_combins]
+    # ['d-jc69_l-100_t-8', 'd-jc69_l-100_t-16', ... ]
 
     assert len(eval_combins) == len(name_combins)
 
@@ -151,14 +148,13 @@ if __name__ == '__main__':
         combins = defaultdict(list)
         for exp_name in name_combins:
             xp = exp_name.split("_")
-            xp.pop(0) # remove the indice of the combination
-            combins["_".join([xp[i] for i,_ in\
+            combins["_".join([xp[i] for i, _ in\
                     enumerate(xp) if i!=ind])].append(
                             exp_name)
-        #{'d-jc69_t-8':['0_d-jc69_l-100_t-8',
-        #    '2_d-jc69_l-1000_t-8']...
+        #{'d-jc69_t-8':['d-jc69_l-100_t-8',
+        #    'd-jc69_l-1000_t-8']...
         akey = list(combins.keys())[0]
-        x_names = [c.split("_")[ind+1] for c in combins[akey]]
+        x_names = [c.split("_")[ind] for c in combins[akey]]
 
         # Get the prob results for each case
         prob_combins = {c:[prob_exps[x] for x in\
