@@ -78,8 +78,8 @@ def build_vb_distribution(
         out_shape: list,
         dist_type: str = "gamma", # gamma
         init_params: list = [0.1, 0.1], 
-        # if not deep: list of 2 floats
-        # if deep: list of 2 floats, uniform, normal
+        # if not deep: list of floats
+        # if deep: list of floats, uniform, normal
         # or False for nn distributions
         learn_params: bool = True,
         transform_dist: TorchTransform = None,
@@ -101,8 +101,12 @@ def build_vb_distribution(
             init_params=init_params)
 
     if transform_dist is not None:
-        dist_args.update(
-            transform_dist=transform_dist)
+        if "dirichlet" in dist_type:
+            print("\nWarning: Transforms are not implemented"\
+                    " for dirichlet distributions\n")
+        else:
+            dist_args.update(
+                transform_dist=transform_dist)
 
     if dist_type != "fixed":
         dist_args.update(learn_params=learn_params)
