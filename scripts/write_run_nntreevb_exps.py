@@ -2,6 +2,7 @@
 
 from nnTreeVB.utils import dictLists2combinations
 
+import sys
 import os
 import os.path
 from os import makedirs
@@ -15,7 +16,7 @@ __author__ = "amine"
 
 """
 python write_run_nntreevb_exps.py -c nntreevb_conf_exps.ini\
-        -j jobs_code
+        -s 42 -j jobs_code
 """
 
 if __name__ == '__main__':
@@ -151,9 +152,14 @@ if __name__ == '__main__':
     eval_dict = {name_combins[i]:e for i, e\
             in enumerate(eval_combins)}
 
-    with open(output_dir+"/eval_combinations.txt", "w") as fh:
+    eval_comb_file = os.path.join(output_dir,
+            "eval_combinations.txt")
+
+    with open(eval_comb_file, "w") as fh:
         json.dump(eval_dict, fh, indent=2)
 
+    n_jobs = 0
+    n_runs = 0
     # Start evaluations
     for ind, eval_combin in enumerate(eval_combins):
         # Create a new copy of config object to keep default
@@ -220,11 +226,18 @@ if __name__ == '__main__':
             cmd = "{} -c {} -s {} &".format(program,
                     config_file, seed)
 
-        res_file = output_dir+ "{}/{}_results.pkl".format(
-                exp_name, exp_name)
+        res_file = os.path.join(output_dir,
+                "{}/{}_results.pkl".format(
+                    exp_name, exp_name))
+
+        n_jobs += 1
 
         if not os.path.isfile(res_file):
             print("\n", exp_name)
             if run_jobs:
                 print(cmd)
                 os.system(cmd)
+                n_runs += 1
+
+    print("\n {}/{} launched jobs".format(n_runs, n_jobs))
+    print("\nFin normal du programme {}".format(sys.argv[0]))
