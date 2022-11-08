@@ -55,16 +55,17 @@ class VB_Exponential(nn.Module):
         # transform the initial values from constrained to
         # unconstrained space
         init_rate_unconstr = self.tr_to_rate_constr.inv(
-                self.input[0].repeat([*self.in_shape]))
+                self.input[0].repeat(
+                    [*self.in_shape])).to(self.device_)
 
         # Initialize the parameters of the distribution
         if self.learn_params:
             self.rate_unconstr = nn.Parameter(
                     init_rate_unconstr,
-                    requires_grad=True).to(self.device_)
+                    requires_grad=True)
         else:
             self.rate_unconstr = init_rate_unconstr.detach(
-                    ).clone().to(self.device_)
+                    ).clone()
 
     def forward(self):
 

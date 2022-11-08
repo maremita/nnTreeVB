@@ -58,23 +58,25 @@ class VB_Gamma(nn.Module):
         # transform the initial values from constrained to
         # unconstrained space
         init_alpha_unconstr = self.tr_to_alpha_constr.inv(
-                self.input[0].repeat([*self.in_shape]))
+                self.input[0].repeat(
+                    [*self.in_shape])).to(self.device_)
         init_beta_unconstr = self.tr_to_beta_constr.inv(
-                self.input[1].repeat([*self.in_shape]))
+                self.input[1].repeat(
+                    [*self.in_shape])).to(self.device_)
 
         # Initialize the parameters of the distribution
         if self.learn_params:
             self.alpha_unconstr = nn.Parameter(
                     init_alpha_unconstr,
-                    requires_grad=True).to(self.device_)
+                    requires_grad=True)
             self.beta_unconstr = nn.Parameter(
                     init_beta_unconstr,
-                    requires_grad=True).to(self.device_)
+                    requires_grad=True)
         else:
             self.alpha_unconstr = init_alpha_unconstr.detach(
-                    ).clone().to(self.device_)
+                    ).clone()
             self.beta_unconstr = init_beta_unconstr.detach(
-                    ).clone().to(self.device_)
+                    ).clone()
 
     def forward(self):
 

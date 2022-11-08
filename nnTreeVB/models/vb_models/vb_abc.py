@@ -76,26 +76,36 @@ class BaseTreeVB(ABC):
         if optimizer == 'adam':
             optim_algo = torch.optim.Adam
 
-        optim_params = self.parameters()
         lr_default = 0.1
 
         if isinstance(learning_rate, dict):
-            optim_params = []
-
-            for name, encoder in self.named_children():
-                if name in learning_rate:
-                    ps = {'params': encoder.parameters(),
-                            'lr': learning_rate[name]}
-                    optim_params.append(ps)
-
-            if len(optim_params) == 0:
-                optim_params = self.parameters()
-
             if 'default' in learning_rate:
                 lr_default = learning_rate['default']
 
+            optim_params = []
+
+            for name, params in self.named_parameters():
+                main_name = name.split(".")[0]
+                if main_name in learning_rate:
+                    _lr = learning_rate[main_name]
+                else:
+                    _lr = lr_default 
+
+                optim_params.append(
+                        {'params': params, 'lr': _lr,
+                            'name': name})
+
+            # TODO I think this is useless now:
+            if len(optim_params) == 0:
+                optim_params = list(self.parameters())
+
         elif isinstance(learning_rate, (int, float)):
-            lr_default = learning_rate
+            optim_params = list(self.parameters())
+            lr_default = float(learning_rate)
+
+        else:
+            raise ValueError("Learning rate must be of"\
+                    " type dict, int or float")
 
         optimizer = optim_algo(
                 optim_params, 

@@ -159,6 +159,9 @@ if __name__ == "__main__":
                     " Changing device to 'cpu'")
         device = 'cpu'
 
+    if verbose:
+        print("\tDevice set to {}".format(device))
+
     device = torch.device(device)
 
     # Set the job name
@@ -187,10 +190,10 @@ if __name__ == "__main__":
     if sim.sim_data:
         # Files paths of simulated data
         # training sequences
-        fasta_file = output_path+"/{}_input.fasta".format(
-                stg.job_name)
-        tree_file = output_path+"/{}_input.nwk".format(
-                stg.job_name)
+        fasta_file = os.path.join(output_path,
+                "{}_input.fasta".format(stg.job_name))
+        tree_file = os.path.join(output_path,
+                "{}_input.nwk".format(stg.job_name))
     else:
         # Files paths of given FASTA files
         fasta_file = io.seq_file
@@ -207,6 +210,12 @@ if __name__ == "__main__":
     # Update file paths in config file
     config.set("io", "seq_file", fasta_file)
     config.set("io", "nwk_file", tree_file)
+
+    # Writing a config file and package versions
+    conf_file = os.path.join(output_path,
+            "{}_conf.ini".format(stg.job_name))
+    if not os.path.isfile(conf_file):
+        write_conf_packages(config, conf_file)
 
     ## Loading results from file
     ## #########################
@@ -382,13 +391,8 @@ if __name__ == "__main__":
         dump(result_data, results_file,
                 compress=stg.compress_files)
 
-        # Writing a config file and package versions
-        conf_file = output_path+"/{}_conf.ini".format(
-                stg.job_name)
-        if not os.path.isfile(conf_file):
-            write_conf_packages(config, conf_file)
-
-    if sim.sim_data:
+    #if sim.sim_data:
+    if "sim_params" in result_data:
         sim_params_np = result_data["sim_params"] 
 
     ## Report and plot results

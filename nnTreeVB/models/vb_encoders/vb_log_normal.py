@@ -51,25 +51,26 @@ class VB_LogNormal(nn.Module):
                 LogNormal.arg_constraints['scale'])
 
         init_mu = self.input[0].repeat(
-                [*self.in_shape])
+                [*self.in_shape]).to(self.device_)
         # Pay attention here, we use inverse transforms to 
         # transform the initial values from constrained to
         # unconstrained space
         init_sigma_unconstr = self.tr_to_sigma_constr.inv(
-                self.input[1].repeat([*self.in_shape]))
+                self.input[1].repeat(
+                    [*self.in_shape])).to(self.device_)
 
         # Initialize the parameters of the distribution
         if self.learn_params:
             self.mu = nn.Parameter(init_mu,
-                    requires_grad=True).to(self.device_)
+                    requires_grad=True)
             self.sigma_unconstr = nn.Parameter(
                     init_sigma_unconstr,
-                    requires_grad=True).to(self.device_)
+                    requires_grad=True)
         else:
             self.mu = init_mu.detach(
-                    ).clone().to(self.device_)
+                    ).clone()
             self.sigma_unconstr = init_sigma_unconstr.detach(
-                    ).clone().to(self.device_)
+                    ).clone()
 
     def forward(self):
 
