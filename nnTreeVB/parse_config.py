@@ -208,6 +208,8 @@ def parse_config(config_file):
     arg.stg = ArgObject()
     arg.stg.job_name = config.get("settings", "job_name",
             fallback=None)
+    arg.stg.n_parallel = config.getint("settings", 
+            "n_parallel", fallback=1)
     #arg.stg.seed = check_seed(config.get("settings", "seed",
     #        fallback=None))
     arg.stg.device = config.get("settings", "device",

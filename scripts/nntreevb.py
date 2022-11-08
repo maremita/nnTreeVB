@@ -366,7 +366,7 @@ if __name__ == "__main__":
                 **fit.to_dict()
                 }
 
-        parallel = Parallel(n_jobs=fit.nb_replicates, 
+        parallel = Parallel(n_jobs=stg.n_parallel, 
                 prefer="processes", verbose=verbose)
 
         rep_results = parallel(delayed(eval_evomodel)(
