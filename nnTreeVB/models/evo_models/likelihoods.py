@@ -13,6 +13,10 @@ __all__ = [
 
 def pruning(arbre, x, tm, pi):
 
+    #print("\n x {}".format(x.device))
+    #print("\n tm {}".format(tm.device))
+    #print("\n pi {}".format(pi.device))
+
     for node in arbre.traverse("postorder"):
         if node.is_leaf():
             node.state = x[..., node.postrank, :]
@@ -186,11 +190,13 @@ def compute_log_likelihood(
         subs_model,
         tm_args,
         pi,
-        rescaled_algo=False):
+        rescaled_algo=False,
+        device=torch.device("cpu")):
 
         logl_algo = pruning
         if rescaled_algo: logl_algo = pruning_rescaled
 
-        tm = build_transition_matrix(subs_model, tm_args)
+        tm = build_transition_matrix(subs_model, tm_args,
+                device=device)
 
         return logl_algo(arbre, x, tm, pi)

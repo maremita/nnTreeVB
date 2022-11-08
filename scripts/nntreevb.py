@@ -300,7 +300,7 @@ if __name__ == "__main__":
                     k=sim.sim_kappa))
 
             sim_params_tensor = dict_to_tensor(sim_params_np,
-                    dtype=torch.float32)
+                    device=device, dtype=torch.float32)
 
             for key in sim_params_tensor:
                 sim_params_tensor[key] =\
@@ -326,8 +326,11 @@ if __name__ == "__main__":
                         X.unsqueeze(0),
                         sim.subs_model,
                         sim_params_tensor,
-                        torch.tensor([sim.sim_freqs]),
-                        rescaled_algo=False) * X_counts).sum()
+                        torch.tensor([sim.sim_freqs]).to(
+                            device=device),
+                        rescaled_algo=False, 
+                        device=device)\
+                                * X_counts).sum().cpu().numpy()
 
             result_data["logl_data"] = logl_data
 

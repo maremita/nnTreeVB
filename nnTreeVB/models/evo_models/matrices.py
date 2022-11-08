@@ -7,18 +7,19 @@ __author__ = "Amine Remita"
 # #############
 # JC69 matrices
 # #############
-def build_JC69_matrix(rate=1.0/3):
+def build_JC69_matrix(rate=1.0/3, device=torch.device("cpu")):
 
-    rate_matrix = rate * torch.ones((4,4))
+    rate_matrix = rate * torch.ones((4,4)).to(device)
 
     for i in range(4):
         rate_matrix[i,i] = -1.0
 
     return rate_matrix
 
-def build_JC69_transition_matrix(b):
+def build_JC69_transition_matrix(b,
+        device=torch.device("cpu")):
 
-    rateM = build_JC69_matrix()
+    rateM = build_JC69_matrix(device=device)
     # print("rateM shape {}".format(rateM.shape))
     #[x_dim, x_dim]
     # print(rateM)
@@ -38,14 +39,15 @@ def build_JC69_transition_matrix(b):
 # #############
 # K80 matrices
 # #############
-def build_K80_matrix(kappa):
+def build_K80_matrix(kappa, device=torch.device("cpu")):
     #print("kappa shape {}".format(kappa.shape))
     #[sample_size, 1]
     sample_size = kappa.shape[:-1]
     freqs = torch.ones(4)/4
     pA, pG, pC, pT = freqs
 
-    rate_matrix = torch.zeros((*list(sample_size), 4, 4))
+    rate_matrix = torch.zeros((*list(sample_size), 4, 4)).to(
+            device)
     #print(rate_matrix.shape) 
     #print(kappa[...,0])
 
@@ -75,8 +77,10 @@ def build_K80_matrix(kappa):
     return rate_matrix
 
 
-def build_K80_transition_matrix(b, kappa):
-    rateM = build_K80_matrix(kappa)
+def build_K80_transition_matrix(b, kappa,
+        device=torch.device("cpu")):
+
+    rateM = build_K80_matrix(kappa, device=device)
     #print("rateM shape {}".format(rateM.shape))
     #[sample_size, x_dim, x_dim]
     # print(rateM)
@@ -95,7 +99,7 @@ def build_K80_transition_matrix(b, kappa):
 # #############
 # HKY matrices
 # #############
-def build_HKY_matrix(freqs, kappa):
+def build_HKY_matrix(freqs, kappa, device=torch.device("cpu")):
     #print("kappa shape {}".format(kappa.shape))
     #[sample_size, 1]
 
@@ -108,7 +112,8 @@ def build_HKY_matrix(freqs, kappa):
     #print("pA shape {}".format(pA.shape))
     # [sample_size]
 
-    rate_matrix = torch.zeros((*list(sample_size), 4, 4))
+    rate_matrix = torch.zeros((*list(sample_size), 4, 4)).to(
+            device)
 
     for i in range(4):
         for j in range(4):
@@ -136,9 +141,10 @@ def build_HKY_matrix(freqs, kappa):
     return rate_matrix
 
 
-def build_HKY_transition_matrix(b, freqs, kappa):
+def build_HKY_transition_matrix(b, freqs, kappa,
+        device=torch.device("cpu")):
     #print("b.shape {}".format(b.shape))
-    rateM = build_HKY_matrix(freqs, kappa)
+    rateM = build_HKY_matrix(freqs, kappa, device=device)
     #print("rateM shape {}".format(rateM.shape))
     #[sample_size, x_dim, x_dim]
     # print(rateM)
@@ -161,7 +167,7 @@ def build_HKY_transition_matrix(b, freqs, kappa):
 # #############
 # Adapted from VBPI
 # https://github.com/zcrabbit/vbpi-nf/blob/main/code/rateMatrix.py
-def build_GTR_matrix(rates, freqs):
+def build_GTR_matrix(rates, freqs, device=torch.device("cpu")):
 
     # print("rates {}".format(rates.shape))
     # [sample_size, r_dim]
@@ -183,7 +189,8 @@ def build_GTR_matrix(rates, freqs):
     GT = rates[...,4]
     CT = rates[...,5]
  
-    rate_matrix = torch.zeros((*list(sample_size), 4, 4))
+    rate_matrix = torch.zeros((*list(sample_size), 4, 4)).to(
+            device)
 
     for i in range(4):
         for j in range(4):
@@ -229,12 +236,13 @@ def build_GTR_matrix(rates, freqs):
 
     return rate_matrix
 
-def build_GTR_transition_matrix(b, rates, freqs):
+def build_GTR_transition_matrix(b, rates, freqs,
+        device=torch.device("cpu")):
     #print("\nb shape {}".format(b.shape))
     # [sample_size, b_dim, 1]
     # print(b)
 
-    rateM = build_GTR_matrix(rates, freqs)
+    rateM = build_GTR_matrix(rates, freqs, device=device)
     #print("rateM shape {}".format(rateM.shape))
     #[sample_size, x_dim, x_dim]
     # print(rateM)
@@ -249,31 +257,36 @@ def build_GTR_transition_matrix(b, rates, freqs):
 
     return tm
 
-def build_transition_matrix(subs_model, args):
+def build_transition_matrix(subs_model, args,
+        device=torch.device("cpu")):
 
     if subs_model == "jc69":
         # args = {b}
-        tm = build_JC69_transition_matrix(b=args["b"])
+        tm = build_JC69_transition_matrix(b=args["b"],
+                device=device)
 
     elif subs_model == "k80":
         # args = {b, kappa}
         tm = build_K80_transition_matrix(
                 b=args["b"],
-                kappa=args["k"])
+                kappa=args["k"],
+                device=device)
 
     elif subs_model == "hky":
         # args ={b, freqs, kappa}
         tm = build_HKY_transition_matrix(
                 b=args["b"],
                 freqs=args["f"],
-                kappa=args["k"])
+                kappa=args["k"],
+                device=device)
 
     elif subs_model == "gtr":
         # args = {b, rates, freqs}
         tm = build_GTR_transition_matrix(
                 b=args["b"],
                 rates=args["r"],
-                freqs=args["f"])
+                freqs=args["f"],
+                device=device)
 
     else:
         raise ValueError("Substitution model key {}"\

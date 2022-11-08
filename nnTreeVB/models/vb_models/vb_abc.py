@@ -31,12 +31,19 @@ class BaseTreeVB(ABC):
             if X_counts == None:
                 X_counts = torch.ones(X.shape[0]).to(
                         self.device_)
-            return self(
+            ret_dict = self(
                     X,
                     X_counts,
                     elbo_type=elbo_type,
                     sample_size=nb_samples,
-                    alpha_kl=alpha_kl) 
+                    alpha_kl=alpha_kl)
+
+            for estim in ret_dict:
+                if not isinstance(ret_dict[estim],
+                        np.ndarray):
+                    ret_dict[estim] = ret_dict[estim].cpu(
+                            ).numpy()
+            return ret_dict
 
     def fit(self,
             X:torch.Tensor,

@@ -291,7 +291,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         elbo_iws = elbo_type=="elbo_iws"
 
         #
-        pi = (torch.ones(4)/4).expand([*list(sample_size), 4])
+        pi = (torch.ones(4)/4).expand(
+                [*list(sample_size), 4]).to(self.device_)
         tm_args = dict()
 
         # Sum joint log probs by samples [True] or 
@@ -324,9 +325,10 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         logqs.append(b_logq)
         kl_qpriors.append(b_kl)
 
-        ret_values["b"] = b_samples.detach().numpy()
+        ret_values["b"] = b_samples.detach().cpu().numpy()
         tm_args["b"] = b_samples
         #print("b_samples.shape {}".format(b_samples.shape))
+        #print("b_samles {}".format(b_samples.device))
 
         if self.b_compound:
             # Sample t from q_d and compute log prior, log q
@@ -349,9 +351,9 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             logqs.append(t_logq)
             kl_qpriors.append(t_kl)
 
-            ret_values["t"] = t_samples.detach().numpy()
-            ret_values["b1"] = b_samples.detach().numpy()
-            ret_values["b"] = bt_samples.detach().numpy()
+            ret_values["t"] = t_samples.detach().cpu().numpy()
+            ret_values["b1"] = b_samples.detach().cpu().numpy()
+            ret_values["b"] = bt_samples.detach().cpu().numpy()
             tm_args["b"] = bt_samples
 
         if self.subs_model in ["gtr"]:
@@ -370,7 +372,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             logqs.append(r_logq)
             kl_qpriors.append(r_kl)
 
-            ret_values["r"] = r_samples.detach().numpy()
+            ret_values["r"] = r_samples.detach().cpu().numpy()
             tm_args["r"] = r_samples
 
         if self.subs_model in ["hky", "gtr"]:
@@ -388,7 +390,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             logqs.append(f_logq)
             kl_qpriors.append(f_kl)
 
-            ret_values["f"] = f_samples.detach().numpy()
+            ret_values["f"] = f_samples.detach().cpu().numpy()
             pi = f_samples
             tm_args["f"] = f_samples
 
@@ -408,15 +410,15 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             logqs.append(k_logq)
             kl_qpriors.append(k_kl)
 
-            ret_values["k"] = k_samples.detach().numpy()
+            ret_values["k"] = k_samples.detach().cpu().numpy()
             tm_args["k"] = k_samples
 
         # Compute joint logprior, logq and kl
         logprior = sum_log_probs(logpriors, sample_size,
-                sum_by_samples)
+                sum_by_samples, device=self.device_)
         logq = sum_log_probs(logqs, sample_size,
-                sum_by_samples)
-        kl_qprior = sum_kls(kl_qpriors)
+                sum_by_samples,device=self.device_)
+        kl_qprior = sum_kls(kl_qpriors, device=self.device_)
 
         #print("logprior {}".format(logprior.shape))
         #print("logq {}".format(logq.shape))
@@ -433,7 +435,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                 self.subs_model,
                 tm_args,
                 pi,
-                rescaled_algo=False) * site_counts
+                rescaled_algo=False,
+                device=self.device_) * site_counts
 
         if sum_by_samples:
             logl = (logl).sum(-1)

@@ -134,7 +134,8 @@ class VB_Exponential_NN(nn.Module):
         self.input = init_parameters(self.init_params,
                 self.nb_params)
  
-        self.input = self.input.repeat([*self.in_shape, 1])
+        self.input = self.input.repeat(
+                [*self.in_shape, 1]).to(self.device_)
 
         # Construct the neural networks
         self.net_rate = build_neuralnet(

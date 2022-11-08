@@ -95,20 +95,20 @@ def build_neuralnet(
 
     # Construct the neural network
     layers = [nn.Linear(in_dim, h_dim,
-        bias=bias_layers)]
+        bias=bias_layers).to(device)]
     if activ_layers: layers.append(activation())
     if dropout: layers.append(
             nn.Dropout(p=dropout))
 
     for i in range(1, nb_layers-1):
         layers.extend([nn.Linear(h_dim, h_dim,
-            bias=bias_layers)])
+            bias=bias_layers).to(device)])
         if activ_layers: layers.append(activation())
         if dropout: layers.append(
                 nn.Dropout(p=dropout))
 
     layers.extend([nn.Linear(h_dim, out_dim,
-        bias=bias_layers)])
+        bias=bias_layers).to(device)])
 
     if last_layers is not None:
         layers.extend([last_layers])
@@ -135,22 +135,23 @@ def init_parameters(init_params, nb_params):
 
     return init_input
 
-def sum_kls(kls):
-    sumkls = torch.zeros(1)
+def sum_kls(kls, device=torch.device("cpu")):
+    sumkls = torch.zeros(1).to(device)
 
     for kl in kls:
         sumkls += kl.sum()
 
     return sumkls
 
-def sum_log_probs(log_probs, sample_size, sum_by_samples=True):
+def sum_log_probs(log_probs, sample_size, sum_by_samples=True,
+        device=torch.device("cpu")):
 
     nb_s_dim = len(sample_size)
 
     if sum_by_samples:
-        joint = torch.zeros(sample_size)
+        joint = torch.zeros(sample_size).to(device)
     else:
-        joint = torch.zeros(1)
+        joint = torch.zeros(1).to(device)
 
     for log_p in log_probs:
         # Sum log probs by samples
@@ -397,18 +398,22 @@ def dict_to_numpy(some_dict):
 
     return new_dict
 
-def dict_to_tensor(some_dict, dtype=torch.float32):
+def dict_to_tensor(
+        some_dict,
+        device=torch.device("cpu"),
+        dtype=torch.float32):
     new_dict = dict()
 
     for key in some_dict:
         if isinstance(some_dict[key], (list, np.ndarray)):
             new_dict[key] = torch.tensor(some_dict[key],
-                    dtype=dtype)
+                    device=device, dtype=dtype)
         elif isinstance(some_dict[key], (int, float)):
             new_dict[key] = torch.tensor([some_dict[key]],
-                    dtype=dtype)
+                    device=device, dtype=dtype)
         elif isinstance(some_dict[key], torch.Tensor):
-            new_dict[key] = (some_dict[key]).to(dtype=dtype)
+            new_dict[key] = (some_dict[key]).to(device=device,
+                    dtype=dtype)
         else:
             raise ValueError("{} in dict_to_tensor() should"\
                     " be tensor, array, list, int or float")

@@ -61,8 +61,8 @@ class VB_Fixed(nn.Module):
         if isinstance(self.data, list):
             self.data = torch.tensor(self.data)
         elif not isinstance(self.data, torch.Tensor):
-            raise ValueError("{} data should be list or tensor "\
-                    "in Fixed dist".format(self.data))
+            raise ValueError("{} data should be list or"\
+                    " tensor in Fixed dist".format(self.data))
 
         if self.data.device != self.device_:
             self.data = self.data.to(self.device_)
