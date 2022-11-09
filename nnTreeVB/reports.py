@@ -947,7 +947,7 @@ def report_sampled_estimates(
             for stat_name in estimate_stats:
                 chaine += "\t"+stat_name
 
-            if name in real_params:
+            if real_params and name in real_params:
                 chaine += "\tReal"
             chaine += "\n"
 
@@ -969,7 +969,7 @@ def report_sampled_estimates(
                     chaine +="\t{:.4f}".format(
                             stats[dim].item())
     
-                if name in real_params:
+                if real_params and name in real_params:
                     chaine +="\t{:.4f}".format(
                             real_params[name][dim].item())
 

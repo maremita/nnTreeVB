@@ -243,7 +243,7 @@ class BaseTreeVB(ABC):
                             time.time() - val_time
 
                 ## printing
-                if verbose:
+                if verbose >= 2:
                     if epoch % 10 == 0:
                         chaine = "{}\tEpoch: {}"\
                                 "\tELBO: {:.3f}"\
@@ -270,7 +270,7 @@ class BaseTreeVB(ABC):
                                             lps_val.item(),
                                             lqs_val.item(),
                                             kls_val.item())
-                        if verbose >= 2:
+                        if verbose >= 3:
                             chaine += "\n"
                             for estim in estim_names:
                                 if estim in fit_dict:

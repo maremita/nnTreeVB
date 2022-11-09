@@ -198,6 +198,10 @@ if __name__ == "__main__":
                 "{}_input.fasta".format(stg.job_name))
         tree_file = os.path.join(output_path,
                 "{}_input.nwk".format(stg.job_name))
+        
+        config.set("sim_data","seq_from_file", "True")
+        config.set("sim_data","nwk_from_file", "True")
+
     else:
         # Files paths of given FASTA files
         fasta_file = io.seq_file
@@ -214,19 +218,15 @@ if __name__ == "__main__":
     # Update file paths in config file
     config.set("io", "seq_file", fasta_file)
     config.set("io", "nwk_file", tree_file)
-
-    # Writing a config file and package versions
-    conf_file = os.path.join(output_path,
-            "{}_conf.ini".format(stg.job_name))
-    if not os.path.isfile(conf_file):
-        write_conf_packages(config, conf_file)
+    config.set("io", "scores_from_file", "True")
 
     ## Loading results from file
     ## #########################
     results_file = output_path+"/{}_results.pkl".format(
             stg.job_name)
 
-    sim_params_np = None
+    real_params_np = None
+    post_branches = None
     post_branche_names = None
 
     if os.path.isfile(results_file) and io.scores_from_file:
@@ -250,6 +250,7 @@ if __name__ == "__main__":
             # Update sim params based on sim.subs_model
             # (useful to update rates using k (k80, hky))
             update_sim_parameters(sim)
+            sim.real_params = True
 
             if os.path.isfile(tree_file) and\
                     sim.nwk_from_file:
@@ -273,13 +274,14 @@ if __name__ == "__main__":
 
             tree_nwk = tree_obj.write(format=1)
 
-            post_branches = get_postorder_branches(
-                    tree_obj) # numpy array
-            post_branche_names = get_postorder_branche_names(
-                    tree_obj) # numpy array
-
-            result_data["tree_nwk"] = tree_nwk
-            result_data["b_names"] = post_branche_names
+            # update sim in the new config file
+            config.set("sim_data", "sim_rates", 
+                    ",".join(map(str,sim.sim_rates)))
+            config.set("sim_data", "sim_freqs", 
+                    ",".join(map(str,sim.sim_freqs)))
+            config.set("sim_data", "sim_kappa", 
+                    str(sim.sim_kappa))
+            config.set("sim_data", "real_params", "True")
 
             if not os.path.isfile(fasta_file) or \
                     not sim.seq_from_file:
@@ -311,29 +313,17 @@ if __name__ == "__main__":
                     taxon, '', '') for taxon in seq_taxa]
                 SeqIO.write(records, fasta_file, "fasta")
 
-            # sim_params_np will be used to compare with
-            # estimated parameters
- 
-            sim_params_np = dict_to_numpy(dict(
-                    b=post_branches,
-                    t=np.sum(post_branches, keepdims=1),
-                    r=sim.sim_rates,
-                    f=sim.sim_freqs,
-                    k=sim.sim_kappa))
-
-            sim_params_tensor = dict_to_tensor(sim_params_np,
-                    device=device, dtype=torch.float32)
-
-            for key in sim_params_tensor:
-                sim_params_tensor[key] =\
-                        sim_params_tensor[key].unsqueeze(0)
-
-            result_data["sim_params"] = sim_params_np
-
         if verbose: print("\nLoading data to"\
                 " TreeSeqCollection collection...")
         treeseqs = TreeSeqCollection(fasta_file, tree_file)
         tree_obj = treeseqs.tree # The tree is sorted
+
+        post_branches = get_postorder_branches(tree_obj)
+        # post_branches is a numpy array
+
+        post_branche_names = get_postorder_branche_names(
+                tree_obj)
+        result_data["b_names"] = post_branche_names
 
         # Transform fitting sequences
         x_motifs_cats = build_msa_categorical(treeseqs,
@@ -341,13 +331,34 @@ if __name__ == "__main__":
         X = torch.from_numpy(x_motifs_cats.data).to(device)
         X, X_counts = X.unique(dim=0, return_counts=True)
 
-        if sim.sim_data:
+        if sim.real_params:
+            # real_params_np will be used to compare with
+            # estimated parameters 
+            real_params_np = dict_to_numpy(dict(
+                    b=post_branches,
+                    t=np.sum(post_branches, keepdims=1),
+                    r=sim.sim_rates,
+                    f=sim.sim_freqs,
+                    k=sim.sim_kappa))
+            result_data["real_params"] = real_params_np
+
+            real_params_tensor = dict_to_tensor(
+                    real_params_np,
+                    device=device,
+                    dtype=torch.float32)
+
+            for key in real_params_tensor:
+                real_params_tensor[key] =\
+                        real_params_tensor[key].unsqueeze(0)
+
+            # Compute log likelihood of the data given
+            # real parameters
             with torch.no_grad():
                 logl_data = (compute_log_likelihood(
                         copy.deepcopy(tree_obj),
                         X.unsqueeze(0),
                         sim.subs_model,
-                        sim_params_tensor,
+                        real_params_tensor,
                         torch.tensor([sim.sim_freqs]).to(
                             device=device),
                         rescaled_algo=False, 
@@ -357,13 +368,17 @@ if __name__ == "__main__":
             result_data["logl_data"] = logl_data
 
             if verbose:
-                print("\nLog likelihood of the data:"\
-                        " {:.4f}".format(logl_data))
+                print("\nLog likelihood of the data using"\
+                        " input params: {:.4f}".format(
+                            logl_data))
 
-        ## Get prior hyper-parameter values
-        ## ################################
-        #if verbose:
-        #    print("\nGet the prior hyper-parameters...")
+        # Writing a new config file and package versions
+        # Could be used directly 
+        conf_file = os.path.join(output_path,
+                "{}_conf.ini".format(stg.job_name))
+        #if not os.path.isfile(conf_file):
+        if not io.scores_from_file:
+            write_conf_packages(config, conf_file)
 
         if verbose: print()
         ## Evo model type
@@ -386,8 +401,7 @@ if __name__ == "__main__":
         fit_args = {
                 "X":X,
                 "X_counts":X_counts,
-                "verbose":not sim.sim_data,
-                #"verbose":verbose,
+                "verbose":verbose,
                 **fit.to_dict()
                 }
 
@@ -405,8 +419,8 @@ if __name__ == "__main__":
                 compress=stg.compress_files)
 
     #if sim.sim_data:
-    if "sim_params" in result_data and sim_params_np is None:
-        sim_params_np = result_data["sim_params"]
+    if "real_params" in result_data and real_params_np is None:
+        real_params_np = result_data["real_params"]
 
     if "b_names" in result_data and post_branche_names is None:
         post_branche_names = result_data["b_names"]
@@ -416,7 +430,7 @@ if __name__ == "__main__":
     scores = [result["fit_probs"] for\
             result in rep_results]
 
-    # get min number of epoch of all reps 
+    # Get min number of epoch of all reps 
     # (maybe some reps stopped before max_iter)
     # to slice the list of epochs with the same length 
     # and be able to cast the list in ndarray        
@@ -437,7 +451,7 @@ if __name__ == "__main__":
     if verbose: print("\nPlotting...")
     
     logl_data = None
-    if "logl_data" in result_data: 
+    if "logl_data" in result_data and plt.logl_data: 
         logl_data = result_data["logl_data"]
 
     plot_elbo_ll_kl(
@@ -450,7 +464,7 @@ if __name__ == "__main__":
             title=None,
             plot_validation=False)
 
-    if fit.save_fit_history:
+    if fit.save_fit_history and real_params_np:
         history = "fit" # [fit | val]
         estimates = aggregate_estimate_values(rep_results,
                 "{}_estimates".format(history))
@@ -461,7 +475,7 @@ if __name__ == "__main__":
         ## and values given in the config file
         plot_fit_estim_distance(
                 estimates, 
-                sim_params_np,
+                real_params_np,
                 output_path+"/{}_{}_estim_dist".format(
                     stg.job_name, history),
                 sizefont=plt.size_font,
@@ -474,7 +488,7 @@ if __name__ == "__main__":
         ## and values given in the config file
         plot_fit_estim_correlation(
                 estimates, 
-                sim_params_np,
+                real_params_np,
                 output_path+"/{}_{}_estim_corr".format(
                     stg.job_name, history),
                 sizefont=plt.size_font,
@@ -513,7 +527,7 @@ if __name__ == "__main__":
             estim_samples,
             output_path+"/{}_estim_report.txt".format(
                 stg.job_name),
-            real_params=sim_params_np,
+            real_params=real_params_np,
             branch_names=post_branche_names)
 
     print("\nFin normale du programme\n")

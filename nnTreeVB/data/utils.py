@@ -29,8 +29,8 @@ def build_nwk_star_tree(b_lengths):
 def set_postorder_ranks(tree):
     """
     Add postrank attribute that contains the post order 
-    traversal based rank (leaves are ranked before  
-    and internal nodes)
+    traversal based rank (here, the order is changed so leaves
+    are ranked before internal nodes)
 
     Example:
     ########

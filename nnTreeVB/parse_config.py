@@ -64,6 +64,8 @@ def parse_config(config_file):
         "sim_data", "sim_freqs", fallback="0.25"), 4)
     arg.sim.sim_kappa = check_sim_float(config.get(
         "sim_data", "sim_kappa", fallback="1."))
+    arg.sim.real_params = config.getboolean(
+            "sim_data", "real_params", fallback=True)
 
     # Hyper parameters
     arg.mdl = ArgObject()
@@ -227,5 +229,7 @@ def parse_config(config_file):
             "plt_usetex", fallback=False)
     arg.plt.print_xtick_every = config.getint("plotting",
             "print_xtick_every", fallback=10)
+    arg.plt.logl_data = config.getboolean("plotting",
+            "logl_data", fallback=True)
 
     return arg, config
