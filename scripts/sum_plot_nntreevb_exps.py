@@ -98,7 +98,7 @@ if __name__ == '__main__':
     prob_exps = dict()
     logl_data_exps = dict()
     estimates_exps = dict()
-    sim_param_exps = dict()
+    real_param_exps = dict()
     samples_exps = dict()
 
     for ind, eval_combin in enumerate(eval_combins):
@@ -133,7 +133,7 @@ if __name__ == '__main__':
                 "{}_estimates".format(history),
                 report_n_epochs)
 
-        sim_param_exps[exp_name] = result_data["sim_params"]
+        real_param_exps[exp_name] = result_data["real_params"]
 
         samples_exps[exp_name] = aggregate_sampled_estimates(
                 rep_results, "samples")
@@ -179,7 +179,7 @@ if __name__ == '__main__':
             sample_combins,
             combins,
             x_names,
-            sim_param_exps,
+            real_param_exps,
             out_file,
             logl_data_combins)
 
@@ -215,7 +215,7 @@ if __name__ == '__main__':
                     estim_combins[combin],
                     combins[combin],
                     x_names,
-                    sim_param_exps,
+                    real_param_exps,
                     out_file,
                     sizefont=size_font,
                     print_xtick_every=print_xtick_every,
@@ -233,7 +233,7 @@ if __name__ == '__main__':
                     estim_combins[combin],
                     combins[combin],
                     x_names,
-                    sim_param_exps,
+                    real_param_exps,
                     out_file,
                     sizefont=size_font,
                     print_xtick_every=print_xtick_every,

@@ -133,7 +133,7 @@ if __name__ == "__main__":
     cfg_args, config = parse_config(config_file)
 
     io  = cfg_args.io
-    sim = cfg_args.sim
+    dat = cfg_args.dat
     mdl = cfg_args.mdl
     fit = cfg_args.fit
     stg = cfg_args.stg
@@ -169,17 +169,17 @@ if __name__ == "__main__":
     device = torch.device(device)
 
     # Set the job name
-    if str(stg.job_name).lower() in ["auto", "none"]:
-        stg.job_name = None
+    if str(io.job_name).lower() in ["auto", "none"]:
+        io.job_name = None
 
-    if not stg.job_name:
+    if not io.job_name:
         now = datetime.now()
-        stg.job_name = now.strftime("%y%m%d%H%M")
+        io.job_name = now.strftime("%y%m%d%H%M")
 
     ## output path 
     ## ###########
     output_path = os.path.join(io.output_path,
-            stg.job_name)
+            io.job_name)
     makedirs(output_path, mode=0o700, exist_ok=True)
 
     pg_path = os.path.join(output_path, "params_grads")
@@ -191,16 +191,16 @@ if __name__ == "__main__":
 
     ## Get Fasta and tree file names
     ## #############################
-    if sim.sim_data:
+    if dat.sim_data:
         # Files paths of simulated data
         # training sequences
         fasta_file = os.path.join(output_path,
-                "{}_input.fasta".format(stg.job_name))
+                "{}_input.fasta".format(io.job_name))
         tree_file = os.path.join(output_path,
-                "{}_input.nwk".format(stg.job_name))
-        
-        config.set("sim_data","seq_from_file", "True")
-        config.set("sim_data","nwk_from_file", "True")
+                "{}_input.nwk".format(io.job_name))
+ 
+        config.set("data","seq_from_file", "True")
+        config.set("data","nwk_from_file", "True")
 
     else:
         # Files paths of given FASTA files
@@ -223,7 +223,7 @@ if __name__ == "__main__":
     ## Loading results from file
     ## #########################
     results_file = output_path+"/{}_results.pkl".format(
-            stg.job_name)
+            io.job_name)
 
     real_params_np = None
     post_branches = None
@@ -245,15 +245,15 @@ if __name__ == "__main__":
 
         ## Data preparation
         ## ################
-        if sim.sim_data:
+        if dat.sim_data:
  
-            # Update sim params based on sim.subs_model
+            # Update sim params based on dat.subs_model
             # (useful to update rates using k (k80, hky))
-            update_sim_parameters(sim)
-            sim.real_params = True
+            update_sim_parameters(dat)
+            dat.real_params = True
 
             if os.path.isfile(tree_file) and\
-                    sim.nwk_from_file:
+                    dat.nwk_from_file:
                 if verbose: print("\nExtracting simulated"\
                         " tree from {} ...".format(tree_file))
                 tree_obj, taxa, int_nodes =\
@@ -261,47 +261,47 @@ if __name__ == "__main__":
 
             else:
                 # if tree file is not given, or 
-                # sim.nwk_from_file is false: simulate a tree
+                # dat.nwk_from_file is false: simulate a tree
                 # using ete3 populate function
                 if verbose:print("\nSimulating a new tree...")
 
                 tree_obj, taxa, int_nodes = simulate_tree(
-                        sim.nb_taxa,
-                        sim.sim_blengths,
+                        dat.nb_taxa,
+                        dat.sim_blengths,
                         unroot=True)
 
                 tree_obj.write(outfile=tree_file, format=1)
 
             tree_nwk = tree_obj.write(format=1)
 
-            # update sim in the new config file
-            config.set("sim_data", "sim_rates", 
-                    ",".join(map(str,sim.sim_rates)))
-            config.set("sim_data", "sim_freqs", 
-                    ",".join(map(str,sim.sim_freqs)))
-            config.set("sim_data", "sim_kappa", 
-                    str(sim.sim_kappa))
-            config.set("sim_data", "real_params", "True")
+            # update data params in the new config file
+            config.set("data", "sim_rates", 
+                    ",".join(map(str,dat.sim_rates)))
+            config.set("data", "sim_freqs", 
+                    ",".join(map(str,dat.sim_freqs)))
+            config.set("data", "sim_kappa", 
+                    str(dat.sim_kappa))
+            config.set("data", "real_params", "True")
 
             if not os.path.isfile(fasta_file) or \
-                    not sim.seq_from_file:
+                    not dat.seq_from_file:
                 if verbose:
                     print("\nSimulating new sequences...")
  
                 # The order of freqs is different for pyvolve
                 # A C G T
                 sim_freqs_pyv = [
-                        sim.sim_freqs[0],
-                        sim.sim_freqs[2],
-                        sim.sim_freqs[1],
-                        sim.sim_freqs[3]]
+                        dat.sim_freqs[0],
+                        dat.sim_freqs[2],
+                        dat.sim_freqs[1],
+                        dat.sim_freqs[3]]
 
                 # Evolve sequences
                 all_seqdict = evolve_sequences(
                         tree_nwk,
                         fasta_file=None, # write internal seqs
-                        nb_sites=sim.nb_sites,
-                        subst_rates=sim.sim_rates,
+                        nb_sites=dat.nb_sites,
+                        subst_rates=dat.sim_rates,
                         state_freqs=sim_freqs_pyv,
                         return_anc=False,
                         seed=seed,
@@ -331,15 +331,15 @@ if __name__ == "__main__":
         X = torch.from_numpy(x_motifs_cats.data).to(device)
         X, X_counts = X.unique(dim=0, return_counts=True)
 
-        if sim.real_params:
+        if dat.real_params:
             # real_params_np will be used to compare with
             # estimated parameters 
             real_params_np = dict_to_numpy(dict(
                     b=post_branches,
                     t=np.sum(post_branches, keepdims=1),
-                    r=sim.sim_rates,
-                    f=sim.sim_freqs,
-                    k=sim.sim_kappa))
+                    r=dat.sim_rates,
+                    f=dat.sim_freqs,
+                    k=dat.sim_kappa))
             result_data["real_params"] = real_params_np
 
             real_params_tensor = dict_to_tensor(
@@ -357,9 +357,9 @@ if __name__ == "__main__":
                 logl_data = (compute_log_likelihood(
                         copy.deepcopy(tree_obj),
                         X.unsqueeze(0),
-                        sim.subs_model,
+                        dat.subs_model,
                         real_params_tensor,
-                        torch.tensor([sim.sim_freqs]).to(
+                        torch.tensor([dat.sim_freqs]).to(
                             device=device),
                         rescaled_algo=False, 
                         device=device)\
@@ -375,7 +375,7 @@ if __name__ == "__main__":
         # Writing a new config file and package versions
         # Could be used directly 
         conf_file = os.path.join(output_path,
-                "{}_conf.ini".format(stg.job_name))
+                "{}_conf.ini".format(io.job_name))
         #if not os.path.isfile(conf_file):
         if not io.scores_from_file:
             write_conf_packages(config, conf_file)
@@ -418,7 +418,6 @@ if __name__ == "__main__":
         dump(result_data, results_file,
                 compress=stg.compress_files)
 
-    #if sim.sim_data:
     if "real_params" in result_data and real_params_np is None:
         real_params_np = result_data["real_params"]
 
@@ -447,7 +446,6 @@ if __name__ == "__main__":
 
     ## Ploting results
     ## ###############
-    # TODO: Add horizontal line for true logl
     if verbose: print("\nPlotting...")
     
     logl_data = None
@@ -456,7 +454,7 @@ if __name__ == "__main__":
 
     plot_elbo_ll_kl(
             the_scores,
-            output_path+"/{}_probs_fig".format(stg.job_name),
+            output_path+"/{}_probs_fig".format(io.job_name),
             line=logl_data,
             sizefont=plt.size_font,
             usetex=plt.plt_usetex,
@@ -477,7 +475,7 @@ if __name__ == "__main__":
                 estimates, 
                 real_params_np,
                 output_path+"/{}_{}_estim_dist".format(
-                    stg.job_name, history),
+                    io.job_name, history),
                 sizefont=plt.size_font,
                 usetex=plt.plt_usetex,
                 print_xtick_every=plt.print_xtick_every,
@@ -490,7 +488,7 @@ if __name__ == "__main__":
                 estimates, 
                 real_params_np,
                 output_path+"/{}_{}_estim_corr".format(
-                    stg.job_name, history),
+                    io.job_name, history),
                 sizefont=plt.size_font,
                 usetex=plt.plt_usetex,
                 print_xtick_every=plt.print_xtick_every,
@@ -505,7 +503,7 @@ if __name__ == "__main__":
         for n_rep in range(fit.nb_replicates):
             for dist_name in distrs:
                 out_file = pg_path+"/{}_r{}_{}".format(
-                        stg.job_name, n_rep, dist_name)
+                        io.job_name, n_rep, dist_name)
 
                 plot_weights_grads_epochs(
                         rep_results[n_rep],
@@ -526,7 +524,7 @@ if __name__ == "__main__":
     report_sampled_estimates(
             estim_samples,
             output_path+"/{}_estim_report.txt".format(
-                stg.job_name),
+                io.job_name),
             real_params=real_params_np,
             branch_names=post_branche_names)
 

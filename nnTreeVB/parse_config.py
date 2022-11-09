@@ -38,34 +38,35 @@ def parse_config(config_file):
             fallback="")
     arg.io.nwk_file = config.get("io", "nwk_file",
             fallback="")
-
     arg.io.scores_from_file = config.getboolean("io",
             "scores_from_file", fallback=False)
+    arg.io.job_name = config.get("io", "job_name",
+            fallback=None)
 
     # Simulation data
-    arg.sim = ArgObject()
-    arg.sim.sim_data = config.getboolean(
-            "sim_data", "sim_data", fallback=False)
-    arg.sim.seq_from_file = config.getboolean(
-            "sim_data", "seq_from_file", fallback=True)
-    arg.sim.nwk_from_file = config.getboolean(
-            "sim_data", "nwk_from_file", fallback=True)
-    arg.sim.nb_sites = config.getint(
-            "sim_data", "nb_sites", fallback=100)
-    arg.sim.nb_taxa = config.getint(
-            "sim_data", "nb_taxa", fallback=100)
-    arg.sim.subs_model = config.get(
-            "sim_data", "subs_model", fallback="jc69")
-    arg.sim.sim_blengths = check_sim_blengths(config.get(
-        "sim_data", "sim_blengths", fallback="0.1,1."))
-    arg.sim.sim_rates = check_sim_simplex(config.get(
-        "sim_data", "sim_rates", fallback="0.16"), 6)
-    arg.sim.sim_freqs = check_sim_simplex(config.get(
-        "sim_data", "sim_freqs", fallback="0.25"), 4)
-    arg.sim.sim_kappa = check_sim_float(config.get(
-        "sim_data", "sim_kappa", fallback="1."))
-    arg.sim.real_params = config.getboolean(
-            "sim_data", "real_params", fallback=True)
+    arg.dat = ArgObject()
+    arg.dat.sim_data = config.getboolean(
+            "data", "sim_data", fallback=False)
+    arg.dat.seq_from_file = config.getboolean(
+            "data", "seq_from_file", fallback=True)
+    arg.dat.nwk_from_file = config.getboolean(
+            "data", "nwk_from_file", fallback=True)
+    arg.dat.nb_sites = config.getint(
+            "data", "nb_sites", fallback=100)
+    arg.dat.nb_taxa = config.getint(
+            "data", "nb_taxa", fallback=100)
+    arg.dat.subs_model = config.get(
+            "data", "subs_model", fallback="jc69")
+    arg.dat.sim_blengths = check_sim_blengths(config.get(
+        "data", "sim_blengths", fallback="0.1,1."))
+    arg.dat.sim_rates = check_sim_simplex(config.get(
+        "data", "sim_rates", fallback="0.16"), 6)
+    arg.dat.sim_freqs = check_sim_simplex(config.get(
+        "data", "sim_freqs", fallback="0.25"), 4)
+    arg.dat.sim_kappa = check_sim_float(config.get(
+        "data", "sim_kappa", fallback="1."))
+    arg.dat.real_params = config.getboolean(
+            "data", "real_params", fallback=True)
 
     # Hyper parameters
     arg.mdl = ArgObject()
@@ -208,8 +209,6 @@ def parse_config(config_file):
 
     # setting parameters
     arg.stg = ArgObject()
-    arg.stg.job_name = config.get("settings", "job_name",
-            fallback=None)
     arg.stg.n_parallel = config.getint("settings", 
             "n_parallel", fallback=1)
     #arg.stg.seed = check_seed(config.get("settings", "seed",

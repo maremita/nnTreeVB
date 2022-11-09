@@ -105,7 +105,7 @@ if __name__ == '__main__':
         config.remove_section('slurm')
     config.remove_section('evaluation')
 
-    sim_data = config.getboolean("sim_data", "sim_data",
+    sim_data = config.getboolean("data", "sim_data",
             fallback=False)
 
     ## Output directories
@@ -175,7 +175,7 @@ if __name__ == '__main__':
             cfg_eval.set(section, option, str(eval_option[1]))
 
         exp_name = "{}".format(name_combins[ind])
-        cfg_eval.set("settings", "job_name", exp_name)
+        cfg_eval.set("io", "job_name", exp_name)
  
         output_path = os.path.join(output_dir, exp_name)
 
