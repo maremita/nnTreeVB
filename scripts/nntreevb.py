@@ -5,6 +5,7 @@ from nnTreeVB.data import evolve_seqs_full_homogeneity as\
 from nnTreeVB.data import simulate_tree
 from nnTreeVB.data import build_tree_from_nwk
 from nnTreeVB.data import get_postorder_branches
+from nnTreeVB.data import get_postorder_branche_names
 from nnTreeVB.data import TreeSeqCollection
 from nnTreeVB.data import build_msa_categorical
 
@@ -66,10 +67,13 @@ defined in the config file.
 Once the nnTreeVB package is installed, you can run nntreevb.py 
 using this command line:
 
-# nntreevb.py evovgm_conf_template.ini
-where <nntreevb_conf_template.ini> is the config file.
+# nntreevb.py -c evovgm_conf_template.ini [-s seed]
 
-The program is adapted from evovgm.py ((c) remita 2022,  MIT license)
+where <nntreevb_conf_template.ini> is the config file, and
+<seed> is an optional int
+
+The program is adapted from evovgm.py ((c) remita 2022, 
+MIT license)
 """
 
 ## Evaluation function
@@ -115,7 +119,7 @@ if __name__ == "__main__":
     config_file = cmd_args.config_file.strip()
     seed = cmd_args.seed
 
-    print("\nRunning {} with config file: {}".format(
+    print("\nRunning {} with config file {}".format(
         sys.argv[0], config_file), flush=True)
 
     if seed:
@@ -222,6 +226,9 @@ if __name__ == "__main__":
     results_file = output_path+"/{}_results.pkl".format(
             stg.job_name)
 
+    sim_params_np = None
+    post_branche_names = None
+
     if os.path.isfile(results_file) and io.scores_from_file:
         if verbose: print("\nLoading scores from file...")
 
@@ -264,11 +271,20 @@ if __name__ == "__main__":
 
                 tree_obj.write(outfile=tree_file, format=1)
 
+            tree_nwk = tree_obj.write(format=1)
+
+            post_branches = get_postorder_branches(
+                    tree_obj) # numpy array
+            post_branche_names = get_postorder_branche_names(
+                    tree_obj) # numpy array
+
+            result_data["tree_nwk"] = tree_nwk
+            result_data["b_names"] = post_branche_names
+
             if not os.path.isfile(fasta_file) or \
                     not sim.seq_from_file:
                 if verbose:
                     print("\nSimulating new sequences...")
-                tree_nwk = tree_obj.write(format=1)
  
                 # The order of freqs is different for pyvolve
                 # A C G T
@@ -288,15 +304,12 @@ if __name__ == "__main__":
                         return_anc=False,
                         seed=seed,
                         verbose=verbose)
-     
+ 
                 # Write fasta
                 seq_taxa = {s:all_seqdict[s] for s in taxa}
                 records = [SeqRecord(Seq(seq_taxa[taxon]),
                     taxon, '', '') for taxon in seq_taxa]
                 SeqIO.write(records, fasta_file, "fasta")
-
-            post_branches = get_postorder_branches(
-                    tree_obj) # numpy array
 
             # sim_params_np will be used to compare with
             # estimated parameters
@@ -392,8 +405,11 @@ if __name__ == "__main__":
                 compress=stg.compress_files)
 
     #if sim.sim_data:
-    if "sim_params" in result_data:
-        sim_params_np = result_data["sim_params"] 
+    if "sim_params" in result_data and sim_params_np is None:
+        sim_params_np = result_data["sim_params"]
+
+    if "b_names" in result_data and post_branche_names is None:
+        post_branche_names = result_data["b_names"]
 
     ## Report and plot results
     ## #######################
@@ -496,6 +512,8 @@ if __name__ == "__main__":
     report_sampled_estimates(
             estim_samples,
             output_path+"/{}_estim_report.txt".format(
-                stg.job_name))
+                stg.job_name),
+            real_params=sim_params_np,
+            branch_names=post_branche_names)
 
     print("\nFin normale du programme\n")

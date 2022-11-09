@@ -272,7 +272,8 @@ def get_named_grad_stats(module):
     for name in grads:
         grads[name] = torch.cat(
                 grads[name]).detach().cpu().numpy()
-        stats[name] = compute_estim_stats(grads[name])
+        stats[name] = compute_estim_stats(grads[name],
+                stats=["mean", "var"])
 
     return stats
 
@@ -291,7 +292,8 @@ def get_named_weight_stats(module):
     for name in poids:
         poids[name] = torch.cat(
                 poids[name]).detach().cpu().numpy()
-        stats[name] = compute_estim_stats(poids[name])
+        stats[name] = compute_estim_stats(poids[name],
+                stats=["mean", "var"])
 
     return stats
 
@@ -359,17 +361,30 @@ def mean_confidence_interval(data, confidence=0.95, axis=0):
 def compute_estim_stats(
         sample,
         confidence=0.95,
-        axis=0):
+        axis=0,
+        stats=["mean","ci_min","ci_max","var","min","max"]):
 
-    stats = dict()
+    res_stats = dict()
 
-    stats["mean"],stats["cimin"],stats["cimax"] =\
-            mean_confidence_interval(sample, confidence, axis)
-    stats["var"] = np.var(sample, axis=axis)
-    stats["min"] = np.min(sample, axis=axis)
-    stats["max"] = np.max(sample, axis=axis)
+    mean, ci_min, ci_max = mean_confidence_interval(sample,
+            confidence, axis)
+    
+    if "mean" in stats: res_stats["mean"] = mean
 
-    return stats
+    if "ci_min" in stats: res_stats["ci_min"] = ci_min
+
+    if "ci_max" in stats: res_stats["ci_max"] = ci_max
+
+    if "var" in stats:
+        res_stats["var"] = np.var(sample, axis=axis)
+    
+    if "min" in stats:
+        res_stats["min"] = np.min(sample, axis=axis)
+    
+    if "max" in stats:
+        res_stats["max"] = np.max(sample, axis=axis)
+
+    return res_stats
 
 def dict_to_cpu(some_dict):
     new_dict = dict()

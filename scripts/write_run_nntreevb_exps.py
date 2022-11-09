@@ -105,6 +105,9 @@ if __name__ == '__main__':
         config.remove_section('slurm')
     config.remove_section('evaluation')
 
+    sim_data = config.getboolean("sim_data", "sim_data",
+            fallback=False)
+
     ## Output directories
     ## ##################
     output_dir = os.path.join(output_eval, "exp_outputs/",
@@ -173,6 +176,18 @@ if __name__ == '__main__':
 
         exp_name = "{}".format(name_combins[ind])
         cfg_eval.set("settings", "job_name", exp_name)
+ 
+        output_path = os.path.join(output_dir, exp_name)
+
+        # Update file paths if sim_data is True
+        if sim_data:
+            fasta_file = os.path.join(output_path,
+                    "{}_input.fasta".format(exp_name))
+            tree_file = os.path.join(output_path,
+                    "{}_input.nwk".format(exp_name))
+
+            cfg_eval.set("io", "seq_file", fasta_file)
+            cfg_eval.set("io", "nwk_file", tree_file)
 
         # write it on a file
         config_file = os.path.join(config_dir,
@@ -226,9 +241,8 @@ if __name__ == '__main__':
             cmd = "{} -c {} -s {} &".format(program,
                     config_file, seed)
 
-        res_file = os.path.join(output_dir,
-                "{}/{}_results.pkl".format(
-                    exp_name, exp_name))
+        res_file = os.path.join(output_path,
+                "{}_results.pkl".format(exp_name))
 
         n_jobs += 1
 

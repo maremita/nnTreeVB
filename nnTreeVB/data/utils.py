@@ -9,7 +9,8 @@ __all__ = [
         "build_nwk_star_tree",
         "build_tree_from_nwk",
         "set_postorder_ranks",
-        "get_postorder_branches"
+        "get_postorder_branches",
+        "get_postorder_branche_names"
         ]
 
 def build_nwk_star_tree(b_lengths):
@@ -102,5 +103,18 @@ def get_postorder_branches(tree):
     for node in tree.traverse("postorder"):
         if not node.is_root():
             post_branches[node.postrank] = node.dist
+
+    return post_branches
+
+def get_postorder_branche_names(tree):
+    """
+    Get branch names using postrank attribute
+    """
+
+    post_branches = [""]*len(tree.get_descendants())
+
+    for node in tree.traverse("postorder"):
+        if not node.is_root():
+            post_branches[node.postrank] = node.name
 
     return post_branches

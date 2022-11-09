@@ -20,7 +20,7 @@ __author__ = "amine remita"
 
 estim_list = ["b", "t", "b1", "r", "f", "k"]
 
-stat_names = ["mean", "cimin", "cimax", "var", "min", "max"]
+stat_names = ["mean", "ci_min", "ci_max", "var", "min", "max"]
 
 estim_names = {
         "b":"Branch lengths",
@@ -907,14 +907,15 @@ def aggregate_sampled_estimates(
 
 def report_sampled_estimates(
         estimates,
-        out_file
-        ):
+        out_file,
+        real_params=None,
+        branch_names=None):
 
     pkg_name = __name__.split(".")[0]
     chaine =  "{} estimations\n".format(pkg_name)
     chaine += "####################\n\n"
 
-    chaine += "Log probabilities and KLs\n"
+    chaine += "## Log probabilities and KLs\n"
     for prob_name in prob_names:
         prob = estimates[prob_name]
 
@@ -927,7 +928,7 @@ def report_sampled_estimates(
 
     for name in estim_names:
         if name in estimates:
-            chaine += estim_names[name] + "\n"
+            chaine += "## "+estim_names[name] + "\n"
 
             # Average by replicates
             estimate = estimates[name].mean(0)
@@ -945,6 +946,9 @@ def report_sampled_estimates(
             chaine += "   "
             for stat_name in estimate_stats:
                 chaine += "\t"+stat_name
+
+            if name in real_params:
+                chaine += "\tReal"
             chaine += "\n"
 
             for dim in range(param_dim):
@@ -953,8 +957,10 @@ def report_sampled_estimates(
                 elif name == "f":
                     the_name = freqs_list[dim]
                 else:
-                    # TODO Get branch names
-                    the_name = name + str(dim+1)
+                    if branch_names and branch_names[dim]:
+                        the_name = branch_names[dim]
+                    else:
+                        the_name = name + str(dim+1)
 
                 chaine += the_name
                 
@@ -962,6 +968,11 @@ def report_sampled_estimates(
                     stats = estimate_stats[stat_name]
                     chaine +="\t{:.4f}".format(
                             stats[dim].item())
+    
+                if name in real_params:
+                    chaine +="\t{:.4f}".format(
+                            real_params[name][dim].item())
+
                 chaine += "\n"
             chaine += "\n"
 

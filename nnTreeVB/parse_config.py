@@ -45,7 +45,7 @@ def parse_config(config_file):
     # Simulation data
     arg.sim = ArgObject()
     arg.sim.sim_data = config.getboolean(
-            "sim_data", "sim_data", fallback=True)
+            "sim_data", "sim_data", fallback=False)
     arg.sim.seq_from_file = config.getboolean(
             "sim_data", "seq_from_file", fallback=True)
     arg.sim.nwk_from_file = config.getboolean(
