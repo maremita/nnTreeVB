@@ -376,8 +376,8 @@ if __name__ == "__main__":
         # Could be used directly 
         conf_file = os.path.join(output_path,
                 "{}_conf.ini".format(io.job_name))
-        #if not os.path.isfile(conf_file):
-        if not io.scores_from_file:
+        if not io.scores_from_file or \
+                not os.path.isfile(conf_file):
             write_conf_packages(config, conf_file)
 
         if verbose: print()
