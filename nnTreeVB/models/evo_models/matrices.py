@@ -30,7 +30,7 @@ def build_JC69_transition_matrix(b,
                     min=0.0, max=1.0)
 
     # print("\ntm sahpe {}".format(tm.shape))
-    # [sample_size, x_dim, x_dim]
+    # [sample_size, b_dim, x_dim, x_dim]
     #print(tm)
 
     return tm
@@ -90,7 +90,7 @@ def build_K80_transition_matrix(b, kappa,
                 (rateM, b))).clamp(min=0.0, max=1.0)
 
     #print("\ntm sahpe {}".format(tm.shape))
-    # [sample_size, x_dim, x_dim]
+    # [sample_size, b_dim, x_dim, x_dim]
     #print(tm)
 
     return tm
@@ -156,7 +156,7 @@ def build_HKY_transition_matrix(b, freqs, kappa,
                 (rateM, b))).clamp(min=0.0, max=1.0)
 
     #print("\ntm sahpe {}".format(tm.shape))
-    # [sample_size, x_dim, x_dim]
+    # [sample_size, b_dim, x_dim, x_dim]
     #print(tm)
 
     return tm
