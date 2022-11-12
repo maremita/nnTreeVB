@@ -10,13 +10,40 @@ import json
 import argparse
 
 from joblib import dump, load
+from joblib import Parallel, delayed
 
 __author__ = "amine"
 
 """
 python uncompress_exps_pkl.py -c nntreevb_conf_exps.ini\
-        -j jobs_code
+        -j jobs_code [-n n_parallel]
 """
+
+def uncompress_pkls(eval_combin, exp_name, output_dir):
+
+    run = 0
+    output_path = os.path.join(output_dir, exp_name)
+
+    res_file = os.path.join(output_path,
+            "{}_results.pkl".format(exp_name))
+
+    bkp_file = os.path.join(output_path,
+            "{}_results_bkp.pkl".format(exp_name))
+
+    if not os.path.isfile(res_file):
+        print("{} doesn't exist!\n".format(res_file))
+    else:
+        # backup the file
+        # shutil.copyfile(src, dst)
+        shutil.copyfile(res_file, bkp_file)
+
+        result_data = load(res_file)
+        dump(result_data, res_file, compress=False)
+
+        run = 1
+
+    return run
+
 
 if __name__ == '__main__':
 
@@ -27,10 +54,13 @@ if __name__ == '__main__':
             required=True)
     parser.add_argument('-j', '--job-code', type=str,
             required=True)
+    parser.add_argument('-n', '--n-parallel', type=int,
+            required=False, default=1)
     cmd_args = parser.parse_args()
 
     config_file = cmd_args.config_file
     jobs_code = cmd_args.job_code
+    n_parallel = cmd_args.n_parallel
 
     print("Uncompressing pkl files of {} ...\n".format(
          jobs_code))
@@ -67,37 +97,15 @@ if __name__ == '__main__':
 
     assert len(eval_combins) == len(name_combins)
 
-    n_jobs = 0
-    n_runs = 0
-
     # Start uncompressing files
-    for ind, eval_combin in enumerate(eval_combins):
+    parallel = Parallel(n_jobs=n_parallel, 
+            prefer="processes", verbose=1)
 
-        exp_name = "{}".format(name_combins[ind])
- 
-        output_path = os.path.join(output_dir, exp_name)
+    n_runs = parallel(delayed(uncompress_pkls)(
+        eval_combin, name_combins[i], output_dir) for\
+                i, eval_combin in enumerate(eval_combins))
 
-        res_file = os.path.join(output_path,
-                "{}_results.pkl".format(exp_name))
+    n_runs = sum(n_runs)
 
-        bkp_file = os.path.join(output_path,
-                "{}_results_bkp.pkl".format(exp_name))
-
-        n_jobs += 1
-
-        if not os.path.isfile(res_file):
-            print("{} doesn't exist!\n".format(res_file))
-        else:
-            # backup the file
-            # shutil.copyfile(src, dst)
-            shutil.copyfile(res_file, bkp_file)
-
-            result_data = load(res_file)
-            dump(result_data, res_file, compress=False)
-
-            n_runs += 1
-
-        print("{} done\r".format(n_runs))
-
-    print("\n {}/{} launched jobs".format(n_runs, n_jobs))
+    print("\n {} uncompressed file".format(n_runs))
     print("\nFin normal du programme {}".format(sys.argv[0]))
