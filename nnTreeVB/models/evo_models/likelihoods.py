@@ -20,15 +20,11 @@ def pruning(arbre, x, tm, pi):
     for node in arbre.traverse("postorder"):
         if node.is_leaf():
             node.state = x[..., node.postrank, :]
-            # x [sample_size, n_dim, b_dim, x_dim]
             #print("leaf {}\t{}\t{}\t{}".format(node.name,
             #    node.postrank, node.state.shape, node.dist)) 
-            # [sample_size, n_dim, x_dim]
+            # [n_dim, x_dim]
         else:
             node.state = 1.0
-            #print("\nNode {}".format(node.name))
-            #print("node.state.shape {}".format(
-            #    node.state.shape))
 
             for child in node.children:
                 #print("Child {} {}".format(child.name,
@@ -36,7 +32,6 @@ def pruning(arbre, x, tm, pi):
 
                 #print(tm[:, child.postrank].shape)
                 #print(child.state.unsqueeze(-1).shape)
-                #node.state *= torch.einsum("bij,bcjk->bcik",
                 node.state *= torch.einsum(
                         "...ij,...cjk->...cik",
                         tm[..., child.postrank, :, :],
@@ -63,7 +58,6 @@ def pruning(arbre, x, tm, pi):
     #            arbre.state.unsqueeze(-1)))).squeeze(
     #                    -1).squeeze(-1)
 
-    #logl = torch.log(torch.sum(torch.einsum("bj,bcj->bcj", 
     logl = torch.log(torch.sum(torch.einsum(
         "...j,...cj->...cj", 
         (pi, arbre.state)), -1))
@@ -80,7 +74,7 @@ def pruning(arbre, x, tm, pi):
 def pruning_rescaled(arbre, x, tm, pi):
 
     #print("x shape {}".format(x.shape))
-    # [sample_size, n_dim, m_dim, x_dim]
+    # [n_dim, m_dim, x_dim]
     #print(x)
     #
     #print("pi")
@@ -104,12 +98,10 @@ def pruning_rescaled(arbre, x, tm, pi):
 
     for node in arbre.traverse("postorder"):
         if node.is_leaf():
-            #print("shape x {}".format(x.shape))
             node.state = x[..., node.postrank, :]
-            # x [sample_size, n_dim, b_dim, x_dim]
             #print("leaf {}\t{}".format(node.name,
             #    node.state.shape)) 
-            # [sample_size, n_dim, x_dim]
+            # [n_dim, x_dim]
         else:
             node.state = 1.0
             #print("\nNode {}".format(node.name))
@@ -121,11 +113,6 @@ def pruning_rescaled(arbre, x, tm, pi):
                 #    child.postrank,
                 #    tm[..., child.postrank, :, :].shape))
 
-                #print("node.state.shape {}".format(
-                #    node.state.shape))
-                # [sample_size, n_dim, x_dim]
-
-                #partials= torch.einsum("bij,bcjk->bcik",
                 partials= torch.einsum("...ij,...cjk->...cik",
                         tm[..., child.postrank, :, :],
                         child.state.unsqueeze(-1)).squeeze(
@@ -167,7 +154,6 @@ def pruning_rescaled(arbre, x, tm, pi):
             #logl = torch.einsum("bij,bcjk->bcik", (pi.unsqueeze(-2),
             #    arbre.state.unsqueeze(-1))).log().mean(0).flatten()
 
-    #scaler_list.append(torch.einsum("bij,bcjk->bcik",
     scaler_list.append(torch.einsum("...ij,...cjk->...cik",
         (pi.unsqueeze(-2),
             arbre.state.unsqueeze(-1))).squeeze(-1))

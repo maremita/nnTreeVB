@@ -426,16 +426,13 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
         ## Compute logl
         ## ############
-        sites_expanded = sites.expand(
-                [*list(sample_size), n_dim, m_dim, x_dim])
-
         logl = compute_log_likelihood(
                 self.tree,
-                sites_expanded,
+                sites,
                 self.subs_model,
                 tm_args,
                 pi,
-                rescaled_algo=False,
+                rescaled_algo=True,
                 device=self.device_) * site_counts
 
         if sum_by_samples:

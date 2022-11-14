@@ -416,11 +416,10 @@ def plot_elbos_lls_kls(
             axs[i].set_frame_on(False)
 
         axs[i].set_title(x_names[i].split("-")[1])
-        #axs[i].set_ylim(y_limits)
         #axs[i].set_ylim([None, 0])
         #axs[i].set_ylim([-10000, 0])
-        axs[i].set_ylim([np.min(
-            exp_scores[...,0,:].flatten()), 0])
+        axs[i].set_ylim([np.min(np.ma.masked_invalid(
+            exp_scores[...,0,:].flatten())), 0])
         axs[i].set_xticks([t for t in range(1, nb_iters+1) if\
                 t==1 or t % print_xtick_every==0])
         axs[i].set_xlabel("Iterations")
@@ -431,8 +430,10 @@ def plot_elbos_lls_kls(
 
         if kl_fit_finite:
             ax2.set_ylim([ 
-                np.min(exp_scores[...,2,:].flatten()),
-                np.max(exp_scores[...,2,:].flatten())])
+                np.min(np.ma.masked_invalid(
+                    exp_scores[...,2,:].flatten())),
+                np.max(np.ma.masked_invalid(
+                    exp_scores[...,2,:].flatten()))])
 
         if i != 0:
             axs[i].set(yticklabels=[])
