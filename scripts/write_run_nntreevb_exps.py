@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from nnTreeVB import __version__ as _version
 from nnTreeVB.utils import dictLists2combinations
 
 import sys
@@ -34,6 +35,10 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--seed', type=int,
             required=True)
     parser.add_argument('-j', '--job-code', type=str)
+    parser.add_argument('--version', action='version',
+                    version='nnTreeVB {version}'.format(
+                        version=_version))
+
     cmd_args = parser.parse_args()
 
     config_file = cmd_args.config_file

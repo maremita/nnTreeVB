@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from nnTreeVB import __version__ as _version
 from nnTreeVB.utils import dictLists2combinations
 
 import sys
@@ -9,7 +10,7 @@ import configparser
 import json
 import argparse
 
-from joblib import dump, load
+from nnTreeVB.utils import dump, load
 from joblib import Parallel, delayed
 
 __author__ = "amine"
@@ -37,8 +38,7 @@ def uncompress_pkls(eval_combin, exp_name, output_dir):
         # shutil.copyfile(src, dst)
         shutil.copyfile(res_file, bkp_file)
 
-        result_data = load(res_file)
-        dump(result_data, res_file, compress=False)
+        dump(load(res_file), res_file, compress=False)
 
         run = 1
 
@@ -56,6 +56,10 @@ if __name__ == '__main__':
             required=True)
     parser.add_argument('-n', '--n-parallel', type=int,
             required=False, default=1)
+    parser.add_argument('--version', action='version',
+                    version='nnTreeVB {version}'.format(
+                        version=_version))
+
     cmd_args = parser.parse_args()
 
     config_file = cmd_args.config_file

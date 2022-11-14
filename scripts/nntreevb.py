@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from nnTreeVB import __version__ as _version
 from nnTreeVB.data import evolve_seqs_full_homogeneity as\
         evolve_sequences
 from nnTreeVB.data import simulate_tree
@@ -15,6 +16,7 @@ from nnTreeVB.utils import timeSince
 from nnTreeVB.utils import write_conf_packages
 from nnTreeVB.utils import update_sim_parameters
 from nnTreeVB.utils import dict_to_numpy, dict_to_tensor
+from nnTreeVB.utils import dump, load
 
 from nnTreeVB.reports import plot_elbo_ll_kl
 from nnTreeVB.reports import aggregate_estimate_values
@@ -44,7 +46,6 @@ import numpy as np
 import torch
 
 from joblib import Parallel, delayed
-from joblib import dump, load
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning) 
@@ -114,6 +115,10 @@ if __name__ == "__main__":
     parser.add_argument('-c', '--config-file', type=str,
             required=True)
     parser.add_argument('-s', '--seed', type=int)
+    parser.add_argument('--version', action='version',
+                    version='nnTreeVB {version}'.format(
+                        version=_version))
+
     cmd_args = parser.parse_args()
 
     config_file = cmd_args.config_file.strip()

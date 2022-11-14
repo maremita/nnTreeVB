@@ -8,6 +8,8 @@ import importlib
 import configparser
 from pprint import pformat
 import itertools
+import pickle
+import gzip
 
 import numpy as np
 from joblib import Parallel, delayed
@@ -17,6 +19,40 @@ from scipy.stats.stats import pearsonr#, spearmanr
 import torch
 import torch.nn as nn
 
+def _GZcompressed(file_name):
+    # https://stackoverflow.com/a/13044946
+    # https://www.garykessler.net/library/file_sigs.html
+
+    gz_magic = b"\x1f\x8b\x08"
+    with open(file_name, "rb") as fh:
+        file_start = fh.read(len(gz_magic))
+
+    if file_start.startswith(gz_magic):
+        return True
+    else:
+        return False
+
+def dump(data, file_name, compress=False):
+ 
+    if compress:
+        open_fun = gzip.open
+    else:
+        open_fun = open
+
+    with open_fun(file_name, "wb") as fh:
+        pickle.dump(data,fh,protocol=pickle.HIGHEST_PROTOCOL)
+
+def load(file_name):
+
+    if _GZcompressed(file_name):
+        open_fun = gzip.open
+    else:
+        open_fun = open
+
+    with open_fun(file_name, "rb") as fh:
+        data = pickle.load(fh)
+
+    return data
 
 def update_sim_parameters(sim):
     """
@@ -451,8 +487,8 @@ def get_modules_versions():
     versions["python"] = platform.python_version()
 
     module_names = ["nnTreeVB", "numpy", "scipy", "pandas",
-            "torch", "Bio", "joblib", "matplotlib", "pyvolve",
-            "seaborn", "ete3"]
+            "torch", "Bio", "joblib", "matplotlib", "pyvolve", 
+            "ete3"]
 
     for module_name in module_names:
         found = importlib.util.find_spec(module_name)

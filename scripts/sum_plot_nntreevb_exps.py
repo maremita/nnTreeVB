@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from nnTreeVB import __version__ as _version
 from nnTreeVB.reports import plot_elbos_lls_kls
 from nnTreeVB.reports import aggregate_estimate_values
 from nnTreeVB.reports import aggregate_sampled_estimates
@@ -18,7 +19,7 @@ import argparse
 from collections import defaultdict
 
 import numpy as np
-from joblib import dump, load
+from nnTreeVB.utils import load
 
 __author__ = "amine"
 
@@ -36,6 +37,10 @@ if __name__ == '__main__':
             required=True)
     parser.add_argument('-j', '--job-code', type=str,
             required=True)
+    parser.add_argument('--version', action='version',
+                    version='nnTreeVB {version}'.format(
+                        version=_version))
+
     cmd_args = parser.parse_args()
 
     config_file = cmd_args.config_file
