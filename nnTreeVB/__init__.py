@@ -9,7 +9,7 @@
 
 __author__ = "amine remita"
 __date__ = "20221114"
-__version__ = "0.2.18"
+__version__ = "0.2.19"
 __all__ = [
         "data", 
         "models",

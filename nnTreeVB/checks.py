@@ -17,6 +17,18 @@ __author__ = "amine remita"
 Check funcitons
 """
 
+def check_subs_model(model_str):
+    model = model_str.lower()
+
+    if model not in ["jc69", "k80", "hky", "gtr"]:
+        model = "jc69"
+        print("\nSubstitution model should be"\
+                " jc69|k80|hky|gtr,"\
+                " not {}".format(model_str))
+        print("Substitution model set to {}".format(model))
+
+    return model
+
 def check_sim_blengths(sim_blengths):
     """
     Possible values:

@@ -68,10 +68,10 @@ defined in the config file.
 Once the nnTreeVB package is installed, you can run nntreevb.py 
 using this command line:
 
-# nntreevb.py -c evovgm_conf_template.ini [-s seed]
+# nntreevb.py -c evovgm_conf_template.ini [-s seed -j job_name]
 
-where <nntreevb_conf_template.ini> is the config file, and
-<seed> is an optional int
+where <nntreevb_conf_template.ini> is the config file, and 
+seed (int) and job_name are optional
 
 The program is adapted from evovgm.py ((c) remita 2022, 
 MIT license)
@@ -115,6 +115,7 @@ if __name__ == "__main__":
     parser.add_argument('-c', '--config-file', type=str,
             required=True)
     parser.add_argument('-s', '--seed', type=int)
+    parser.add_argument('-j', '--job-name', type=str)
     parser.add_argument('--version', action='version',
                     version='nnTreeVB {version}'.format(
                         version=_version))
@@ -123,6 +124,7 @@ if __name__ == "__main__":
 
     config_file = cmd_args.config_file.strip()
     seed = cmd_args.seed
+    job_name = cmd_args.job_name # see below for processing it
 
     print("\nRunning {} with config file {}".format(
         sys.argv[0], config_file), flush=True)
@@ -131,7 +133,6 @@ if __name__ == "__main__":
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
-        print("\tSeed set to {}".format(seed))
 
     ## Parse config file
     ## #################
@@ -146,45 +147,52 @@ if __name__ == "__main__":
 
     verbose = stg.verbose
 
+    # Set the job name
+    # ################
+    if job_name is None:
+        if str(io.job_name).lower() in ["auto", "none"]:
+            now = datetime.now()
+            io.job_name = now.strftime("%y%m%d%H%M")
+        job_name = io.job_name
+
+    config.set("io", "job_name", job_name)
+
     if verbose:
+        print("\tJob name set to {}".format(job_name))
         print("\tVerbose set to {}".format(verbose))
 
     if seed:
+        print("\tSeed set to {}".format(seed))
         config.set("settings", "seed", str(seed))
 
-    if mdl.subs_model not in ["jc69", "k80", "hky", "gtr"]:
-        print("\nsubs_model should be jc69|k80|hky|gtr,"\
-                " not {}".format(mdl.subs_model),
-                file=sys.stderr)
-        sys.exit()
-
     # Computing device setting
+    # ########################
     device = stg.device
-    # TODO check other gpu devices
-    if device != "cpu" and\
+
+    if "cuda" in device and\
             not torch.cuda.is_available():
         if verbose: 
             print("\nCuda is not available."\
                     " Changing device to 'cpu'")
-        device = 'cpu'
+        device = "cpu"
+
+    elif "mps" in device and\
+            not torch.backends.mps.is_available():
+        if verbose: 
+            print("\nMPS is not available."\
+                    " Changing device to 'cpu'")
+        device = "cpu"
 
     if verbose:
         print("\tDevice set to {}".format(device))
 
+    config.set("settings", "device", device)
     device = torch.device(device)
-
-    # Set the job name
-    if str(io.job_name).lower() in ["auto", "none"]:
-        io.job_name = None
-
-    if not io.job_name:
-        now = datetime.now()
-        io.job_name = now.strftime("%y%m%d%H%M")
 
     ## output path 
     ## ###########
     output_path = os.path.join(io.output_path,
-            io.job_name)
+            job_name)
     makedirs(output_path, mode=0o700, exist_ok=True)
 
     pg_path = os.path.join(output_path, "params_grads")
@@ -200,9 +208,9 @@ if __name__ == "__main__":
         # Files paths of simulated data
         # training sequences
         fasta_file = os.path.join(output_path,
-                "{}_input.fasta".format(io.job_name))
+                "{}_input.fasta".format(job_name))
         tree_file = os.path.join(output_path,
-                "{}_input.nwk".format(io.job_name))
+                "{}_input.nwk".format(job_name))
  
         config.set("data","seq_from_file", "True")
         config.set("data","nwk_from_file", "True")
@@ -228,7 +236,7 @@ if __name__ == "__main__":
     ## Loading results from file
     ## #########################
     results_file = output_path+"/{}_results.pkl".format(
-            io.job_name)
+            job_name)
 
     real_params_np = None
     post_branches = None
@@ -380,7 +388,7 @@ if __name__ == "__main__":
         # Writing a new config file and package versions
         # Could be used directly 
         conf_file = os.path.join(output_path,
-                "{}_conf.ini".format(io.job_name))
+                "{}_conf.ini".format(job_name))
         if not io.scores_from_file or \
                 not os.path.isfile(conf_file):
             write_conf_packages(config, conf_file)
@@ -459,7 +467,7 @@ if __name__ == "__main__":
 
     plot_elbo_ll_kl(
             the_scores,
-            output_path+"/{}_probs_fig".format(io.job_name),
+            output_path+"/{}_probs_fig".format(job_name),
             line=logl_data,
             sizefont=plt.size_font,
             usetex=plt.plt_usetex,
@@ -480,7 +488,7 @@ if __name__ == "__main__":
                 estimates, 
                 real_params_np,
                 output_path+"/{}_{}_estim_dist".format(
-                    io.job_name, history),
+                    job_name, history),
                 sizefont=plt.size_font,
                 usetex=plt.plt_usetex,
                 print_xtick_every=plt.print_xtick_every,
@@ -493,7 +501,7 @@ if __name__ == "__main__":
                 estimates, 
                 real_params_np,
                 output_path+"/{}_{}_estim_corr".format(
-                    io.job_name, history),
+                    job_name, history),
                 sizefont=plt.size_font,
                 usetex=plt.plt_usetex,
                 print_xtick_every=plt.print_xtick_every,
@@ -508,7 +516,7 @@ if __name__ == "__main__":
         for n_rep in range(fit.nb_replicates):
             for dist_name in distrs:
                 out_file = pg_path+"/{}_r{}_{}".format(
-                        io.job_name, n_rep, dist_name)
+                        job_name, n_rep, dist_name)
 
                 plot_weights_grads_epochs(
                         rep_results[n_rep],
@@ -529,7 +537,7 @@ if __name__ == "__main__":
     report_sampled_estimates(
             estim_samples,
             output_path+"/{}_estim_report.txt".format(
-                io.job_name),
+                job_name),
             real_params=real_params_np,
             branch_names=post_branche_names)
 

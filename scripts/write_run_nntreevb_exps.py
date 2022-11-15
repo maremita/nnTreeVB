@@ -34,7 +34,7 @@ if __name__ == '__main__':
     # TODO: do not require seed
     parser.add_argument('-s', '--seed', type=int,
             required=True)
-    parser.add_argument('-j', '--job-code', type=str)
+    parser.add_argument('-j', '--jobs-code', type=str)
     parser.add_argument('--version', action='version',
                     version='nnTreeVB {version}'.format(
                         version=_version))
@@ -43,7 +43,7 @@ if __name__ == '__main__':
 
     config_file = cmd_args.config_file
     seed = cmd_args.seed
-    jobs_code = cmd_args.job_code
+    jobs_code = cmd_args.jobs_code
 
     if jobs_code:
         scores_from_file = "True"
@@ -137,9 +137,8 @@ if __name__ == '__main__':
 
     # config gpu
     set_gpu = ""
-    config.set("settings", "device", "cpu")
 
-    if gpus_per_node > 0:
+    if gpus_per_node > 0 and run_slurm:
         set_gpu = " --gpus-per-node={}".format(gpus_per_node)
         config.set("settings", "device", "cuda")
 

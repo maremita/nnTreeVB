@@ -4,6 +4,7 @@ import configparser
 from nnTreeVB.checks import check_sim_blengths
 from nnTreeVB.checks import check_sim_simplex
 from nnTreeVB.checks import check_sim_float
+from nnTreeVB.checks import check_subs_model
 #from nnTreeVB.checks import check_seed
 from nnTreeVB.checks import check_verbose
 from nnTreeVB.checks import check_prior_option
@@ -55,8 +56,8 @@ def parse_config(config_file):
             "data", "nb_sites", fallback=100)
     arg.dat.nb_taxa = config.getint(
             "data", "nb_taxa", fallback=100)
-    arg.dat.subs_model = config.get(
-            "data", "subs_model", fallback="jc69")
+    arg.dat.subs_model = check_subs_model(config.get(
+            "data", "subs_model", fallback="jc69"))
     arg.dat.sim_blengths = check_sim_blengths(config.get(
         "data", "sim_blengths", fallback="0.1,1."))
     arg.dat.sim_rates = check_sim_simplex(config.get(
@@ -74,8 +75,8 @@ def parse_config(config_file):
     lr = dict() # For learning rates for each distr type
 
     # Evo variational model type
-    arg.mdl.subs_model = config.get(
-            "hyperparams", "subs_model", fallback="jc69")
+    arg.mdl.subs_model = check_subs_model(config.get(
+            "hyperparams", "subs_model", fallback="jc69"))
 
     # Hyper-parameters of prior distributions
     # Branches
