@@ -323,6 +323,8 @@ def plot_elbos_lls_kls(
     f, axs = plt.subplots(1, nb_evals,
             figsize=(7*nb_evals, 5))
 
+    if nb_evals == 1: axs = [axs]
+
     plt.rcParams.update({'font.size':sizefont, 
         'text.usetex':usetex})
     plt.subplots_adjust(wspace=0.07, hspace=0.1)
@@ -415,7 +417,8 @@ def plot_elbos_lls_kls(
         if kl_fit_finite or kl_val_finite:
             axs[i].set_frame_on(False)
 
-        axs[i].set_title(x_names[i].split("-")[1])
+        #axs[i].set_title(x_names[i].split("-")[1])
+        axs[i].set_title(x_names[i])
         #axs[i].set_ylim([None, 0])
         #axs[i].set_ylim([-10000, 0])
         axs[i].set_ylim([np.min(np.ma.masked_invalid(
@@ -563,6 +566,8 @@ def plot_fit_estim_distances(
     f, axs = plt.subplots(1, nb_evals,
             figsize=(7*nb_evals, 5))
 
+    if nb_evals == 1: axs = [axs]
+
     plt.rcParams.update({'font.size':sizefont,
         'text.usetex':usetex})
     plt.subplots_adjust(wspace=0.07, hspace=0.1)
@@ -596,7 +601,8 @@ def plot_fit_estim_distances(
                         color=estim_colors[name],
                         alpha=0.2, interpolate=True)
     
-        axs[i].set_title(x_names[i].split("-")[1])
+        #axs[i].set_title(x_names[i].split("-")[1])
+        axs[i].set_title(x_names[i])
         axs[i].set_xticks([t for t in range(1, nb_iters+1) if\
                 t==1 or t % print_xtick_every==0])
         axs[i].set_ylim(y_limits)
@@ -734,6 +740,8 @@ def plot_fit_estim_correlations(
     f, axs = plt.subplots(1, nb_evals, 
             figsize=(7*nb_evals, 5))
 
+    if nb_evals == 1: axs = [axs]
+
     plt.rcParams.update({'font.size':sizefont,
         'text.usetex':usetex})
     plt.subplots_adjust(wspace=0.07, hspace=0.1)
@@ -773,7 +781,8 @@ def plot_fit_estim_correlations(
                         color=estim_colors[name],
                         alpha=0.2, interpolate=True)
 
-        axs[i].set_title(x_names[i].split("-")[1])
+        #axs[i].set_title(x_names[i].split("-")[1])
+        axs[i].set_title(x_names[i])
         axs[i].set_xticks([t for t in range(1, nb_iters+1) if\
                 t==1 or t % print_xtick_every==0])
         axs[i].set_ylim(y_limits)
@@ -905,7 +914,6 @@ def aggregate_sampled_estimates(
 
     return dict(estimates)
 
-
 def report_sampled_estimates(
         estimates,
         out_file,
@@ -989,55 +997,60 @@ def summarize_sampled_estimates(
         logl_data_combins = None
         ):
 
-    ckey = list(combins.keys())[0]
-
     probs_dict = dict()
     estim_dict = dict()
     row_index = [c_name for c_name in combins]
 
-    for name in prob_names:
-        if name in sample_combins[ckey][0]:
+    unique_names = []
+    for c_name in combins:
+        for exp_scores in sample_combins[c_name]:
+            unique_names.extend(exp_scores.keys())
+    unique_names = set(unique_names)
+    #print(unique_names)
+    # {'r', 'b', 'logprior', 'logl', 'elbo', 'f', 'logq',...}
+
+    for p_name in prob_names:
+        if p_name in unique_names:
             col_index = pd.MultiIndex.from_product(
                     [x_names, ['Mean','STD']])
  
             logl_real = False
-            if name == "logl" and logl_data_combins != None:
+            if p_name == "logl" and logl_data_combins != None:
                 logl_real = True
                 col_index = pd.MultiIndex.from_product(
                         [x_names, ['Real','Mean','STD']])
 
-            df = pd.DataFrame("", index=row_index,
+            df = pd.DataFrame("-", index=row_index,
                     columns=col_index)
 
             for c_name in combins:
-                #exp_names = combins[c_name]
                 for i, exp_scores in \
                         enumerate(sample_combins[c_name]):
-                    
-                    scores = exp_scores[name]
+                    if p_name in exp_scores:
+                        scores = exp_scores[p_name]
 
-                    df[x_names[i], "Mean"].loc[c_name] =\
-                            scores.mean().item()
-                    df[x_names[i], "STD"].loc[c_name] =\
-                            scores.std().item()
+                        df[x_names[i], "Mean"].loc[c_name] =\
+                                scores.mean().item()
+                        df[x_names[i], "STD"].loc[c_name] =\
+                                np.ma.masked_invalid(
+                                        scores).std().item()
 
-                    if logl_real:
-                        df[x_names[i], "Real"].loc[c_name] =\
-                                logl_data_combins[c_name][
-                                        i].item()
+                        if logl_real:
+                            df[x_names[i], "Real"].loc[c_name]\
+                                    = logl_data_combins[
+                                            c_name][i].item()
 
-            probs_dict[prob_names[name]] = df
+            probs_dict[prob_names[p_name]] = df
 
     write_dict_dfs(probs_dict, out_file+"_probs.txt")
 
     for estim_name in estim_names:
-        if estim_name in sample_combins[ckey][0]:
-            #estim_shape = 
+        if estim_name in unique_names:
             if estim_name in ["b", "r", "f"]:
                 col_index = pd.MultiIndex.from_product(
                         [x_names, ['Dist', 'Corr', 'Pval']])
 
-                df = pd.DataFrame("", index=row_index,
+                df = pd.DataFrame("-", index=row_index,
                         columns=col_index)
 
                 for c_name in combins:
@@ -1046,29 +1059,29 @@ def summarize_sampled_estimates(
                     for i, exp_scores in \
                             enumerate(sample_combins[c_name]):
 
-                        scores = exp_scores[estim_name].mean(
-                                (0,1))
-                        sim_param = sim_param_exps[
-                                exp_names[i]][estim_name]
+                        if estim_name in exp_scores:
+                            scores=exp_scores[estim_name].mean(
+                                    (0,1))
+                            sim_param = sim_param_exps[
+                                    exp_names[i]][estim_name]
 
-                        #sim_param = sim_params[estim_name]
+                            # eucl distance
+                            dist = np.linalg.norm(
+                                    sim_param - scores, 
+                                    axis=-1).mean()
+     
+                            # correlation
+                            corr = [np.nan, np.nan]
+                            if len(np.unique(sim_param)) > 1:
+                                corr = pearsonr(sim_param, 
+                                        scores)
 
-                        # eucl distance
-                        dist = np.linalg.norm(
-                                sim_param - scores, 
-                                axis=-1).mean()
- 
-                        # correlation
-                        corr = [np.nan, np.nan]
-                        if len(np.unique(sim_param)) > 1:
-                            corr = pearsonr(sim_param, scores)
-
-                        df[x_names[i], "Dist"].loc[c_name] =\
-                                dist
-                        df[x_names[i], "Corr"].loc[c_name] =\
-                                corr[0]
-                        df[x_names[i], "Pval"].loc[c_name] =\
-                                corr[1]
+                            df[x_names[i],"Dist"].loc[c_name]=\
+                                    dist
+                            df[x_names[i],"Corr"].loc[c_name]=\
+                                    corr[0]
+                            df[x_names[i],"Pval"].loc[c_name]=\
+                                    corr[1]
 
             elif estim_name in ["t", "k"]:
                 col_index = pd.MultiIndex.from_product(
@@ -1081,10 +1094,11 @@ def summarize_sampled_estimates(
                     #exp_names = combins[c_name]
                     for i, exp_scores in \
                             enumerate(sample_combins[c_name]):
-                        scores = exp_scores[estim_name].mean(
-                                (0,1))
-                        df[x_names[i], "Value"].loc[c_name] =\
-                                scores.mean()
+                        if estim_name in exp_scores:
+                            scores=exp_scores[estim_name].mean(
+                                    (0,1))
+                            df[x_names[i],"Value"].loc[c_name]\
+                                    =scores.mean()
 
             estim_dict[estim_names[estim_name]] = df
 
@@ -1111,6 +1125,6 @@ def write_dict_dfs(dict_df, filename):
                 fh.write(dict_df[code].to_string())
                 fh.write("\n")
                 fh.write("\n")
-                fh.write("#" * 69)
+                fh.write("#" * 63)
                 fh.write("\n")
                 fh.write("\n")

@@ -158,8 +158,9 @@ if __name__ == '__main__':
                             exp_name)
         #{'d-jc69_t-8':['d-jc69_l-100_t-8',
         #    'd-jc69_l-1000_t-8']...
-        akey = list(combins.keys())[0]
+        akey = list(combins.keys())[0] # l-100_t-8_m-jc69
         x_names = [c.split("_")[ind] for c in combins[akey]]
+        # example of x_names: ['d-jc69', 'd-gtr']
 
         # Get the prob results for each case
         prob_combins = {c:[prob_exps[x] for x in\
