@@ -152,7 +152,7 @@ if __name__ == "__main__":
     if job_name is None:
         if str(io.job_name).lower() in ["auto", "none"]:
             now = datetime.now()
-            io.job_name = now.strftime("%y%m%d%H%M")
+            io.job_name = now.strftime("%m%d%H%M%S")
         job_name = io.job_name
 
     config.set("io", "job_name", job_name)

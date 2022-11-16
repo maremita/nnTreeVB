@@ -11,7 +11,6 @@ from nnTreeVB.utils import dictLists2combinations
 
 import os.path
 from os import makedirs
-import copy
 import configparser
 from datetime import datetime
 import json
@@ -83,7 +82,9 @@ if __name__ == '__main__':
     output_dir = os.path.join(output_eval, "exp_outputs/",
             jobs_code)
 
-    output_sum = os.path.join(output_dir,"summarize")
+    now_str = datetime.now().strftime("%m%d%H%M") 
+    output_sum = os.path.join(output_dir,
+            "summarize_{}".format(now_str))
     makedirs(output_sum, mode=0o700, exist_ok=True)
 
     #
