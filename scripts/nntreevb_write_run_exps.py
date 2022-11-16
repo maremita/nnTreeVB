@@ -16,7 +16,7 @@ import argparse
 __author__ = "amine"
 
 """
-python write_run_nntreevb_exps.py -c nntreevb_conf_exps.ini\
+python nntreevb_write_run_exps.py -c nntreevb_conf_exps.ini\
         -s 42 -j jobs_code
 """
 

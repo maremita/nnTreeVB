@@ -18,9 +18,9 @@ setup(
     packages=find_packages(),
     scripts=[
         "scripts/nntreevb.py",
-        "scripts/write_run_nntreevb_exps.py",
+        "scripts/nntreevb_write_run_exps.py",
+        "scripts/nntreevb_sum_plot_exps.py",
         "scripts/slurm_exps.sh",
-        "scripts/sum_plot_nntreevb_exps.py",
         "scripts/uncompress_exps_pkl.py"
         ],
     install_requires=INSTALL_REQUIRES

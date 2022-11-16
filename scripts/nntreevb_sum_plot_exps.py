@@ -23,7 +23,7 @@ from nnTreeVB.utils import load
 __author__ = "amine"
 
 """
-python sum_plot_nntreevb_exps.py -c nntreevb_conf_exps.ini\
+python nntreevb_sum_plot_exps.py -c nntreevb_conf_exps.ini\
         -j jobs_code
 """
 
