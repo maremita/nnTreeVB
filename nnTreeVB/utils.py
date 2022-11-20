@@ -119,8 +119,7 @@ def build_neuralnet(
     elif activ_layers == "tanh":
         activation = nn.Tanh
     else:
-        print("activation set to ReLU")
-        activation = nn.ReLU
+        activ_layers = False
 
     if nb_layers < 2:
         nb_layers = 2

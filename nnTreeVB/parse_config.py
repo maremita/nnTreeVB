@@ -172,7 +172,7 @@ def parse_config(config_file):
     arg.mdl.bias_layers = config.getboolean("hyperparams",
             "bias_layers", fallback=True)
     arg.mdl.activ_layers = config.get("hyperparams",
-            "activ_layers", fallback="relu")
+            "activ_layers", fallback="relu").lower()
     arg.mdl.dropout_layers = config.getfloat("hyperparams",
             "dropout_layers", fallback=0.)
  
