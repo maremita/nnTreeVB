@@ -367,8 +367,11 @@ def apply_on_submodules(func, nn_module):
 def compute_corr(main, batch, verbose=False):
 
     def pearson(v1, v2):
-        return pearsonr(v1, v2)[0]
-        #return spearmanr(v1, v2)[0]
+        r = np.nan 
+        if np.isfinite(v1).all() and np.isfinite(v2).all():
+            r = pearsonr(v1, v2)[0]
+            #r = spearmanr(v1, v2)[0]
+        return r 
 
     nb_reps, nb_epochs, shape = batch.shape
 

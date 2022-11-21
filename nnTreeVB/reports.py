@@ -1070,14 +1070,17 @@ def summarize_sampled_estimates(
                                     sim_param - scores, 
                                     axis=-1).mean()
      
-                            # correlation
-                            corr = [np.nan, np.nan]
-                            if len(np.unique(sim_param)) > 1:
-                                corr = pearsonr(sim_param, 
-                                        scores)
-
                             df[x_names[i],"Dist"].loc[c_name]=\
                                     dist
+
+                            # correlation
+                            corr = [np.nan, np.nan]
+                            if len(np.unique(sim_param)) > 1\
+                                    and np.isfinite(
+                                            scores).all():
+                                corr = pearsonr(sim_param,
+                                        scores)
+
                             df[x_names[i],"Corr"].loc[c_name]=\
                                     corr[0]
                             df[x_names[i],"Pval"].loc[c_name]=\
