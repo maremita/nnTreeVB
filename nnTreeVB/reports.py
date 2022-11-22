@@ -179,10 +179,10 @@ def plot_elbo_ll_kl(
 
     fig_file = out_file+"."+fig_format
 
-    kl_fit_finite = np.isfinite(scores[:,2,:]).all()
+    kl_fit_finite = np.isfinite(scores[...,2,:]).all()
     kl_val_finite = False
     if plot_validation:
-        kl_val_finite = np.isfinite(scores[:,5,:]).all()
+        kl_val_finite = np.isfinite(scores[...,5,:]).all()
 
     plt.rcParams.update({'font.size':sizefont, 
         'text.usetex':usetex})
@@ -193,74 +193,95 @@ def plot_elbo_ll_kl(
     if kl_fit_finite or kl_val_finite:
         ax2 = ax.twinx()
 
-    nb_iters = scores.shape[2] 
+    nb_iters = scores.shape[-1]
     x = [j for j in range(1, nb_iters+1)]
 
     ax.set_rasterization_zorder(0)
 
-    ax.plot(x, scores[:,0,:].mean(0), "-", color=elbo_color, 
+    sshp = scores.shape
+    mx = tuple([i for i in range(len(sshp))\
+            if i < -2%len(sshp)])
+
+    ax.plot(x, scores[...,0,:].mean(mx),
+            "-", color=elbo_color, 
             label="ELBO", zorder=6) # ELBO train
     
     ax.fill_between(x,
-            scores[:,0,:].mean(0)-scores[:,0,:].std(0), 
-            scores[:,0,:].mean(0)+scores[:,0,:].std(0), 
+            scores[...,0,:].mean(mx)-scores[...,0,:].std(mx), 
+            scores[...,0,:].mean(mx)+scores[...,0,:].std(mx), 
             color=elbo_color,
             alpha=0.2, zorder=5, interpolate=True)
 
-    ax.plot(x, scores[:,1,:].mean(0), "-", color=ll_color,
+    ax.plot(x, scores[...,1,:].mean(mx), "-", color=ll_color,
             label="LogL", zorder=4) # LL train
 
     ax.fill_between(x,
-            scores[:,1,:].mean(0)-scores[:,1,:].std(0), 
-            scores[:,1,:].mean(0)+scores[:,1,:].std(0),
+            scores[...,1,:].mean(mx)-scores[...,1,:].std(mx), 
+            scores[...,1,:].mean(mx)+scores[...,1,:].std(mx),
             color=ll_color,
             alpha=0.2, zorder=3, interpolate=True)
     
     if kl_fit_finite:
-        ax2.plot(x, scores[:,2,:].mean(0), "-", color=kl_color,
-            label="KL_qp", zorder=4) # KL train
+        ax2.plot(x, scores[...,2,:].mean(mx), "-",
+                color=kl_color, 
+                label="KL_qp",
+                zorder=4) # KL train
 
         ax2.fill_between(x,
-                scores[:,2,:].mean(0)-scores[:,2,:].std(0), 
-                scores[:,2,:].mean(0)+scores[:,2,:].std(0), 
+                scores[...,2,:].mean(mx)\
+                        -scores[...,2,:].std(mx),
+                scores[...,2,:].mean(mx)\
+                        +scores[...,2,:].std(mx), 
                 color=kl_color,
                 alpha=0.2, zorder=-6, interpolate=True)
 
     # plot validation
     if plot_validation:
-        ax.plot(x, scores[:,3,:].mean(0), "-.",
+        ax.plot(x, scores[...,3,:].mean(mx), "-.",
                 color=elbo_color_v,
                 label="ELBO_val", zorder=2) # ELBO val
 
         ax.fill_between(x,
-                scores[:,3,:].mean(0)-scores[:,3,:].std(0), 
-                scores[:,3,:].mean(0)+scores[:,3,:].std(0), 
+                scores[...,3,:].mean(mx)\
+                        -scores[...,3,:].std(mx), 
+                scores[...,3,:].mean(mx)\
+                        +scores[...,3,:].std(mx), 
                 color=elbo_color_v,
                 alpha=0.1, zorder=1, interpolate=True)
 
-        ax.plot(x, scores[:,4,:].mean(0), "-.",
+        ax.plot(x, scores[...,4,:].mean(mx), "-.",
                 color=ll_color_v,
                 label="LogL_val", zorder=0) # LL val
  
         ax.fill_between(x,
-                scores[:,4,:].mean(0)-scores[:,4,:].std(0), 
-                scores[:,4,:].mean(0)+scores[:,4,:].std(0), 
+                scores[...,4,:].mean(mx)\
+                        -scores[...,4,:].std(mx), 
+                scores[...,4,:].mean(mx)\
+                        +scores[...,4,:].std(mx), 
                 color=ll_color_v,
                 alpha=0.1, zorder=2, interpolate=True)
 
         if kl_val_finite:
-            ax2.plot(x, scores[:,5,:].mean(0), "-.",
+            ax2.plot(x, scores[...,5,:].mean(mx), "-.",
                     color=kl_color_v,
                     label="KL_qp_val", zorder=2) # KL val
         
             ax2.fill_between(x,
-                    scores[:,5,:].mean(0)-scores[:,5,:].std(0), 
-                    scores[:,5,:].mean(0)+scores[:,5,:].std(0), 
+                    scores[...,5,:].mean(mx)\
+                            -scores[...,5,:].std(mx), 
+                    scores[...,5,:].mean(mx)\
+                            +scores[...,5,:].std(mx), 
                     color= kl_color_v,
                     alpha=0.1, zorder=1, interpolate=True)
 
-    if line:
-        ax.axhline(y=line, color=line_color, linestyle='-')
+    if line is not None:
+        ml = line.mean(0)
+        sl = line.std(0)
+        ax.plot(x, np.zeros_like(x)+ml, label="Real LogL",
+                color=line_color, linestyle='-')
+        ax.fill_between(x, ml-sl, ml+sl,
+                    color= line_color,
+                    alpha=0.1, zorder=0, interpolate=True)
 
     #ax.set_zorder(ax2.get_zorder()+1) 
     if kl_fit_finite or kl_val_finite:
@@ -478,8 +499,10 @@ def plot_fit_estim_distance(
         legend='upper right',
         title=None):
     """
-    scores here is a dictionary of estimate arrays.
-    Each array has the shape:(nb_reps, nb_epochs, *estim_shape)
+    scores here is a dictionary of estimate dictionary of stats
+    mean, var...
+    Each array has the shape:(nb_data, nb_fits, nb_epochs, 
+    *estim_shape)
     """
 
     fig_format= "png"
@@ -493,21 +516,24 @@ def plot_fit_estim_distance(
 
     f, ax = plt.subplots(figsize=(8, 5))
 
-    nb_iters = scores["b"]["mean"].shape[1]
+    nb_data = scores["b"]["mean"].shape[0]
+    nb_iters = scores["b"]["mean"].shape[-2]
+
     x = [j for j in range(1, nb_iters+1)]
 
     for ind, name in enumerate(scores):
         if name in estim_names:
             estim_scores = scores[name]["mean"]
-            sim_param = sim_params[name].reshape(1, 1, -1)
+            sim_param = sim_params[name].reshape(nb_data,
+                    1, 1, -1)
 
             # eucl dist
             dists = np.linalg.norm(
                     sim_param - estim_scores, axis=-1)
             #print(name, dists.shape)
 
-            m = dists.mean(0)
-            s = dists.std(0)
+            m = dists.mean((0,1))
+            s = dists.std((0,1))
 
             ax.plot(x, m, "-", color=estim_colors[name],
                     label=estim_names[name])
@@ -648,7 +674,8 @@ def plot_fit_estim_correlation(
         
     """
     scores here is a dictionary of estimate arrays.
-    Each array has the shape:(nb_reps,nb_epochs,*estim_shape)
+    Each array has the shape:(nb_data, nb_fits, nb_epochs, 
+    *estim_shape)
     """
 
     fig_format= "png"
@@ -662,17 +689,12 @@ def plot_fit_estim_correlation(
         'text.usetex':usetex})
     plt.subplots_adjust(wspace=0.16, hspace=0.1)
 
-    nb_iters = scores["b"]["mean"].shape[1]
+    nb_data = scores["b"]["mean"].shape[0]
+    nb_iters = scores["b"]["mean"].shape[-2]
     x = [j for j in range(1, nb_iters+1)]
 
-    # Don't compute correlation if vector has the same values
-    skip = []
-    for name in sim_params:
-        if np.all(sim_params[name]==sim_params[name][0]):
-            skip.append(name)
-
     for ind, name in enumerate(scores):
-        if name in estim_names and name not in skip:
+        if name in estim_names:
             estim_scores = scores[name]["mean"]
             sim_param = sim_params[name]
             #print(name, estim_scores.shape)
@@ -681,14 +703,15 @@ def plot_fit_estim_correlation(
             corrs = compute_corr(sim_param, estim_scores)
             #print(name, corrs.shape)
 
-            m = corrs.mean(0) # average by replicate
-            s = corrs.std(0)  # std by replicate
-            ax.plot(x, m, "-", color=estim_colors[name],
-                    label=estim_names[name])
+            if np.isfinite(corrs).any():
+                m = corrs.mean((0,1)) # average by replicate
+                s = corrs.std((0,1))  # std by replicate
+                ax.plot(x, m, "-", color=estim_colors[name],
+                        label=estim_names[name])
 
-            ax.fill_between(x, m-s, m+s, 
-                    color=estim_colors[name],
-                    alpha=0.2, interpolate=True)
+                ax.fill_between(x, m-s, m+s, 
+                        color=estim_colors[name],
+                        alpha=0.2, interpolate=True)
 
     ax.set_xticks([t for t in range(1, nb_iters+1) if t==1 or\
             t % print_xtick_every==0])
@@ -824,9 +847,12 @@ def aggregate_estimate_values(
     #return a dictionary of arrays
     estimates = defaultdict(dict)
 
-    # List (nb_reps) of list (nb_epochs) of dictionaries
-    # (estimate names) of dicitonaries (estimate stats)
-    estim_reps = [result[key] for result in rep_results]
+    # List (nb_data) of List (nb_fits) of list (nb_epochs)
+    # of dictionaries (estimate names) of
+    # dicitonaries (estimate stats)
+    #estim_reps = [result[key] for result in rep_results]
+    estim_reps = [[rep[key] for rep in d ] \
+            for d in rep_results]
 
     param_names = estim_list
     names = param_names+[
@@ -834,20 +860,21 @@ def aggregate_estimate_values(
             "a_hamming", "a_euclidean",
             "x_hamming", "x_euclidean"]
 
-    nb_reps = len(rep_results)
+    nb_data = len(rep_results)
+    nb_fits = len(rep_results[0])
 
     if report_n_epochs:
         nb_epochs = report_n_epochs
     else:
-        nb_epochs = len(estim_reps[0])
+        nb_epochs = len(estim_reps[0][0])
 
-    #print(list(estim_reps[0][0].keys()))
+    #print(list(estim_reps[0][0][0].keys()))
 
     for name in names:
-        if name in estim_reps[0][0]:
+        if name in estim_reps[0][0][0]:
             #print(name)
 
-            estim_stats = estim_reps[0][0][name]
+            estim_stats = estim_reps[0][0][0][name]
 
             for stat_name in stat_names:
                 if stat_name in estim_stats:
@@ -860,36 +887,40 @@ def aggregate_estimate_values(
                 #print(name, shape)
 
                 estimates[name][stat_name] = np.zeros((
-                    nb_reps,
+                    nb_data,
+                    nb_fits,
                     nb_epochs,
                     *shape))
                 #print(estimates[name][stat_name].shape)
 
-    for i, replicat in enumerate(estim_reps): # list of reps
-        #print("replicat {}".format(type(replicat)))
-        for j in range(nb_epochs): # list of epochs
-            epoch = replicat[j]
-            #print("epoch {}".format(type(epoch)))
-            for name in estimates:
-                for stat_name in estimates[name]:
-                    if isinstance(epoch[name][stat_name],
-                            torch.Tensor):
-                        estimation =epoch[name][stat_name].cpu(
-                                ).detach().numpy()
-                    elif isinstance(epoch[name][stat_name],
-                            np.ndarray): 
-                        estimation = epoch[name][stat_name]
-                    else:
-                        raise ValueError("{} is not tensor"\
-                                " or array in {}".format(
-                                    name, key))
+    for i, d_replicat in enumerate(estim_reps):
+        # list of reps
+        for j, f_replicat in enumerate(d_replicat):
+            #print("f_replicat {}".format(type(f_replicat)))
+            for k in range(nb_epochs): # list of epochs
+                epoch = f_replicat[k]
+                for name in estimates:
+                    for stat_name in estimates[name]:
+                        if isinstance(epoch[name][stat_name],
+                                torch.Tensor):
+                            estimation = epoch[name][
+                                    stat_name].cpu().detach(
+                                            ).numpy()
+                        elif isinstance(epoch[name][stat_name],
+                                np.ndarray): 
+                            estimation = epoch[name][stat_name]
+                        else:
+                            raise ValueError("{} is not"\
+                                    " tensor or array in"\
+                                    " {}".format(name, key))
 
-                    if name in param_names:
+                        if name in param_names:
+                            #print(name, estimation.shape)
+                            estimation = estimation.flatten()
+
+                        estimates[name][stat_name][i,j,k]\
+                                = estimation
                         #print(name, estimation.shape)
-                        estimation = estimation.flatten()
-
-                    estimates[name][stat_name][i,j]=estimation
-                    #print(name, estimation.shape)
 
     return estimates 
 
@@ -897,22 +928,29 @@ def aggregate_sampled_estimates(
         rep_results,
         key):
 
-    estim_reps = [result[key] for result in rep_results]
+    estim_reps = [[rep[key] for rep in d ] \
+            for d in rep_results]
 
-    estimates = defaultdict(list)
-    nb_reps = len(estim_reps)
 
-    for r in range(nb_reps):
-        samples = estim_reps[r]
+    nb_data = len(estim_reps)
+    nb_fits = len(estim_reps[0])
 
-        for name in samples:
-            sample = samples[name]
-            estimates[name].append(sample)
+    all_estimates = [] 
+    for i in range(nb_data): 
+        estimates = defaultdict(list)
+        for j in range(nb_fits):
+            samples = estim_reps[i][j]
 
-    for name in estimates:
-        estimates[name] = np.stack(estimates[name], axis=0)
+            for name in samples:
+                sample = samples[name]
+                estimates[name].append(sample)
 
-    return dict(estimates)
+        for name in estimates:
+            estimates[name] = np.stack(estimates[name],axis=0)
+
+        all_estimates.append(dict(estimates))
+
+    return all_estimates
 
 def report_sampled_estimates(
         estimates,
@@ -920,70 +958,105 @@ def report_sampled_estimates(
         real_params=None,
         branch_names=None):
 
+    nb_data = len(estimates)
+
     pkg_name = __name__.split(".")[0]
     chaine =  "{} estimations\n".format(pkg_name)
     chaine += "####################\n\n"
 
-    chaine += "## Log probabilities and KLs\n"
-    for prob_name in prob_names:
-        prob = estimates[prob_name]
+    chaine += "{}\n".format("#"*70)
+    for i in range(nb_data):
+        estim_data = estimates[i]
 
-        # TODO Get the full values to compute other statistics
-        if len(prob.shape) > 1: prob = prob.mean()
-        chaine +="{}\t\t{:.4f}\n".format(prob_names[prob_name],
-                prob.mean())
+        chaine += "## Data replicate {} {}\n".format(i, "#"*50)
+        chaine += "{}\n".format("#"*70)
 
-    chaine += "\n"
+        chaine += "\n## Log probabilities and KLs\n"
+        for prob_name in prob_names:
+            prob = estim_data[prob_name]
 
-    for name in estim_names:
-        if name in estimates:
-            chaine += "## "+estim_names[name] + "\n"
+            # TODO Get the full values to compute other 
+            # statistics
+            if len(prob.shape) > 1: prob = prob.mean()
+            chaine +="{}\t\t{:.4f}\n".format(
+                    prob_names[prob_name], prob.mean())
 
-            # Average by replicates
-            estimate = estimates[name].mean(0)
-            param_dim = estimate.shape[-1]
-            #print("param_dim {}".format(param_dim))
+        #chaine += "\n"
 
-            #means = estimate.mean(0)
+        for name in estim_names:
+            if name in estim_data:
+                chaine += "\n## "+estim_names[name] + "\n"
 
-            # Statistics by samples (already averaged by
-            # replicates)
-            estimate_stats = compute_estim_stats(
-                    estimate, confidence=0.95, axis=0)
+                # Average by replicates
+                estimate = estim_data[name].mean(0)
+                param_dim = estimate.shape[-1]
+                #print("param_dim {}".format(param_dim))
 
-            # Names of stat columns
-            chaine += "   "
-            for stat_name in estimate_stats:
-                chaine += "\t"+stat_name
+                #means = estimate.mean(0)
 
-            if real_params and name in real_params:
-                chaine += "\tReal"
-            chaine += "\n"
+                # Statistics by samples (already averaged by
+                # replicates)
+                estimate_stats = compute_estim_stats(
+                        estimate, confidence=0.95, axis=0)
 
-            for dim in range(param_dim):
-                if name == "r":
-                    the_name = rates_list[dim]
-                elif name == "f":
-                    the_name = freqs_list[dim]
-                else:
-                    if branch_names and branch_names[dim]:
-                        the_name = branch_names[dim]
-                    else:
-                        the_name = name + str(dim+1)
-
-                chaine += the_name
-                
+                # Names of stat columns
+                chaine += "   "
                 for stat_name in estimate_stats:
-                    stats = estimate_stats[stat_name]
-                    chaine +="\t{:.4f}".format(
-                            stats[dim].item())
-    
-                if real_params and name in real_params:
-                    chaine +="\t{:.4f}".format(
-                            real_params[name][dim].item())
+                    chaine += "\t"+stat_name
 
+                if real_params is not None\
+                        and name in real_params:
+                    chaine += "\tReal"
                 chaine += "\n"
-            chaine += "\n"
+
+                for dim in range(param_dim):
+                    if name == "r":
+                        the_name = rates_list[dim]
+                    elif name == "f":
+                        the_name = freqs_list[dim]
+                    else:
+                        if branch_names and\
+                                branch_names[i][dim]:
+                            the_name = branch_names[i][dim]
+                        else:
+                            the_name = name + str(dim+1)
+
+                    chaine += the_name
+                    
+                    for stat_name in estimate_stats:
+                        stats = estimate_stats[stat_name]
+                        chaine +="\t{:.4f}".format(
+                                stats[dim].item())
+        
+                    if real_params is not None\
+                            and name in real_params:
+                        chaine +="\t{:.4f}".format(
+                                real_params[name][i][
+                                    dim].item())
+
+                    chaine += "\n"
+                chaine += "\n"
+            
+                # Compute distance and correlation
+                if real_params is not None\
+                        and name in real_params:
+                    
+                    sim_param = real_params[name][i]
+                    estim_mean = estimate_stats["mean"]
+
+                    distance = np.linalg.norm(sim_param -\
+                            estim_mean, axis=-1)
+                    chaine += "Euclidean distance:"\
+                            " {:.4f}\n".format(distance)
+
+                    if len(np.unique(sim_param)) > 1\
+                            and np.isfinite(estim_mean).all():
+                        corr = pearsonr(sim_param, estim_mean)
+                        chaine += "Correlation and p-value:"\
+                                " {:.4f}, {:.5f}\n".format(
+                                        corr[0], corr[1])
+
+        chaine += "\n{}\n".format("#"*70)
 
     with open(out_file, "w") as fh:
         fh.write(chaine)

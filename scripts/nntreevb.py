@@ -386,21 +386,37 @@ if __name__ == "__main__":
         if dat.real_params:
             # real_params_np will be used to compare with
             # estimated parameters
-            real_params_np = [dict_to_numpy(dict(
-                    b=post_branches[i],
-                    t=np.sum(post_branches[i], keepdims=1),
-                    r=dat.sim_rates[i],
-                    f=dat.sim_freqs[i],
-                    k=dat.sim_kappa[i]))\
-                            for i in range(nb_data)]
+            #real_params_np = [dict_to_numpy(dict(
+            #    b=post_branches[i],
+            #    t=np.sum(post_branches[i], keepdims=1),
+            #    r=dat.sim_rates[i],
+            #    f=dat.sim_freqs[i],
+            #    k=dat.sim_kappa[i]))\
+            #            for i in range(nb_data)]
+
+            real_params_np = dict_to_numpy(dict(
+                b=post_branches,
+                t=np.sum(post_branches, axis=1),
+                r=dat.sim_rates,
+                f=dat.sim_freqs,
+                k=dat.sim_kappa))
 
             result_data["real_params"] = real_params_np
 
-            real_params_tensor = [dict_to_tensor(
-                    real_params_np[i],
-                    device=device,
-                    dtype=torch.float32)
-                            for i in range(nb_data)]
+            #real_params_tensor = [dict_to_tensor(
+            #        real_params_np[i],
+            #        device=device,
+            #        dtype=torch.float32)
+            #                for i in range(nb_data)]
+
+            real_params_tensor = [dict_to_tensor(dict(
+                b=post_branches[i],
+                t=np.sum(post_branches[i], keepdims=1),
+                r=dat.sim_rates[i],
+                f=dat.sim_freqs[i],
+                k=dat.sim_kappa[i]),
+                device=device, dtype=torch.float32)\
+                        for i in range(nb_data)]
 
             for i in range(nb_data):
                 for key in real_params_tensor[i]:
@@ -494,27 +510,30 @@ if __name__ == "__main__":
     if "b_names" in result_data and post_branche_names is None:
         post_branche_names = result_data["b_names"]
 
-    sys.exit()
 
     ## Report and plot results
     ## #######################
-    scores = [result["fit_probs"] for\
-            result in rep_results]
+    #scores = [result["fit_probs"] for\
+    #        result in rep_results]
+
+    scores = [[rep["fit_probs"] for rep in d ] \
+            for d in rep_results]
 
     # Get min number of epoch of all reps 
     # (maybe some reps stopped before max_iter)
     # to slice the list of epochs with the same length 
     # and be able to cast the list in ndarray        
-    min_iter = scores[0].shape[1]
-    for score in scores:
-        if min_iter >= score.shape[1]:
-            min_iter = score.shape[1]
-    the_scores = []
-    for score in scores:
-        the_scores.append(score[:,:min_iter])
+    #min_iter = scores[0][0].shape[1]
+    #for i in range(len(scores)):
+    #    for score in scores[i]:
+    #        if min_iter >= score.shape[1]:
+    #            min_iter = score.shape[1]
+    #the_scores = []
+    #for score in scores:
+    #    the_scores.append(score[:,:min_iter])
 
-    the_scores = np.array(the_scores)
-    #print("The scores {}".format(the_scores.shape))
+    prob_scores = np.array(scores)
+    #print("The scores {}".format(prob_scores.shape))
 
     ## Ploting results
     ## ###############
@@ -525,7 +544,7 @@ if __name__ == "__main__":
         logl_data = result_data["logl_data"]
 
     plot_elbo_ll_kl(
-            the_scores,
+            prob_scores,
             output_path+"/{}_probs_fig".format(job_name),
             line=logl_data,
             sizefont=plt.size_font,
@@ -571,20 +590,22 @@ if __name__ == "__main__":
     # for each replicate
     if fit.save_grad_stats and fit.save_weight_stats:
         # get the names of learned distributions
-        distrs = [d for d in rep_results[0]["grad_stats"][0]]
-        for n_rep in range(nb_fits):
-            for dist_name in distrs:
-                out_file = pg_path+"/{}_r{}_{}".format(
-                        job_name, n_rep, dist_name)
+        distrs=[d for d in rep_results[0][0]["grad_stats"][0]]
+        for n_d in range(nb_data):
+            for n_f in range(nb_fits):
+                for dist_name in distrs:
+                    out_file = pg_path+\
+                            "/{}+d{}_f{}+{}".format(
+                                dist_name, n_d, n_f, job_name)
 
-                plot_weights_grads_epochs(
-                        rep_results[n_rep],
-                        dist_name,
-                        out_file,
-                        epochs=slice(0, -1), # 0(,min_iter)
-                        fig_size=(10, 3),
-                        sizefont=plt.size_font
-                        )
+                    plot_weights_grads_epochs(
+                            rep_results[n_d][n_f],
+                            dist_name,
+                            out_file,
+                            epochs=slice(0, -1), #(0,min_iter)
+                            fig_size=(10, 3),
+                            sizefont=plt.size_font
+                            )
 
     ## Generate report file from sampling step
     ## #######################################

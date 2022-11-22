@@ -375,22 +375,26 @@ def apply_on_submodules(func, nn_module):
 def compute_corr(main, batch, verbose=False):
 
     def pearson(v1, v2):
-        r = np.nan 
-        if np.isfinite(v1).all() and np.isfinite(v2).all():
+        r = np.nan
+        if np.isfinite(v1).all() and not np.all(v1==v1[0]) \
+            and np.isfinite(v2).all() and \
+            not np.all(v2==v2[0]):
             r = pearsonr(v1, v2)[0]
             #r = spearmanr(v1, v2)[0]
         return r 
 
-    nb_reps, nb_epochs, shape = batch.shape
+    nb_data, nb_reps, nb_epochs, shape = batch.shape
 
     parallel = Parallel(prefer="processes", verbose=verbose)
 
-    corrs = np.zeros((nb_reps, nb_epochs))
+    corrs = np.zeros((nb_data, nb_reps, nb_epochs))
 
-    for i in range(nb_reps):
-        pears = parallel(delayed(pearson)(main , batch[i, j]) 
-                for j in range(nb_epochs))
-        corrs[i] = np.array(pears)
+    for i in range(nb_data):
+        for j in range(nb_reps):
+            pears = parallel(delayed(pearson)(main[i] ,
+                batch[i, j, k]) 
+                    for k in range(nb_epochs))
+            corrs[i, j] = np.array(pears)
 
     return corrs
 
