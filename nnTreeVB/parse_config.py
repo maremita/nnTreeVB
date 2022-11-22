@@ -222,8 +222,8 @@ def parse_config(config_file):
 
     # setting parameters
     arg.stg = ArgObject()
-    arg.stg.n_parallel = config.getint("settings", 
-            "n_parallel", fallback=1)
+    arg.stg.nb_parallel = config.getint("settings", 
+            "nb_parallel", fallback=1)
     #arg.stg.seed = check_seed(config.get("settings", "seed",
     #        fallback=None))
     arg.stg.device = config.get("settings", "device",

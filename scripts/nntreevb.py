@@ -48,8 +48,8 @@ import torch
 from joblib import Parallel, delayed
 
 import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning) 
-warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore",category=DeprecationWarning) 
+warnings.filterwarnings("ignore",category=UserWarning)
 warnings.filterwarnings('ignore', 
         "r'All-NaN (slice|axis) encountered'")
 
@@ -488,7 +488,7 @@ if __name__ == "__main__":
             f_arg["X_counts"] = x_patterns[i][1]
             fit_args.append(f_arg)
 
-        parallel = Parallel(n_jobs=stg.n_parallel, 
+        parallel = Parallel(n_jobs=stg.nb_parallel, 
                 prefer="processes", verbose=verbose)
 
         rep_results = parallel(delayed(eval_evomodel)(
