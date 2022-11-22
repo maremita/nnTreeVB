@@ -100,7 +100,7 @@ def build_Exponential(
     dist_params = torch.tensor(params, dtype=dtype)
 
     return torch.distributions.exponential.Exponential(
-            dist_params)
+            *dist_params)
 
 
 def build_Uniform(

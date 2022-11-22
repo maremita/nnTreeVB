@@ -54,9 +54,10 @@ def load(file_name):
 
     return data
 
-def update_sim_parameters(sim):
+def update_sim_parameters(obj):
     """
-    sim is an object with attributes:
+    obj is an object with attributes:
+        nb_rep_data
         subs_model
         sim_blengths (not used here)
         sim_rates
@@ -64,22 +65,29 @@ def update_sim_parameters(sim):
         sim_kappa
     """
 
+    nb_data = obj.nb_rep_data # nb of replicates 
+
+    assert len(obj.sim_rates) == nb_data
+    assert len(obj.sim_freqs) == nb_data
+    assert len(obj.sim_kappa) == nb_data
+
     # Update frequencies
-    if sim.subs_model in ["jc69", "k80"]:
-        sim.sim_freqs = (np.ones(4)/4).tolist()
+    if obj.subs_model in ["jc69", "k80"]:
+        obj.sim_freqs = (np.ones((nb_data, 4))/4).tolist()
 
     # Update rates
-    if sim.subs_model == "jc69":
-        sim.sim_rates = (np.ones(6)/6).tolist()
+    if obj.subs_model == "jc69":
+        obj.sim_rates = (np.ones((nb_data,6))/6).tolist()
 
-    elif sim.subs_model in ["k80", "hky"]:
-        sim.sim_rates = compute_rates_from_kappa(
-                sim.sim_kappa).tolist()
+    elif obj.subs_model in ["k80", "hky"]:
+        obj.sim_rates = [compute_rates_from_kappa(
+                k).tolist() for k in obj.sim_kappa]
 
     # Update kappa if model is jc69 or gtr
     #(for information purpose, won't be used)
-    if sim.subs_model in ["jc69", "gtr"]:
-        sim.sim_kappa = compute_kappa_from_rates(sim.sim_rates)
+    if obj.subs_model in ["jc69", "gtr"]:
+        obj.sim_kappa = [compute_kappa_from_rates(r) for r in\
+                obj.sim_rates]
 
 def compute_rates_from_kappa(kappa):
         """
