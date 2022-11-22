@@ -93,8 +93,6 @@ if __name__ == '__main__':
     output_eval = config.get("evaluation", "output_eval")
 
     max_iter = config.get("evaluation", "max_iter")
-    # needs to be str
-    n_reps = config.get("evaluation", "nb_replicates")
 
     evaluations = json.loads(config.get("evaluation",
         "evaluations"))
@@ -133,7 +131,6 @@ if __name__ == '__main__':
     config.set("io", "scores_from_file", scores_from_file)
  
     config.set("hyperparams", "max_iter", max_iter)
-    config.set("hyperparams", "nb_replicates", n_reps)
 
     # config gpu
     set_gpu = ""
@@ -185,10 +182,13 @@ if __name__ == '__main__':
 
         # Update file paths if sim_data is True
         if sim_data:
-            fasta_file = os.path.join(output_path,
-                    "{}_input.fasta".format(exp_name))
-            tree_file = os.path.join(output_path,
-                    "{}_input.nwk".format(exp_name))
+            data_path = os.path.join(output_path, "data")
+            makedirs(data_path, mode=0o700, exist_ok=True)
+
+            fasta_file = os.path.join(data_path,
+                    "{}_input_".format(exp_name))
+            tree_file = os.path.join(data_path,
+                    "{}_input_".format(exp_name))
 
             cfg_eval.set("io", "seq_file", fasta_file)
             cfg_eval.set("io", "nwk_file", tree_file)
@@ -242,8 +242,13 @@ if __name__ == '__main__':
             ## to be evaluated in the config file to 
             ## reduce the number of scenarios.
             ## ######################################
-            cmd = "{} -c {} -s {} &".format(program,
-                    config_file, seed)
+            s_error = os.path.join(job_dir,
+                    exp_name+".err")
+            s_output = os.path.join(job_dir, 
+                    exp_name+".out")
+
+            cmd = "{} -c {} -s {} 2>{} >{} &".format(program,
+                    config_file, seed, s_error, s_output)
 
         res_file = os.path.join(output_path,
                 "{}_results.pkl".format(exp_name))
