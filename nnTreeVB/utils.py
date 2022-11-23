@@ -10,6 +10,8 @@ from pprint import pformat
 import itertools
 import pickle
 import gzip
+import contextlib
+import random
 
 import numpy as np
 from joblib import Parallel, delayed
@@ -18,6 +20,20 @@ from scipy.stats.stats import pearsonr#, spearmanr
 
 import torch
 import torch.nn as nn
+
+
+# https://stackoverflow.com/a/49557127
+@contextlib.contextmanager
+def temp_random_seed(seed=None):
+    if seed in [None, False]:
+        yield
+    else:
+        state = random.getstate()
+        random.seed(seed)
+        try:
+            yield
+        finally:
+            random.setstate(state)
 
 def _GZcompressed(file_name):
     # https://stackoverflow.com/a/13044946

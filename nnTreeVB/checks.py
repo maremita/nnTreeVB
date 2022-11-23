@@ -34,8 +34,8 @@ def check_sim_blengths(sim_blengths, nb_taxa, nb_rep=1):
     Possible values:
 
     gamma(x,y)
-    gamma(x,y)|True  #True: same values fall all replicates
-    gamma(x,y)|False #False: different values for each rep.
+    gamma(x,y)|False #False: same values for all replicates
+    gamma(x,y)|True  #True: different values for each rep.
     gamma(x1,y1);gamma(x2,y2)
     uniform(x,y)
     uniform(x1,y1);uniform(x2,y2)
@@ -51,14 +51,15 @@ def check_sim_blengths(sim_blengths, nb_taxa, nb_rep=1):
 
     sim_blengths_str = sim_blengths.lower()
 
-    # Use or not the same set of values for each replicate
-    fixed = True
+    # Use (False) or not (True) the same set of branch lens
+    # for each replicate
+    sim_reps = False
 
     re_vals = re.split("\|", sim_blengths_str.strip())
 
     if len(re_vals) >= 2:
         sim_blengths_str = re_vals[0]
-        fixed = getboolean(re_vals[1])
+        sim_reps = getboolean(re_vals[1])
 
     blen_dists = []
     dists_str = sim_blengths_str.split(";")
@@ -82,16 +83,18 @@ def check_sim_blengths(sim_blengths, nb_taxa, nb_rep=1):
         blen_dists.append(blen_dists[0])
 
     with torch.no_grad():
-        if fixed:
+        if sim_reps:
+            # A set of nb_rep will be simulated
+            values = torch.cat((blen_dists[0].sample([nb_rep,
+                nb_taxa]), blen_dists[1].sample([nb_rep,
+                    nb_interns])), dim=1).numpy()
+        else:
+            # Only one set of branches will be simulated
             values=torch.cat((blen_dists[0].sample([nb_taxa]),
                 blen_dists[1].sample([nb_interns]))).numpy()
 
             values = np.resize(values, (nb_rep,
                 nb_taxa+nb_interns))
-        else:
-            values = torch.cat((blen_dists[0].sample([nb_rep,
-                nb_taxa]), blen_dists[1].sample([nb_rep,
-                    nb_interns])), dim=1).numpy()
     
     return values.tolist()
 
@@ -111,14 +114,15 @@ def check_sim_float(sim_float, nb_rep=1):
     """
     float_str = sim_float.lower()
 
-    # Use or not the same set of values for each replicate
-    fixed = True
+    # Use (False) or not (True) the same set of values
+    # for each replicate
+    sim_reps = False
 
     re_vals = re.split("\|", float_str.strip())
 
     if len(re_vals) >= 2:
         float_str = re_vals[0]
-        fixed = getboolean(re_vals[1])
+        sim_reps = getboolean(re_vals[1])
 
     try:
         number = np.array([float(float_str)])
@@ -136,12 +140,14 @@ def check_sim_float(sim_float, nb_rep=1):
                 dist_name, param_list, dtype=torch.float64)
 
             with torch.no_grad():
-                if fixed:
+                if sim_reps:
+                    # A set of nb_rep will be simulated
+                    values=torch_dist.sample([nb_rep]).numpy()
+                else:
+                    # Only one set of branches will be sim
                     values = torch_dist.sample().numpy()
                     values = np.resize(values,
                             (nb_rep, 1)).flatten()
-                else:
-                    values =torch_dist.sample([nb_rep]).numpy()
 
         else:
             raise ValueError("{} distribution name "\
@@ -153,13 +159,13 @@ def check_sim_simplex(sim_simplex, nb_params, nb_rep=1):
     simplex_str = sim_simplex.lower()
 
     # Use or not the same set of values for each replicate
-    fixed = True
+    sim_reps = False
 
     re_vals = re.split("\|", simplex_str.strip())
 
     if len(re_vals) >= 2:
         simplex_str = re_vals[0]
-        fixed = getboolean(re_vals[1])
+        sim_reps = getboolean(re_vals[1])
 
     # for now, the program accepts only dirichlet 
     dist_name = "dirichlet"
@@ -179,11 +185,13 @@ def check_sim_simplex(sim_simplex, nb_params, nb_rep=1):
                 dist_name, param_list, dtype=torch.float64)
 
         with torch.no_grad():
-            if fixed:
-                values = torch_dist.sample().numpy()
-                values = np.resize(values, (nb_rep, nb_params))
-            else:
+            if sim_reps:
+                # A set of nb_rep will be simulated
                 values = torch_dist.sample([nb_rep]).numpy()
+            else:
+                # Only one set of branches will be simulated
+                values = torch_dist.sample().numpy()
+                values = np.resize(values,(nb_rep, nb_params))
 
     else:
         values = np.array(

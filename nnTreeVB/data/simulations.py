@@ -1,4 +1,5 @@
 from .utils import set_postorder_ranks
+from nnTreeVB.utils import temp_random_seed
 
 import random 
 
@@ -20,14 +21,18 @@ __all__ = [
 def simulate_tree(
         nb_taxa, 
         branch_lens,
-        unroot=True):
+        unroot=True,
+        seed=None):
 
     taxa_names = ["T"+str(i) for i in list(range(0, nb_taxa))]
 
     t = Tree()
-    t.populate(nb_taxa,
-            names_library=taxa_names,
-            random_branches=False)
+
+    with temp_random_seed(seed):
+        # populate() uses random package to simulate trees
+        t.populate(nb_taxa,
+                names_library=taxa_names,
+                random_branches=False)
 
     if unroot and nb_taxa>2: t.unroot()
 
@@ -42,7 +47,7 @@ def simulate_tree(
             node.dist = branch_lens[node.postrank]
         else:
             node.dist = 0.
-    
+ 
     return t, taxa, interns
 
 def evolve_seqs_full_homogeneity(

@@ -62,6 +62,8 @@ def parse_config(config_file):
     nb_taxa = arg.dat.nb_taxa
     arg.dat.subs_model = check_subs_model(config.get(
             "data", "subs_model", fallback="jc69"))
+    arg.dat.sim_rep_trees = config.getboolean(
+            "data", "sim_rep_trees", fallback=True)
     arg.dat.sim_blengths = check_sim_blengths(config.get(
         "data", "sim_blengths", fallback="0.1,1."), nb_taxa,
         nb_data)

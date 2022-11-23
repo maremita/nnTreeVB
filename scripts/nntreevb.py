@@ -161,9 +161,15 @@ if __name__ == "__main__":
         print("\tJob name set to {}".format(job_name))
         print("\tVerbose set to {}".format(verbose))
 
+    t_seed = None
+    # seed for tree replicates, if None, each replicate will
+    # have a different tree.
+
     if seed:
         print("\tSeed set to {}".format(seed))
         config.set("settings", "seed", str(seed))
+        #
+        if not dat.sim_rep_trees: t_seed=seed
 
     # Computing device setting
     # ########################
@@ -304,8 +310,8 @@ if __name__ == "__main__":
 
                 tree_data = parallel(delayed(
                     simulate_tree)(dat.nb_taxa,
-                        dat.sim_blengths[i], unroot=True)\
-                            for i in range(nb_data))
+                        dat.sim_blengths[i], unroot=True,
+                        seed=t_seed) for i in range(nb_data))
 
                 tree_objs = [d[0] for d in tree_data]
                 taxa_list = [d[1] for d in tree_data]
