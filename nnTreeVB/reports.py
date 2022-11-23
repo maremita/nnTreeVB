@@ -1,7 +1,9 @@
 from nnTreeVB.utils import compute_corr
 from nnTreeVB.utils import compute_estim_stats
+from nnTreeVB import __version__ as _version
 
 from collections import defaultdict
+import os.path
 
 import numpy as np
 import pandas as pd
@@ -1043,20 +1045,24 @@ def aggregate_sampled_estimates(
 def report_sampled_estimates(
         estimates,
         out_file,
+        job_name=None,
         real_params=None,
         branch_names=None):
 
     nb_data = len(estimates)
 
     pkg_name = __name__.split(".")[0]
-    chaine =  "{} estimations\n".format(pkg_name)
-    chaine += "####################\n\n"
+    chaine =  "{} {} estimations\n".format(pkg_name, _version)
+    chaine += "##########################\n\n"
+
+    if job_name:
+        chaine += "Job: {}\n\n".format(job_name)
 
     chaine += "{}\n".format("#"*70)
     for i in range(nb_data):
         estim_data = estimates[i]
 
-        chaine += "## Data replicate {} {}\n".format(i, "#"*50)
+        chaine += "## Data replicate {} {}\n".format(i,"#"*50)
         chaine += "{}\n".format("#"*70)
 
         chaine += "\n## Log probabilities and KLs\n"
@@ -1134,18 +1140,20 @@ def report_sampled_estimates(
 
                     distance = np.linalg.norm(sim_param -\
                             estim_mean, axis=-1)
-                    chaine += "Euclidean distance:"\
+                    chaine += "\tEuclidean distance:"\
                             " {:.4f}\n".format(distance)
 
                     if len(np.unique(sim_param)) > 1\
                             and np.isfinite(estim_mean).all():
                         corr, pval = pearsonr(
                                 sim_param, estim_mean)
-                        chaine += "Correlation and p-value:"\
+                        chaine += "\tCorrelation and p-value:"\
                                 " {:.4f}, {:.4e}\n".format(
                                         corr, pval)
 
         chaine += "\n{}\n".format("#"*70)
+    chaine += "END OF REPORT"
+    chaine += "\n{}".format("#"*70)
 
     with open(out_file, "w") as fh:
         fh.write(chaine)

@@ -618,6 +618,7 @@ if __name__ == "__main__":
             estim_samples,
             output_path+"/{}_estim_report.txt".format(
                 job_name),
+            job_name=job_name,
             real_params=real_params_np,
             branch_names=post_branche_names)
 

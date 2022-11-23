@@ -88,10 +88,9 @@ if __name__ == '__main__':
     output_dir = os.path.join(output_eval, "exp_outputs/",
             jobs_code)
 
-    now_str = datetime.now().strftime("%m%d%H%M") 
+    now_str = datetime.now().strftime("%H%M") 
     output_sum = os.path.join(output_dir,
-            "summarize")
-            #"summarize_{}".format(now_str))
+            "summarize_{}".format(now_str))
     makedirs(output_sum, mode=0o700, exist_ok=True)
 
     #
