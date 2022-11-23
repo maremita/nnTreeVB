@@ -29,11 +29,13 @@ def check_subs_model(model_str):
 
     return model
 
-def check_sim_blengths(sim_blengths):
+def check_sim_blengths(sim_blengths, nb_taxa, nb_rep=1):
     """
     Possible values:
 
     gamma(x,y)
+    gamma(x,y)|True  #True: same values fall all replicates
+    gamma(x,y)|False #False: different values for each rep.
     gamma(x1,y1);gamma(x2,y2)
     uniform(x,y)
     uniform(x1,y1);uniform(x2,y2)
@@ -44,15 +46,28 @@ def check_sim_blengths(sim_blengths):
     normal, lognormal, dirichlet, categorical
     """
 
-    blen_dists = []
-    str_dists = sim_blengths.lower().split(";")
+    nb_interns = nb_taxa - 3 # unrooted tree (2*nb_taxa -3)
 
-    for str_dist in str_dists:
-        dist_split = str_dist.split("(")
+    sim_blengths_str = sim_blengths.lower()
+
+    # Use or not the same set of values for each replicate
+    fixed = True
+
+    re_vals = re.split("\|", sim_blengths_str.strip())
+
+    if len(re_vals) >= 2:
+        sim_blengths_str = re_vals[0]
+        fixed = getboolean(re_vals[1])
+
+    blen_dists = []
+    dists_str = sim_blengths_str.split(";")
+
+    for dist_str in dists_str:
+        dist_split = dist_str.split("(")
         dist_name = dist_split[0]
 
         param_list = str2floats(
-                re.split(dist_name+"\(|\)", str_dist)[1])
+                re.split(dist_name+"\(|\)", dist_str)[1])
 
         if dist_name in torch_dist_names:
             blen_dists.append(build_torch_distribution(
@@ -61,28 +76,54 @@ def check_sim_blengths(sim_blengths):
             raise ValueError("{} distribution name "\
                     "is not valid".format(dist_name))
 
-    return blen_dists
+    if len(blen_dists) == 1:
+        # use the same distribution to sample internal edges
+        blen_dists.append(blen_dists[0])
 
-def check_sim_float(sim_float):
+    with torch.no_grad():
+        if fixed:
+            values=torch.cat((blen_dists[0].sample([nb_taxa]),
+                blen_dists[1].sample([nb_interns]))).numpy()
+
+            values = np.resize(values, (nb_rep,
+                nb_taxa+nb_interns))
+        else:
+            values = torch.cat((blen_dists[0].sample([nb_rep,
+                nb_taxa]), blen_dists[1].sample([nb_rep,
+                    nb_interns])), dim=1).numpy()
+    
+    return values.tolist()
+
+def check_sim_float(sim_float, nb_rep=1):
     """
     Possible values:
     
     a float or a distribution
 
     gamma(x,y)
-    uniform(x,y)
-    exponential(x)
+    uniform(x,y)|False
+    exponential(x)|True
  
     Other distributions:
     normal, lognormal, dirichlet, categorical
 
     """
+    float_str = sim_float.lower()
+
+    # Use or not the same set of values for each replicate
+    fixed = True
+
+    re_vals = re.split("\|", float_str.strip())
+
+    if len(re_vals) >= 2:
+        float_str = re_vals[0]
+        fixed = getboolean(re_vals[1])
 
     try:
-        return float(sim_float)
+        number = np.array([float(float_str)])
+        values = np.resize(number, (nb_rep, 1))
 
     except ValueError as e:
-        float_str = sim_float.lower()
 
         dist_split = float_str.split("(")
         dist_name = dist_split[0]
@@ -94,14 +135,30 @@ def check_sim_float(sim_float):
                 dist_name, param_list, dtype=torch.float64)
 
             with torch.no_grad():
-                return torch_dist.sample().item()
+                if fixed:
+                    values = torch_dist.sample().numpy()
+                    values = np.resize(values,
+                            (nb_rep, 1)).flatten()
+                else:
+                    values =torch_dist.sample([nb_rep]).numpy()
 
         else:
             raise ValueError("{} distribution name "\
                     "is not valid".format(dist_name))
+ 
+    return values.tolist()
 
-def check_sim_simplex(sim_simplex, nb_params):
+def check_sim_simplex(sim_simplex, nb_params, nb_rep=1):
     simplex_str = sim_simplex.lower()
+
+    # Use or not the same set of values for each replicate
+    fixed = True
+
+    re_vals = re.split("\|", simplex_str.strip())
+
+    if len(re_vals) >= 2:
+        simplex_str = re_vals[0]
+        fixed = getboolean(re_vals[1])
 
     # for now, the program accepts only dirichlet 
     dist_name = "dirichlet"
@@ -109,7 +166,7 @@ def check_sim_simplex(sim_simplex, nb_params):
     if dist_name in simplex_str:
         param_list = str2floats(
                 re.split(dist_name+"\(|\)", simplex_str)[1])
-        
+ 
         # dirichlet(1.)
         if len(param_list) == 1:
             param_list = [param_list[0]] * nb_params
@@ -117,23 +174,30 @@ def check_sim_simplex(sim_simplex, nb_params):
             raise ValueError("{} lacks parameters".format(
                 sim_simplex))
 
-        rates_dist = build_torch_distribution(
+        torch_dist = build_torch_distribution(
                 dist_name, param_list, dtype=torch.float64)
 
         with torch.no_grad():
-            values = rates_dist.sample().numpy()
+            if fixed:
+                values = torch_dist.sample().numpy()
+                values = np.resize(values, (nb_rep, nb_params))
+            else:
+                values = torch_dist.sample([nb_rep]).numpy()
 
     else:
         values = np.array(
                 str2values(simplex_str, nb_params, cast=float))
-        
+ 
         if len(values) != nb_params:
             raise ValueError("[{}] lacks values".format(
                 sim_simplex))
 
-    values = values/values.sum(0)
+        values = np.resize(values, (nb_rep, nb_params))
 
-    assert np.isclose(values.sum(), 1.)
+    row_sums = values.sum(axis=1)
+    values = values/row_sums[:, np.newaxis]
+
+    assert np.isclose(values.sum(1), 1.).all()
 
     return values.tolist()
 

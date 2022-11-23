@@ -239,7 +239,7 @@ def build_GTR_matrix(rates, freqs, device=torch.device("cpu")):
 def build_GTR_transition_matrix(b, rates, freqs,
         device=torch.device("cpu")):
     #print("\nb shape {}".format(b.shape))
-    # [sample_size, b_dim, 1]
+    # [sample_size, b_dim]
     # print(b)
 
     rateM = build_GTR_matrix(rates, freqs, device=device)

@@ -48,8 +48,8 @@ import torch
 from joblib import Parallel, delayed
 
 import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning) 
-warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore",category=DeprecationWarning) 
+warnings.filterwarnings("ignore",category=UserWarning)
 warnings.filterwarnings('ignore', 
         "r'All-NaN (slice|axis) encountered'")
 
@@ -60,7 +60,7 @@ __author__ = "amine remita"
 nntreevb.py is the main program that uses the VB_nnTree 
 model with different substitution models (JC69, K80, HKY 
 and GTR). The experiment of fitting the model can be done for
-<fit.nb_replicates> times.
+<fit.nb_rep_fit> times.
 The program can use a sequence alignment from a Fasta file or
 simulate a new sequence alignment using evolutionary parameters
 defined in the config file.
@@ -198,39 +198,55 @@ if __name__ == "__main__":
     pg_path = os.path.join(output_path, "params_grads")
     makedirs(pg_path, mode=0o700, exist_ok=True)
 
+    if dat.sim_data:
+        data_path = os.path.join(output_path, "data")
+        makedirs(data_path, mode=0o700, exist_ok=True)
+
     if verbose:
         print("\nExperiment output: {}".format(
             output_path))
 
+    nb_data = dat.nb_rep_data
+    nb_fits = fit.nb_rep_fit
+
+    fasta_files = []
+    tree_files = []
+
     ## Get Fasta and tree file names
     ## #############################
     if dat.sim_data:
+        sim_prefix_file = os.path.join(data_path, 
+                "{}_input_".format(job_name))
         # Files paths of simulated data
         # training sequences
-        fasta_file = os.path.join(output_path,
-                "{}_input.fasta".format(job_name))
-        tree_file = os.path.join(output_path,
-                "{}_input.nwk".format(job_name))
- 
+        for i in range(nb_data):
+            fasta_files.append(sim_prefix_file + \
+                    "{}.fasta".format(i))
+            tree_files.append(sim_prefix_file + \
+                    "{}.nwk".format(i))
+
         config.set("data","seq_from_file", "True")
         config.set("data","nwk_from_file", "True")
+        config.set("io", "seq_file", sim_prefix_file)
+        config.set("io", "nwk_file", sim_prefix_file)
 
     else:
         # Files paths of given FASTA files
-        fasta_file = io.seq_file
-        tree_file = io.nwk_file
+        fasta_files.append(io.seq_file)
+        tree_files.append(io.nwk_file)
 
-        if not os.path.isfile(fasta_file):
-            raise FileNotFoundError("Fasta file {} does not "\
-                    "exist".format(fasta_file))
+        if not os.path.isfile(fasta_files[0]):
+            raise FileNotFoundError("Fasta file {} does not"\
+                    " exist".format(fasta_files[0]))
 
-        if not os.path.isfile(tree_file):
-            raise FileNotFoundError("Newick file {} does not "\
-                    "exist".format(tree_file))
+        if not os.path.isfile(tree_files[0]):
+            raise FileNotFoundError("Newick file {} does not"\
+                    " exist".format(tree_files[0]))
 
-    # Update file paths in config file
-    config.set("io", "seq_file", fasta_file)
-    config.set("io", "nwk_file", tree_file)
+        # Update file paths in config file
+        config.set("io", "seq_file", fasta_files[0])
+        config.set("io", "nwk_file", tree_files[0])
+
     config.set("io", "scores_from_file", "True")
 
     ## Loading results from file
@@ -265,125 +281,176 @@ if __name__ == "__main__":
             update_sim_parameters(dat)
             dat.real_params = True
 
-            if os.path.isfile(tree_file) and\
-                    dat.nwk_from_file:
+            parallel = Parallel(n_jobs=nb_data, 
+                prefer="processes", verbose=verbose)
+
+            trf = all([os.path.isfile(f) for f in tree_files])
+            if trf and dat.nwk_from_file:
                 if verbose: print("\nExtracting simulated"\
-                        " tree from {} ...".format(tree_file))
-                tree_obj, taxa, int_nodes =\
-                        build_tree_from_nwk(tree_file)
+                        " trees from ...")
+
+                tree_data = parallel(delayed(
+                    build_tree_from_nwk)(tree_files[i]) \
+                            for i in range(nb_data))
+
+                tree_objs = [d[0] for d in tree_data]
+                taxa_list = [d[1] for d in tree_data]
 
             else:
-                # if tree file is not given, or 
-                # dat.nwk_from_file is false: simulate a tree
+                # if tree files are not given, or 
+                # dat.nwk_from_file is false: simulate trees
                 # using ete3 populate function
-                if verbose:print("\nSimulating a new tree...")
+                if verbose:print("\nSimulating new trees...")
 
-                tree_obj, taxa, int_nodes = simulate_tree(
-                        dat.nb_taxa,
-                        dat.sim_blengths,
-                        unroot=True)
+                tree_data = parallel(delayed(
+                    simulate_tree)(dat.nb_taxa,
+                        dat.sim_blengths[i], unroot=True)\
+                            for i in range(nb_data))
 
-                tree_obj.write(outfile=tree_file, format=1)
+                tree_objs = [d[0] for d in tree_data]
+                taxa_list = [d[1] for d in tree_data]
 
-            tree_nwk = tree_obj.write(format=1)
+                for i in range(nb_data):
+                    tree_objs[i].write(outfile=tree_files[i],
+                            format=1)
 
-            # update data params in the new config file
-            config.set("data", "sim_rates", 
-                    ",".join(map(str,dat.sim_rates)))
-            config.set("data", "sim_freqs", 
-                    ",".join(map(str,dat.sim_freqs)))
-            config.set("data", "sim_kappa", 
-                    str(dat.sim_kappa))
+            #tree_nwk = tree_obj.write(format=1)
+            tree_nwks = [tree_objs[i].write(format=1) for i\
+                    in range(nb_data)]
+
             config.set("data", "real_params", "True")
 
-            if not os.path.isfile(fasta_file) or \
-                    not dat.seq_from_file:
+            sqf= all([os.path.isfile(f) for f in fasta_files])
+            if not sqf or not dat.seq_from_file:
                 if verbose:
                     print("\nSimulating new sequences...")
  
+                parallel = Parallel(n_jobs=nb_data, 
+                    prefer="processes", verbose=verbose)
+
                 # The order of freqs is different for pyvolve
                 # A C G T
-                sim_freqs_pyv = [
-                        dat.sim_freqs[0],
-                        dat.sim_freqs[2],
-                        dat.sim_freqs[1],
-                        dat.sim_freqs[3]]
+                sim_freqs_pyvolve = []
+                for sim_freq in dat.sim_freqs:
+                    sim_freqs_pyvolve.append([
+                        sim_freq[0], 
+                        sim_freq[2], 
+                        sim_freq[1], 
+                        sim_freq[3]])
 
-                # Evolve sequences
-                all_seqdict = evolve_sequences(
-                        tree_nwk,
+                all_seqdicts = parallel(delayed(
+                    evolve_sequences)(
+                        tree_nwks[i],
                         fasta_file=None, # write internal seqs
                         nb_sites=dat.nb_sites,
-                        subst_rates=dat.sim_rates,
-                        state_freqs=sim_freqs_pyv,
+                        subst_rates=dat.sim_rates[i],
+                        state_freqs=sim_freqs_pyvolve[i],
                         return_anc=False,
                         seed=seed,
-                        verbose=verbose)
+                        verbose=verbose) 
+                    for i in range(nb_data))
  
                 # Write fasta
-                seq_taxa = {s:all_seqdict[s] for s in taxa}
-                records = [SeqRecord(Seq(seq_taxa[taxon]),
-                    taxon, '', '') for taxon in seq_taxa]
-                SeqIO.write(records, fasta_file, "fasta")
+                for i in range(nb_data):
+                    seq_taxa = {s:all_seqdicts[i][s] for s in\
+                            taxa_list[i]}
+                    recs = [SeqRecord(Seq(seq_taxa[taxon]),
+                        taxon, '', '') for taxon in seq_taxa]
+                    SeqIO.write(recs, fasta_files[i], "fasta")
 
         if verbose: print("\nLoading data to"\
                 " TreeSeqCollection collection...")
-        treeseqs = TreeSeqCollection(fasta_file, tree_file)
-        tree_obj = treeseqs.tree # The tree is sorted
 
-        post_branches = get_postorder_branches(tree_obj)
+        treeseqs = [TreeSeqCollection(fasta_files[i],
+            tree_files[i]) for i in range(nb_data)]
+
+        # The tree is sorted
+        tree_objs = [treeseqs[i].tree for i in range(nb_data)]
+
+        post_branches = np.array([get_postorder_branches(
+            tree_objs[i]) for i in range(nb_data)])
         # post_branches is a numpy array
 
-        post_branche_names = get_postorder_branche_names(
-                tree_obj)
+        post_branche_names = [get_postorder_branche_names(
+                tree_objs[i]) for i in range(nb_data)]
+
         result_data["b_names"] = post_branche_names
 
         # Transform fitting sequences
-        x_motifs_cats = build_msa_categorical(treeseqs,
-                nuc_cat=False)
-        X = torch.from_numpy(x_motifs_cats.data).to(device)
-        X, X_counts = X.unique(dim=0, return_counts=True)
+        x_data = [torch.from_numpy(build_msa_categorical(
+            treeseqs[i], nuc_cat=False).data).to(device) \
+                    for i in range(nb_data)]
+        x_patterns = [x_data[i].unique(dim=0, 
+                return_counts=True) for i in range(nb_data)]
 
         if dat.real_params:
             # real_params_np will be used to compare with
-            # estimated parameters 
+            # estimated parameters
+            #real_params_np = [dict_to_numpy(dict(
+            #    b=post_branches[i],
+            #    t=np.sum(post_branches[i], keepdims=1),
+            #    r=dat.sim_rates[i],
+            #    f=dat.sim_freqs[i],
+            #    k=dat.sim_kappa[i]))\
+            #            for i in range(nb_data)]
+
             real_params_np = dict_to_numpy(dict(
-                    b=post_branches,
-                    t=np.sum(post_branches, keepdims=1),
-                    r=dat.sim_rates,
-                    f=dat.sim_freqs,
-                    k=dat.sim_kappa))
+                b=post_branches,
+                t=np.sum(post_branches, axis=1),
+                r=dat.sim_rates,
+                f=dat.sim_freqs,
+                k=dat.sim_kappa))
+
             result_data["real_params"] = real_params_np
 
-            real_params_tensor = dict_to_tensor(
-                    real_params_np,
-                    device=device,
-                    dtype=torch.float32)
+            #real_params_tensor = [dict_to_tensor(
+            #        real_params_np[i],
+            #        device=device,
+            #        dtype=torch.float32)
+            #                for i in range(nb_data)]
 
-            for key in real_params_tensor:
-                real_params_tensor[key] =\
-                        real_params_tensor[key].unsqueeze(0)
+            real_params_tensor = [dict_to_tensor(dict(
+                b=post_branches[i],
+                t=np.sum(post_branches[i], keepdims=1),
+                r=dat.sim_rates[i],
+                f=dat.sim_freqs[i],
+                k=dat.sim_kappa[i]),
+                device=device, dtype=torch.float32)\
+                        for i in range(nb_data)]
+
+            for i in range(nb_data):
+                for key in real_params_tensor[i]:
+                    real_params_tensor[i][key] =\
+                        real_params_tensor[i][
+                                key].unsqueeze(0)
 
             # Compute log likelihood of the data given
             # real parameters
-            with torch.no_grad():
-                logl_data = (compute_log_likelihood(
-                        copy.deepcopy(tree_obj),
-                        X.unsqueeze(0),
-                        dat.subs_model,
-                        real_params_tensor,
-                        torch.tensor([dat.sim_freqs]).to(
-                            device=device),
-                        rescaled_algo=False, 
-                        device=device)\
-                                * X_counts).sum().cpu().numpy()
+            logls = []
 
-            result_data["logl_data"] = logl_data
+            for i in range(nb_data):
+                with torch.no_grad():
+                    X, X_counts = x_patterns[i] 
+                    logl_data = (compute_log_likelihood(
+                            copy.deepcopy(tree_objs[i]),
+                            X.unsqueeze(0),
+                            dat.subs_model,
+                            real_params_tensor[i],
+                            torch.tensor(
+                                [dat.sim_freqs[i]]).to(
+                                device=device),
+                            rescaled_algo=True, 
+                            device=device)\
+                                *X_counts).sum().cpu().numpy()
 
-            if verbose:
-                print("\nLog likelihood of the data using"\
-                        " input params: {:.4f}".format(
-                            logl_data))
+                    logls.append(logl_data)
+
+                if verbose:
+                    print("Log likelihood of the data {}""\
+                        using input params: {:.4f}".format(
+                                i, logl_data))
+
+            result_data["logl_data"] = np.array(logls)
 
         # Writing a new config file and package versions
         # Could be used directly 
@@ -396,35 +463,41 @@ if __name__ == "__main__":
         if verbose: print()
         ## Evo model type
         ## ##############
-        EvoModelClass = VB_nnTree
+        EvoModelClass = VB_nnTree         
 
-        model_args = {
-                "tree":tree_obj,
+        model_arg = {
                 "device":device,
                 **mdl.to_dict()
                 }
 
-        # Fitting the parameters 
-        if fit.K_grad_samples > 1:
-            fit.grad_samples = [fit.grad_samples,
-                    fit.K_grad_samples]
-        else:
-            fit.grad_samples = [fit.grad_samples]
-
-        fit_args = {
-                "X":X,
-                "X_counts":X_counts,
+        fit_arg = {
                 "verbose":verbose,
                 **fit.to_dict()
                 }
 
-        parallel = Parallel(n_jobs=stg.n_parallel, 
+        model_args = []
+        fit_args = []
+
+        for i in range(nb_data):
+            m_arg = copy.deepcopy(model_arg)
+            m_arg["tree"] = tree_objs[i]
+            model_args.append(m_arg)
+            #
+            f_arg = copy.deepcopy(fit_arg)
+            f_arg["X"] = x_patterns[i][0]
+            f_arg["X_counts"] = x_patterns[i][1]
+            fit_args.append(f_arg)
+
+        parallel = Parallel(n_jobs=stg.nb_parallel, 
                 prefer="processes", verbose=verbose)
 
         rep_results = parallel(delayed(eval_evomodel)(
-            EvoModelClass,
-            model_args, fit_args) for s in\
-                    range(fit.nb_replicates))
+            EvoModelClass, model_args[i], fit_args[i]) \
+                    for i in range(nb_data) \
+                    for j in range(nb_fits))
+
+        rep_results = [rep_results[i:i + nb_fits] for i in\
+                range(0, len(rep_results), nb_fits)]
         #
         result_data["rep_results"] = rep_results
 
@@ -437,25 +510,30 @@ if __name__ == "__main__":
     if "b_names" in result_data and post_branche_names is None:
         post_branche_names = result_data["b_names"]
 
+
     ## Report and plot results
     ## #######################
-    scores = [result["fit_probs"] for\
-            result in rep_results]
+    #scores = [result["fit_probs"] for\
+    #        result in rep_results]
+
+    scores = [[rep["fit_probs"] for rep in d ] \
+            for d in rep_results]
 
     # Get min number of epoch of all reps 
     # (maybe some reps stopped before max_iter)
     # to slice the list of epochs with the same length 
     # and be able to cast the list in ndarray        
-    min_iter = scores[0].shape[1]
-    for score in scores:
-        if min_iter >= score.shape[1]:
-            min_iter = score.shape[1]
-    the_scores = []
-    for score in scores:
-        the_scores.append(score[:,:min_iter])
+    #min_iter = scores[0][0].shape[1]
+    #for i in range(len(scores)):
+    #    for score in scores[i]:
+    #        if min_iter >= score.shape[1]:
+    #            min_iter = score.shape[1]
+    #the_scores = []
+    #for score in scores:
+    #    the_scores.append(score[:,:min_iter])
 
-    the_scores = np.array(the_scores)
-    #print("The scores {}".format(the_scores.shape))
+    prob_scores = np.array(scores)
+    #print("The scores {}".format(prob_scores.shape))
 
     ## Ploting results
     ## ###############
@@ -466,7 +544,7 @@ if __name__ == "__main__":
         logl_data = result_data["logl_data"]
 
     plot_elbo_ll_kl(
-            the_scores,
+            prob_scores,
             output_path+"/{}_probs_fig".format(job_name),
             line=logl_data,
             sizefont=plt.size_font,
@@ -512,20 +590,22 @@ if __name__ == "__main__":
     # for each replicate
     if fit.save_grad_stats and fit.save_weight_stats:
         # get the names of learned distributions
-        distrs = [d for d in rep_results[0]["grad_stats"][0]]
-        for n_rep in range(fit.nb_replicates):
-            for dist_name in distrs:
-                out_file = pg_path+"/{}_r{}_{}".format(
-                        job_name, n_rep, dist_name)
+        distrs=[d for d in rep_results[0][0]["grad_stats"][0]]
+        for n_d in range(nb_data):
+            for n_f in range(nb_fits):
+                for dist_name in distrs:
+                    out_file = pg_path+\
+                            "/{}+d{}_f{}+{}".format(
+                                dist_name, n_d, n_f, job_name)
 
-                plot_weights_grads_epochs(
-                        rep_results[n_rep],
-                        dist_name,
-                        out_file,
-                        epochs=slice(0, -1), # 0(,min_iter)
-                        fig_size=(10, 3),
-                        sizefont=plt.size_font
-                        )
+                    plot_weights_grads_epochs(
+                            rep_results[n_d][n_f],
+                            dist_name,
+                            out_file,
+                            epochs=slice(0, -1), #(0,min_iter)
+                            fig_size=(10, 3),
+                            sizefont=plt.size_font
+                            )
 
     ## Generate report file from sampling step
     ## #######################################
@@ -538,6 +618,7 @@ if __name__ == "__main__":
             estim_samples,
             output_path+"/{}_estim_report.txt".format(
                 job_name),
+            job_name=job_name,
             real_params=real_params_np,
             branch_names=post_branche_names)
 

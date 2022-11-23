@@ -19,7 +19,7 @@ __all__ = [
 
 def simulate_tree(
         nb_taxa, 
-        branch_dists,
+        branch_lens,
         unroot=True):
 
     taxa_names = ["T"+str(i) for i in list(range(0, nb_taxa))]
@@ -33,23 +33,17 @@ def simulate_tree(
 
     t.sort_descendants()
 
-    if len(branch_dists) == 1:
-        # use the same distribution to sample internal edges
-        branch_dists.append(branch_dists[0])
-
-    # Populate branches 
-    # Using torch distributions
-    with torch.no_grad(): 
-        for node in t.traverse("postorder"):
-            if node.is_leaf():
-                node.dist = branch_dists[0].sample().item()
-            elif not node.is_root():
-                node.dist = branch_dists[1].sample().item()
-            else:
-                node.dist = 0.
-
     # Add postorder ranking of nodes and return
-    return set_postorder_ranks(t)
+    t, taxa, interns = set_postorder_ranks(t)
+
+    # Populate branches using postrank attribute 
+    for node in t.traverse("postorder"):
+        if not node.is_root():
+            node.dist = branch_lens[node.postrank]
+        else:
+            node.dist = 0.
+    
+    return t, taxa, interns
 
 def evolve_seqs_full_homogeneity(
         nwk_tree,

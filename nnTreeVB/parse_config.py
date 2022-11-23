@@ -48,24 +48,29 @@ def parse_config(config_file):
     arg.dat = ArgObject()
     arg.dat.sim_data = config.getboolean(
             "data", "sim_data", fallback=False)
+    arg.dat.nb_rep_data = config.getint(
+            "data", "nb_rep_data", fallback=1)
+    nb_data = arg.dat.nb_rep_data
     arg.dat.seq_from_file = config.getboolean(
             "data", "seq_from_file", fallback=True)
     arg.dat.nwk_from_file = config.getboolean(
             "data", "nwk_from_file", fallback=True)
     arg.dat.nb_sites = config.getint(
-            "data", "nb_sites", fallback=100)
+            "data", "nb_sites", fallback=1000)
     arg.dat.nb_taxa = config.getint(
-            "data", "nb_taxa", fallback=100)
+            "data", "nb_taxa", fallback=16)
+    nb_taxa = arg.dat.nb_taxa
     arg.dat.subs_model = check_subs_model(config.get(
             "data", "subs_model", fallback="jc69"))
     arg.dat.sim_blengths = check_sim_blengths(config.get(
-        "data", "sim_blengths", fallback="0.1,1."))
+        "data", "sim_blengths", fallback="0.1,1."), nb_taxa,
+        nb_data)
     arg.dat.sim_rates = check_sim_simplex(config.get(
-        "data", "sim_rates", fallback="0.16"), 6)
+        "data", "sim_rates", fallback="0.16"), 6, nb_data)
     arg.dat.sim_freqs = check_sim_simplex(config.get(
-        "data", "sim_freqs", fallback="0.25"), 4)
+        "data", "sim_freqs", fallback="0.25"), 4, nb_data)
     arg.dat.sim_kappa = check_sim_float(config.get(
-        "data", "sim_kappa", fallback="1."))
+        "data", "sim_kappa", fallback="1."), nb_data)
     arg.dat.real_params = config.getboolean(
             "data", "real_params", fallback=True)
 
@@ -178,14 +183,21 @@ def parse_config(config_file):
  
     # Fitting hyperparameters
     arg.fit = ArgObject()
-    arg.fit.nb_replicates = config.getint(
-            "hyperparams", "nb_replicates", fallback=2)
+    arg.fit.nb_rep_fit = config.getint(
+            "hyperparams", "nb_rep_fit", fallback=1)
     arg.fit.elbo_type = config.get(
             "hyperparams", "elbo_type", fallback="elbo")
+    #
     arg.fit.grad_samples = config.getint(
             "hyperparams", "grad_samples", fallback=1)
     arg.fit.K_grad_samples = config.getint(
             "hyperparams", "K_grad_samples", fallback=0)
+    if arg.fit.K_grad_samples > 1:
+        arg.fit.grad_samples = [arg.fit.grad_samples,
+                arg.fit.K_grad_samples]
+    else:
+        arg.fit.grad_samples = [arg.fit.grad_samples]
+    #
     arg.fit.nb_samples = config.getint(
             "hyperparams", "nb_samples", fallback=100)
     arg.fit.alpha_kl = config.getfloat(
@@ -210,8 +222,8 @@ def parse_config(config_file):
 
     # setting parameters
     arg.stg = ArgObject()
-    arg.stg.n_parallel = config.getint("settings", 
-            "n_parallel", fallback=1)
+    arg.stg.nb_parallel = config.getint("settings", 
+            "nb_parallel", fallback=1)
     #arg.stg.seed = check_seed(config.get("settings", "seed",
     #        fallback=None))
     arg.stg.device = config.get("settings", "device",

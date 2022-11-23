@@ -54,9 +54,10 @@ def load(file_name):
 
     return data
 
-def update_sim_parameters(sim):
+def update_sim_parameters(obj):
     """
-    sim is an object with attributes:
+    obj is an object with attributes:
+        nb_rep_data
         subs_model
         sim_blengths (not used here)
         sim_rates
@@ -64,22 +65,29 @@ def update_sim_parameters(sim):
         sim_kappa
     """
 
+    nb_data = obj.nb_rep_data # nb of replicates 
+
+    assert len(obj.sim_rates) == nb_data
+    assert len(obj.sim_freqs) == nb_data
+    assert len(obj.sim_kappa) == nb_data
+
     # Update frequencies
-    if sim.subs_model in ["jc69", "k80"]:
-        sim.sim_freqs = (np.ones(4)/4).tolist()
+    if obj.subs_model in ["jc69", "k80"]:
+        obj.sim_freqs = (np.ones((nb_data, 4))/4).tolist()
 
     # Update rates
-    if sim.subs_model == "jc69":
-        sim.sim_rates = (np.ones(6)/6).tolist()
+    if obj.subs_model == "jc69":
+        obj.sim_rates = (np.ones((nb_data,6))/6).tolist()
 
-    elif sim.subs_model in ["k80", "hky"]:
-        sim.sim_rates = compute_rates_from_kappa(
-                sim.sim_kappa).tolist()
+    elif obj.subs_model in ["k80", "hky"]:
+        obj.sim_rates = [compute_rates_from_kappa(
+                k).tolist() for k in obj.sim_kappa]
 
     # Update kappa if model is jc69 or gtr
     #(for information purpose, won't be used)
-    if sim.subs_model in ["jc69", "gtr"]:
-        sim.sim_kappa = compute_kappa_from_rates(sim.sim_rates)
+    if obj.subs_model in ["jc69", "gtr"]:
+        obj.sim_kappa = [compute_kappa_from_rates(r) for r in\
+                obj.sim_rates]
 
 def compute_rates_from_kappa(kappa):
         """
@@ -367,24 +375,32 @@ def apply_on_submodules(func, nn_module):
 def compute_corr(main, batch, verbose=False):
 
     def pearson(v1, v2):
-        r = np.nan 
-        if np.isfinite(v1).all() and np.isfinite(v2).all():
-            r = pearsonr(v1, v2)[0]
-            #r = spearmanr(v1, v2)[0]
+        r = (np.nan, np.nan)
+
+        if np.isfinite(v1).all() and not np.all(v1==v1[0]) \
+            and np.isfinite(v2).all() and \
+            not np.all(v2==v2[0]):
+            r = pearsonr(v1, v2)  # corr and pval
+            #r = spearmanr(v1, v2)
         return r 
 
-    nb_reps, nb_epochs, shape = batch.shape
+    nb_data, nb_reps, nb_epochs, shape = batch.shape
 
     parallel = Parallel(prefer="processes", verbose=verbose)
 
-    corrs = np.zeros((nb_reps, nb_epochs))
+    corrs = np.zeros((nb_data, nb_reps, nb_epochs))
+    pvals = np.zeros((nb_data, nb_reps, nb_epochs))
 
-    for i in range(nb_reps):
-        pears = parallel(delayed(pearson)(main , batch[i, j]) 
-                for j in range(nb_epochs))
-        corrs[i] = np.array(pears)
+    for i in range(nb_data):
+        for j in range(nb_reps):
+            pears = parallel(delayed(pearson)(main[i] ,
+                batch[i, j, k]) 
+                    for k in range(nb_epochs))
+            pears = list(zip(*pears))
+            corrs[i, j] = np.array(pears[0])
+            pvals[i, j] = np.array(pears[1])
 
-    return corrs
+    return corrs, pvals
 
 def mean_confidence_interval(data, confidence=0.95, axis=0):
     a = 1.0 * np.array(data)
