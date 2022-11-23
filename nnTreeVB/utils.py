@@ -375,12 +375,13 @@ def apply_on_submodules(func, nn_module):
 def compute_corr(main, batch, verbose=False):
 
     def pearson(v1, v2):
-        r = np.nan
+        r = (np.nan, np.nan)
+
         if np.isfinite(v1).all() and not np.all(v1==v1[0]) \
             and np.isfinite(v2).all() and \
             not np.all(v2==v2[0]):
-            r = pearsonr(v1, v2)[0]
-            #r = spearmanr(v1, v2)[0]
+            r = pearsonr(v1, v2)  # corr and pval
+            #r = spearmanr(v1, v2)
         return r 
 
     nb_data, nb_reps, nb_epochs, shape = batch.shape
@@ -388,15 +389,18 @@ def compute_corr(main, batch, verbose=False):
     parallel = Parallel(prefer="processes", verbose=verbose)
 
     corrs = np.zeros((nb_data, nb_reps, nb_epochs))
+    pvals = np.zeros((nb_data, nb_reps, nb_epochs))
 
     for i in range(nb_data):
         for j in range(nb_reps):
             pears = parallel(delayed(pearson)(main[i] ,
                 batch[i, j, k]) 
                     for k in range(nb_epochs))
-            corrs[i, j] = np.array(pears)
+            pears = list(zip(*pears))
+            corrs[i, j] = np.array(pears[0])
+            pvals[i, j] = np.array(pears[1])
 
-    return corrs
+    return corrs, pvals
 
 def mean_confidence_interval(data, confidence=0.95, axis=0):
     a = 1.0 * np.array(data)

@@ -356,83 +356,108 @@ def plot_elbos_lls_kls(
     for i, exp_value in enumerate(exp_values):
         scores = exp_scores[i,...]
 
-        kl_fit_finite = np.isfinite(scores[:,2,:]).all()
+        sshp = scores.shape
+        mx = tuple([i for i in range(len(sshp))\
+                if i < -2%len(sshp)])
+
+        kl_fit_finite = np.isfinite(scores[...,2,:]).all()
         kl_val_finite = False
         if plot_validation:
-            kl_val_finite = np.isfinite(scores[:,5,:]).all()
+            kl_val_finite = np.isfinite(scores[...,5,:]).all()
 
         if kl_fit_finite or kl_val_finite:
             ax2 = axs[i].twinx()
 
         # ELBO train
-        axs[i].plot(x, scores[:,0,:].mean(0), "-",
+        axs[i].plot(x, scores[...,0,:].mean(mx), "-",
                 color=elbo_color,  label="ELBO", zorder=6) 
 
         axs[i].fill_between(x,
-                scores[:,0,:].mean(0)-scores[:,0,:].std(0), 
-                scores[:,0,:].mean(0)+scores[:,0,:].std(0), 
+                scores[...,0,:].mean(mx)\
+                        -scores[...,0,:].std(mx), 
+                scores[...,0,:].mean(mx)\
+                        +scores[...,0,:].std(mx), 
                 color=elbo_color,
                 alpha=0.2, zorder=5, interpolate=True)
 
         # LL train
-        axs[i].plot(x, scores[:,1,:].mean(0), "-",
+        axs[i].plot(x, scores[...,1,:].mean(mx), "-",
                 color=ll_color, label="LogL", zorder=4) 
 
         axs[i].fill_between(x,
-                scores[:,1,:].mean(0)-scores[:,1,:].std(0), 
-                scores[:,1,:].mean(0)+scores[:,1,:].std(0),
+                scores[...,1,:].mean(mx)\
+                        -scores[...,1,:].std(mx), 
+                scores[...,1,:].mean(mx)\
+                        +scores[...,1,:].std(mx),
                 color=ll_color,
                 alpha=0.2, zorder=3, interpolate=True)
 
         if kl_fit_finite:
             # KL train
-            ax2.plot(x, scores[:,2,:].mean(0), "-",
+            ax2.plot(x, scores[...,2,:].mean(mx), "-",
                     color=kl_color, label="KL_qp", zorder=4)
 
             ax2.fill_between(x,
-                    scores[:,2,:].mean(0)-scores[:,2,:].std(0),
-                    scores[:,2,:].mean(0)+scores[:,2,:].std(0),
+                    scores[...,2,:].mean(mx)\
+                            -scores[...,2,:].std(mx),
+                    scores[...,2,:].mean(mx)\
+                            +scores[...,2,:].std(mx),
                     color=kl_color,
                     alpha=0.2, zorder=-6, interpolate=True)
 
         # plot validation
         if plot_validation:
-            axs[i].plot(x, scores[:,3,:].mean(0), "-.",
+            axs[i].plot(x, scores[...,3,:].mean(mx), "-.",
                     color=elbo_color_v,
                     label="ELBO_val", zorder=2) # ELBO val
 
             axs[i].fill_between(x,
-                    scores[:,3,:].mean(0)-scores[:,3,:].std(0),
-                    scores[:,3,:].mean(0)+scores[:,3,:].std(0),
+                    scores[...,3,:].mean(mx)\
+                            -scores[...,3,:].std(mx),
+                    scores[...,3,:].mean(mx)\
+                            +scores[...,3,:].std(mx),
                     color=elbo_color_v,
                     alpha=0.1, zorder=1, interpolate=True)
 
-            axs[i].plot(x, scores[:,4,:].mean(0), "-.",
+            axs[i].plot(x, scores[...,4,:].mean(mx), "-.",
                     color=ll_color_v,
                     label="LogL_val", zorder=0) # LL val
 
             axs[i].fill_between(x,
-                    scores[:,4,:].mean(0)-scores[:,4,:].std(0),
-                    scores[:,4,:].mean(0)+scores[:,4,:].std(0),
+                    scores[...,4,:].mean(mx)\
+                            -scores[...,4,:].std(mx),
+                    scores[...,4,:].mean(mx)\
+                            +scores[...,4,:].std(mx),
                     color=ll_color_v,
                     alpha=0.1, zorder=2, interpolate=True)
 
             if kl_fit_finite:
-                ax2.plot(x, scores[:,5,:].mean(0), "-.", 
+                ax2.plot(x, scores[...,5,:].mean(mx), "-.", 
                         color=kl_color_v,
                         label="KL_qp_val", zorder=2) # KL val
                 
                 ax2.fill_between(x,
-                        scores[:,5,:].mean(0)\
-                                -scores[:,5,:].std(0),
-                        scores[:,5,:].mean(0)\
-                                +scores[:,5,:].std(0),
+                        scores[...,5,:].mean(mx)\
+                                -scores[...,5,:].std(mx),
+                        scores[...,5,:].mean(mx)\
+                                +scores[...,5,:].std(mx),
                         color= kl_color_v,
                         alpha=0.1, zorder=1, interpolate=True)
 
-        if lines:
-            axs[i].axhline(y=lines[i], color=line_color,
-                    linestyle='-')
+        #if lines:
+        #    axs[i].axhline(y=lines[i], color=line_color,
+        #            linestyle='-')
+
+        if lines is not None:
+            ml = lines[i].mean(0)
+            sl = lines[i].std(0)
+
+            axs[i].plot(x, np.zeros_like(x)+ml,
+                    label="Real LogL",
+                    color=line_color, linestyle='-')
+            axs[i].fill_between(x, ml-sl, ml+sl,
+                        color= line_color,
+                        alpha=0.1, zorder=0, interpolate=True)
 
         #axs[i].set_zorder(ax2.get_zorder()+1)
         if kl_fit_finite or kl_val_finite:
@@ -598,7 +623,8 @@ def plot_fit_estim_distances(
         'text.usetex':usetex})
     plt.subplots_adjust(wspace=0.07, hspace=0.1)
 
-    nb_iters = exp_scores[0]["b"]["mean"].shape[1]
+    nb_data = exp_scores[0]["b"]["mean"].shape[0]
+    nb_iters = exp_scores[0]["b"]["mean"].shape[-2]
     x = [j for j in range(1, nb_iters+1)]
 
     for i, exp_value in enumerate(exp_values):
@@ -608,7 +634,8 @@ def plot_fit_estim_distances(
         for ind, name in enumerate(scores):
             if name in estim_names:
                 estim_scores = scores[name]["mean"]
-                sim_param = sim_params[name].reshape(1,1,-1)
+                sim_param = sim_params[name].reshape(nb_data,
+                        1, 1, -1)
                 #print(name, estim_scores.shape)
 
                 # eucl dist
@@ -616,8 +643,8 @@ def plot_fit_estim_distances(
                         sim_param - estim_scores, axis=-1)
                 #print(name, dists.shape)
 
-                m = dists.mean(0)
-                s = dists.std(0)
+                m = dists.mean((0,1))
+                s = dists.std((0,1))
 
                 axs[i].plot(x, m, "-", 
                         color=estim_colors[name],
@@ -689,7 +716,6 @@ def plot_fit_estim_correlation(
         'text.usetex':usetex})
     plt.subplots_adjust(wspace=0.16, hspace=0.1)
 
-    nb_data = scores["b"]["mean"].shape[0]
     nb_iters = scores["b"]["mean"].shape[-2]
     x = [j for j in range(1, nb_iters+1)]
 
@@ -700,7 +726,7 @@ def plot_fit_estim_correlation(
             #print(name, estim_scores.shape)
 
             # pearson correlation coefficient
-            corrs = compute_corr(sim_param, estim_scores)
+            corrs,_ = compute_corr(sim_param, estim_scores)
             #print(name, corrs.shape)
 
             if np.isfinite(corrs).any():
@@ -769,40 +795,34 @@ def plot_fit_estim_correlations(
         'text.usetex':usetex})
     plt.subplots_adjust(wspace=0.07, hspace=0.1)
 
-    nb_iters = exp_scores[0]["b"]["mean"].shape[1]
+    nb_iters = exp_scores[0]["b"]["mean"].shape[-2]
     x = [j for j in range(1, nb_iters+1)]
 
     for i, exp_value in enumerate(exp_values):
         scores = exp_scores[i]
         sim_params = sim_param_exps[exp_value]
 
-        # Don't compute correlation if vector has the
-        # same values
-        skip = []
-        for name in sim_params:
-            if np.all(sim_params[name]==sim_params[name][0]):
-                skip.append(name)
-
         for ind, name in enumerate(scores):
-            if name in estim_names and name not in skip:
+            if name in estim_names:
                 estim_scores = scores[name]["mean"]
                 sim_param = sim_params[name]
                 #print(name, estim_scores.shape)
 
                 # pearson correlation coefficient
-                corrs = compute_corr(sim_param, estim_scores)
+                corrs,_ = compute_corr(sim_param, estim_scores)
                 #print(name, corrs.shape)
 
-                m = corrs.mean(0)
-                s = corrs.std(0)
+                if np.isfinite(corrs).any():
+                    m = corrs.mean((0,1))
+                    s = corrs.std((0,1))
 
-                axs[i].plot(x, m, "-",
-                        color=estim_colors[name],
-                        label=estim_names[name])
+                    axs[i].plot(x, m, "-",
+                            color=estim_colors[name],
+                            label=estim_names[name])
 
-                axs[i].fill_between(x, m-s, m+s, 
-                        color=estim_colors[name],
-                        alpha=0.2, interpolate=True)
+                    axs[i].fill_between(x, m-s, m+s, 
+                            color=estim_colors[name],
+                            alpha=0.2, interpolate=True)
 
         #axs[i].set_title(x_names[i].split("-")[1])
         axs[i].set_title(x_names[i])
@@ -837,6 +857,74 @@ def plot_fit_estim_correlations(
             format=fig_format, dpi=fig_dpi)
 
     plt.close(f)
+
+def plot_probs_distances_correlations(
+        probs_scores,
+        estim_scores,
+        exp_values,
+        x_names,
+        sim_param_exps,
+        #
+        prob_out_file,
+        prob_lines,
+        prob_title,
+        prob_legend,
+        #
+        dist_out_file,
+        dist_y_limits,
+        dist_legend,
+        dist_title,
+        #
+        corr_out_file,
+        corr_y_limits,
+        corr_legend,
+        corr_title,
+        #
+        plot_validation=False,
+        usetex=False,
+        sizefont=14,
+        print_xtick_every=100):
+
+    # Probabilities (elbo, logl, kl)
+    plot_elbos_lls_kls(
+            probs_scores,
+            exp_values,
+            x_names,
+            prob_out_file,
+            lines=prob_lines,
+            sizefont=sizefont,
+            print_xtick_every=print_xtick_every,
+            title=prob_title,
+            legend=prob_legend,
+            plot_validation=plot_validation)
+
+    # Distances of estimates with sim params
+    plot_fit_estim_distances(
+            estim_scores,
+            exp_values,
+            x_names,
+            sim_param_exps,
+            dist_out_file,
+            sizefont=sizefont,
+            print_xtick_every=print_xtick_every,
+            y_limits=dist_y_limits,
+            usetex=usetex,
+            legend=dist_legend,
+            title=dist_title)
+
+    # Correlations of estimates with sim params
+    plot_fit_estim_correlations(
+            estim_scores,
+            exp_values,
+            x_names,
+            sim_param_exps,
+            corr_out_file,
+            sizefont=sizefont,
+            print_xtick_every=print_xtick_every,
+            y_limits=corr_y_limits,
+            usetex=usetex,
+            legend=corr_legend,
+            title=corr_title)
 
 def aggregate_estimate_values(
         rep_results,
@@ -1051,10 +1139,11 @@ def report_sampled_estimates(
 
                     if len(np.unique(sim_param)) > 1\
                             and np.isfinite(estim_mean).all():
-                        corr = pearsonr(sim_param, estim_mean)
+                        corr, pval = pearsonr(
+                                sim_param, estim_mean)
                         chaine += "Correlation and p-value:"\
-                                " {:.4f}, {:.5f}\n".format(
-                                        corr[0], corr[1])
+                                " {:.4f}, {:.4e}\n".format(
+                                        corr, pval)
 
         chaine += "\n{}\n".format("#"*70)
 
@@ -1067,7 +1156,7 @@ def summarize_sampled_estimates(
         x_names,
         sim_param_exps,
         out_file,
-        logl_data_combins = None
+        logl_data_combins=None
         ):
 
     probs_dict = dict()
@@ -1077,10 +1166,12 @@ def summarize_sampled_estimates(
     unique_names = []
     for c_name in combins:
         for exp_scores in sample_combins[c_name]:
-            unique_names.extend(exp_scores.keys())
+            unique_names.extend(exp_scores[0].keys())
     unique_names = set(unique_names)
     #print(unique_names)
     # {'r', 'b', 'logprior', 'logl', 'elbo', 'f', 'logq',...}
+
+    nb_data = len(sample_combins[row_index[0]][0])
 
     for p_name in prob_names:
         if p_name in unique_names:
@@ -1097,21 +1188,25 @@ def summarize_sampled_estimates(
                     columns=col_index)
 
             for c_name in combins:
-                for i, exp_scores in \
+                for c, exp_scores in \
                         enumerate(sample_combins[c_name]):
-                    if p_name in exp_scores:
-                        scores = exp_scores[p_name]
+                    if p_name in exp_scores[0]:
 
-                        df[x_names[i], "Mean"].loc[c_name] =\
+                        scores = np.array(
+                            [exp_scores[d][p_name]\
+                                for d in range(nb_data)])
+
+                        df[x_names[c], "Mean"].loc[c_name] =\
                                 scores.mean().item()
-                        df[x_names[i], "STD"].loc[c_name] =\
+                        df[x_names[c], "STD"].loc[c_name] =\
                                 np.ma.masked_invalid(
-                                        scores).std().item()
+                                    scores).std().item()
 
-                        if logl_real:
-                            df[x_names[i], "Real"].loc[c_name]\
-                                    = logl_data_combins[
-                                            c_name][i].item()
+                        if logl_real and\
+                            logl_data_combins[c_name] != None:
+                            df[x_names[c], "Real"].loc[c_name]\
+                                = logl_data_combins[c_name][
+                                        c].mean()
 
             probs_dict[prob_names[p_name]] = df
 
@@ -1129,35 +1224,48 @@ def summarize_sampled_estimates(
                 for c_name in combins:
                     exp_names = combins[c_name]
      
-                    for i, exp_scores in \
+                    for c, exp_scores in \
                             enumerate(sample_combins[c_name]):
 
-                        if estim_name in exp_scores:
-                            scores=exp_scores[estim_name].mean(
-                                    (0,1))
-                            sim_param = sim_param_exps[
-                                    exp_names[i]][estim_name]
+                        # exp_scores is a list with nb_data 
+                        # elements. Each element contains a 
+                        # dictionary for estimates [b, r, f..]
+                        # that have values of shape
+                        # [nb_rep, nb_sample,shape of estimate]
+                        #print(estim_name)
+                        #print(exp_scores[0][estim_name].shape)
+                        if estim_name in exp_scores[0]:
+                            scores = np.array([exp_scores[d][
+                                estim_name].mean((0, 1))\
+                                for d in range(nb_data)])
+                            #print("scores {}".format(
+                            #    scores.shape))
+                            #[nb_data, estim shape]
 
-                            # eucl distance
+                            sim_param = sim_param_exps[
+                                exp_names[c]][estim_name]
+                            #print("sim_param {}".format(
+                            #    sim_param.shape))
+                            #[nb_data, estim shape]
+
+                            # euclidean distance averaged by
+                            # nb_data
                             dist = np.linalg.norm(
                                     sim_param - scores, 
-                                    axis=-1).mean()
-     
-                            df[x_names[i],"Dist"].loc[c_name]=\
+                                    axis=-1).mean() 
+
+                            df[x_names[c],"Dist"].loc[c_name]=\
                                     dist
 
                             # correlation
-                            corr = [np.nan, np.nan]
-                            if len(np.unique(sim_param)) > 1\
-                                    and np.isfinite(
-                                            scores).all():
-                                corr = pearsonr(sim_param,
-                                        scores)
+                            corrs, pvals = compute_corr(
+                                sim_param,scores.reshape(
+                                    nb_data, 1, 1, -1))
 
-                            df[x_names[i],"Corr"].loc[c_name]=\
-                                    corr[0]
-                            df[x_names[i],"Pval"].loc[c_name]=\
-                                    corr[1]
+                            df[x_names[c],"Corr"].loc[c_name]=\
+                                corrs.mean()
+                            df[x_names[c],"Pval"].loc[c_name]=\
+                                "{:.4e}".format(pvals.mean())
 
             elif estim_name in ["t", "k"]:
                 col_index = pd.MultiIndex.from_product(
@@ -1168,12 +1276,12 @@ def summarize_sampled_estimates(
 
                 for c_name in combins:
                     #exp_names = combins[c_name]
-                    for i, exp_scores in \
+                    for c, exp_scores in \
                             enumerate(sample_combins[c_name]):
                         if estim_name in exp_scores:
                             scores=exp_scores[estim_name].mean(
                                     (0,1))
-                            df[x_names[i],"Value"].loc[c_name]\
+                            df[x_names[c],"Value"].loc[c_name]\
                                     =scores.mean()
 
             estim_dict[estim_names[estim_name]] = df
@@ -1184,7 +1292,7 @@ def write_dict_dfs(dict_df, filename):
     with pd.option_context(
             'display.max_rows', None,
             'display.max_columns', None):
-        pd.options.display.float_format = '{:.3f}'.format
+        pd.options.display.float_format = '{:.4f}'.format
         with open(filename, "w") as fh:
             for code in dict_df:
                 fh.write(code)
