@@ -29,7 +29,7 @@ def simulate_tree(
             names_library=taxa_names,
             random_branches=False)
 
-    if unroot: t.unroot()
+    if unroot and nb_taxa>2: t.unroot()
 
     t.sort_descendants()
 

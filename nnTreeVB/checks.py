@@ -47,6 +47,7 @@ def check_sim_blengths(sim_blengths, nb_taxa, nb_rep=1):
     """
 
     nb_interns = nb_taxa - 3 # unrooted tree (2*nb_taxa -3)
+    if nb_interns <0: nb_interns=0
 
     sim_blengths_str = sim_blengths.lower()
 
