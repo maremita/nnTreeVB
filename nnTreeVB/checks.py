@@ -142,12 +142,13 @@ def check_sim_float(sim_float, nb_rep=1):
             with torch.no_grad():
                 if sim_reps:
                     # A set of nb_rep will be simulated
-                    values=torch_dist.sample([nb_rep]).numpy()
+                    values=torch_dist.sample(
+                            [nb_rep,1]).numpy()
                 else:
                     # Only one set of branches will be sim
                     values = torch_dist.sample().numpy()
                     values = np.resize(values,
-                            (nb_rep, 1)).flatten()
+                            (nb_rep, 1))
 
         else:
             raise ValueError("{} distribution name "\

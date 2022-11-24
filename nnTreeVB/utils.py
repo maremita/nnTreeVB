@@ -119,7 +119,7 @@ def compute_rates_from_kappa(kappa):
         return rates/rates.sum()
 
 def compute_kappa_from_rates(r):
-    return (r[0]+r[-1])/2/((sum(r[1:-1])/4))
+    return [(r[0]+r[-1])/2/((sum(r[1:-1])/4))]
 
 def freeze_model_params(model):
     for param in model.parameters():

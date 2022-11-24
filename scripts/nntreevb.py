@@ -395,7 +395,7 @@ if __name__ == "__main__":
 
             real_params_np = dict_to_numpy(dict(
                 b=post_branches,
-                t=np.sum(post_branches, axis=1),
+                t=np.sum(post_branches, axis=1, keepdims=1),
                 r=dat.sim_rates,
                 f=dat.sim_freqs,
                 k=dat.sim_kappa))
