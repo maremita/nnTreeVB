@@ -551,6 +551,8 @@ def plot_fit_estim_distance(
     for ind, name in enumerate(scores):
         if name in estim_names:
             estim_scores = scores[name]["mean"]
+            # print(name, estim_scores.shape)
+            # [nb_data, nb_fit_reps, nb_epochs, estim_shape]
             sim_param = sim_params[name].reshape(nb_data,
                     1, 1, -1)
 
@@ -558,6 +560,7 @@ def plot_fit_estim_distance(
             dists = np.linalg.norm(
                     sim_param - estim_scores, axis=-1)
             #print(name, dists.shape)
+            # [nb_data, nb_fit_reps, nb_epochs]
 
             m = dists.mean((0,1))
             s = dists.std((0,1))
@@ -726,14 +729,16 @@ def plot_fit_estim_correlation(
             estim_scores = scores[name]["mean"]
             sim_param = sim_params[name]
             #print(name, estim_scores.shape)
+            # [nb_data, nb_fit_reps, nb_epochs, estim_shape]
 
             # pearson correlation coefficient
             corrs,_ = compute_corr(sim_param, estim_scores)
             #print(name, corrs.shape)
+            # [nb_data, nb_fit_reps, nb_epochs]
 
             if np.isfinite(corrs).any():
-                m = corrs.mean((0,1)) # average by replicate
-                s = corrs.std((0,1))  # std by replicate
+                m = corrs.mean((0,1)) # average by replicates
+                s = corrs.std((0,1))  # std by replicates
                 ax.plot(x, m, "-", color=estim_colors[name],
                         label=estim_names[name])
 
@@ -809,6 +814,7 @@ def plot_fit_estim_correlations(
                 estim_scores = scores[name]["mean"]
                 sim_param = sim_params[name]
                 #print(name, estim_scores.shape)
+                #print(name, sim_param.shape)
 
                 # pearson correlation coefficient
                 corrs,_ = compute_corr(sim_param, estim_scores)
@@ -1081,17 +1087,17 @@ def report_sampled_estimates(
             if name in estim_data:
                 chaine += "\n## "+estim_names[name] + "\n"
 
-                # Average by replicates
-                estimate = estim_data[name].mean(0)
-                param_dim = estimate.shape[-1]
+                estimate = estim_data[name]
+                # Average by fit replicates
+                estimate_avrg_reps = estimate.mean(0)
+                param_dim = estimate_avrg_reps.shape[-1]
                 #print("param_dim {}".format(param_dim))
-
-                #means = estimate.mean(0)
 
                 # Statistics by samples (already averaged by
                 # replicates)
                 estimate_stats = compute_estim_stats(
-                        estimate, confidence=0.95, axis=0)
+                        estimate_avrg_reps,
+                        confidence=0.95, axis=0)
 
                 # Names of stat columns
                 chaine += "   "
@@ -1116,7 +1122,7 @@ def report_sampled_estimates(
                             the_name = name + str(dim+1)
 
                     chaine += the_name
-                    
+ 
                     for stat_name in estimate_stats:
                         stats = estimate_stats[stat_name]
                         chaine +="\t{:.4f}".format(
@@ -1138,18 +1144,34 @@ def report_sampled_estimates(
                     sim_param = real_params[name][i]
                     estim_mean = estimate_stats["mean"]
 
-                    distance = np.linalg.norm(sim_param -\
-                            estim_mean, axis=-1)
-                    chaine += "\tEuclidean distance:"\
-                            " {:.4f}\n".format(distance)
+                    #distance = np.linalg.norm(
+                    #        sim_param -\
+                    #        estim_mean, axis=-1)
+                    distance = np.linalg.norm(
+                            sim_param.reshape(1, 1, -1) -\
+                            estimate, axis=-1)
+                    # distance shape [nb_rep_fit, nb_samples]
+                    chaine += "\tEuclidean distance "\
+                            "Mean {:.4f} STD {:.4f}\n".format(
+                                    distance.mean(),
+                                    distance.std())
+                    
+                    #if len(np.unique(sim_param)) > 1\
+                    #        and np.isfinite(estim_mean).all():
+                    #    corr, pval = pearsonr(
+                    #            sim_param, estim_mean)
+                    #    chaine+= "\tCorrelation and p-value:"\
+                    #            " {:.4f}, {:.4e}\n".format(
+                    #                    corr, pval)
+                    corrs, pvals = compute_corr(
+                            sim_param.reshape(1, -1),
+                            np.expand_dims(estimate, axis=0))
+                    # corrs shape [1, nb_rep_fit, nb_samples]
+                    chaine += "\tCorrelation and p-value:"\
+                        " {:.4f}, {:.4e}\n".format(
+                                np.nanmean(corrs),
+                                np.nanmean(pvals))
 
-                    if len(np.unique(sim_param)) > 1\
-                            and np.isfinite(estim_mean).all():
-                        corr, pval = pearsonr(
-                                sim_param, estim_mean)
-                        chaine += "\tCorrelation and p-value:"\
-                                " {:.4f}, {:.4e}\n".format(
-                                        corr, pval)
 
         chaine += "\n{}\n".format("#"*70)
     chaine += "END OF REPORT"
@@ -1203,6 +1225,8 @@ def summarize_sampled_estimates(
                         scores = np.array(
                             [exp_scores[d][p_name]\
                                 for d in range(nb_data)])
+                        # print(p_name, scores.shape)
+                        # [nb_data, nb_fit_reps]
 
                         df[x_names[c], "Mean"].loc[c_name] =\
                                 scores.mean().item()
@@ -1224,7 +1248,8 @@ def summarize_sampled_estimates(
         if estim_name in unique_names:
             if estim_name in ["b", "r", "f"]:
                 col_index = pd.MultiIndex.from_product(
-                        [x_names, ['Dist', 'Corr', 'Pval']])
+                        [x_names, ['Dist', 'Corr', 'Pval'],
+                            ['Mean', 'STD']])
 
                 df = pd.DataFrame("-", index=row_index,
                         columns=col_index)
@@ -1244,11 +1269,11 @@ def summarize_sampled_estimates(
                         #print(exp_scores[0][estim_name].shape)
                         if estim_name in exp_scores[0]:
                             scores = np.array([exp_scores[d][
-                                estim_name].mean((0, 1))\
+                                estim_name] 
                                 for d in range(nb_data)])
-                            #print("scores {}".format(
-                            #    scores.shape))
-                            #[nb_data, estim shape]
+                            #print(c_name, scores.shape)
+                            #[nb_data, nb_fit_reps, 
+                            # nb_samples, estim_shape]
 
                             sim_param = sim_param_exps[
                                 exp_names[c]][estim_name]
@@ -1256,24 +1281,33 @@ def summarize_sampled_estimates(
                             #    sim_param.shape))
                             #[nb_data, estim shape]
 
-                            # euclidean distance averaged by
-                            # nb_data
+                            # euclidean distance
                             dist = np.linalg.norm(
-                                    sim_param - scores, 
-                                    axis=-1).mean() 
+                                sim_param.reshape(
+                                    nb_data,1,1,-1) - scores,
+                                axis=-1)
 
-                            df[x_names[c],"Dist"].loc[c_name]=\
-                                    dist
+                            df[x_names[c],"Dist","Mean"].loc[
+                                    c_name] = dist.mean()
+                            df[x_names[c],"Dist","STD"].loc[
+                                    c_name] = dist.std()
 
                             # correlation
                             corrs, pvals = compute_corr(
-                                sim_param,scores.reshape(
-                                    nb_data, 1, 1, -1))
+                                sim_param, scores) 
+                            #print("corrs", corrs.shape)
+                            #[nb_data, nb_fit_reps, nb_samples]
 
-                            df[x_names[c],"Corr"].loc[c_name]=\
-                                corrs.mean()
-                            df[x_names[c],"Pval"].loc[c_name]=\
-                                "{:.4e}".format(pvals.mean())
+                            df[x_names[c],"Corr", "Mean"].loc[
+                                    c_name] = corrs.mean()
+                            df[x_names[c],"Corr", "STD"].loc[
+                                    c_name] = corrs.std()
+                            df[x_names[c],"Pval","Mean"].loc[
+                                    c_name] = "{:.4e}".format(
+                                            pvals.mean())
+                            df[x_names[c],"Pval","STD"].loc[
+                                    c_name] = "{:.4e}".format(
+                                            pvals.std())
 
             elif estim_name in ["t", "k"]:
                 col_index = pd.MultiIndex.from_product(
@@ -1283,7 +1317,6 @@ def summarize_sampled_estimates(
                         columns=col_index)
 
                 for c_name in combins:
-                    #exp_names = combins[c_name]
                     for c, exp_scores in \
                             enumerate(sample_combins[c_name]):
                         if estim_name in exp_scores:

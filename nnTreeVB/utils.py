@@ -1,5 +1,3 @@
-from nnTreeVB.data import SeqCollection 
-
 import copy
 import time
 import math
@@ -272,13 +270,6 @@ def str2values(chaine, nb_repeat=1, sep=",", cast=None):
     if len(values)==1 : values = values * nb_repeat
 
     return values
-
-def fasta2list(fasta_file, verbose=False):
-    # fetch sequences from fasta
-    if verbose: print("Fetching sequences from {}".format(
-        fasta_file))
-    seqRec_list = SeqCollection.read_bio_file(fasta_file)
-    return [str(seqRec.seq._data) for seqRec in seqRec_list] 
 
 def dictLists2combinations(data):
     keys, values = zip(*data.items())

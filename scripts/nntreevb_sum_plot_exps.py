@@ -90,7 +90,8 @@ if __name__ == '__main__':
 
     now_str = datetime.now().strftime("%H%M") 
     output_sum = os.path.join(output_dir,
-            "summarize_{}".format(now_str))
+            "summarize")
+            #"summarize_{}".format(now_str))
     makedirs(output_sum, mode=0o700, exist_ok=True)
 
     #

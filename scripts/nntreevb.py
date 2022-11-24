@@ -392,13 +392,6 @@ if __name__ == "__main__":
         if dat.real_params:
             # real_params_np will be used to compare with
             # estimated parameters
-            #real_params_np = [dict_to_numpy(dict(
-            #    b=post_branches[i],
-            #    t=np.sum(post_branches[i], keepdims=1),
-            #    r=dat.sim_rates[i],
-            #    f=dat.sim_freqs[i],
-            #    k=dat.sim_kappa[i]))\
-            #            for i in range(nb_data)]
 
             real_params_np = dict_to_numpy(dict(
                 b=post_branches,
@@ -408,12 +401,6 @@ if __name__ == "__main__":
                 k=dat.sim_kappa))
 
             result_data["real_params"] = real_params_np
-
-            #real_params_tensor = [dict_to_tensor(
-            #        real_params_np[i],
-            #        device=device,
-            #        dtype=torch.float32)
-            #                for i in range(nb_data)]
 
             real_params_tensor = [dict_to_tensor(dict(
                 b=post_branches[i],
