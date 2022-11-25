@@ -68,7 +68,7 @@ if __name__ == '__main__':
     report_n_epochs = config.getint("evaluation",
             "report_n_epochs", fallback=max_iter)
     nb_parallel = config.getint("settings", "nb_parallel",
-            fallback=1)
+            fallback=4)
     verbose = check_verbose(config.get("settings", "verbose",
         fallback=1))
 

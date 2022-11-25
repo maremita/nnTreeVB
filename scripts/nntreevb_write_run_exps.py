@@ -94,6 +94,9 @@ if __name__ == '__main__':
 
     max_iter = config.get("evaluation", "max_iter")
 
+    nb_parallel = config.getint("evaluation", "nb_parallel",
+            fallback=4)
+
     evaluations = json.loads(config.get("evaluation",
         "evaluations"))
 
@@ -131,6 +134,7 @@ if __name__ == '__main__':
     config.set("io", "scores_from_file", scores_from_file)
  
     config.set("hyperparams", "max_iter", max_iter)
+    config.set("settings", "nb_parallel", nb_parallel)
 
     # config gpu
     set_gpu = ""
