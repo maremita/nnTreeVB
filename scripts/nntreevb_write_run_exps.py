@@ -134,7 +134,7 @@ if __name__ == '__main__':
     config.set("io", "scores_from_file", scores_from_file)
  
     config.set("hyperparams", "max_iter", max_iter)
-    config.set("settings", "nb_parallel", nb_parallel)
+    config.set("settings", "nb_parallel", str(nb_parallel))
 
     # config gpu
     set_gpu = ""

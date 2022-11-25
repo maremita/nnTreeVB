@@ -1251,7 +1251,8 @@ def summarize_sampled_estimates(
 
                 for c_name in combins:
                     exp_names = combins[c_name]
-     
+                    #print(exp_names)
+
                     for c, exp_scores in \
                             enumerate(sample_combins[c_name]):
 
@@ -1312,6 +1313,7 @@ def summarize_sampled_estimates(
                         columns=col_index)
 
                 for c_name in combins:
+                    exp_names = combins[c_name]
                     for c, exp_scores in \
                             enumerate(sample_combins[c_name]):
                         if estim_name in exp_scores[0]:
@@ -1328,7 +1330,7 @@ def summarize_sampled_estimates(
                             df[x_names[c],"STD"].loc[
                                     c_name] = scores.std()
                             df[x_names[c],"Real"].loc[
-                                    c_name] = sim_param.mean() 
+                                    c_name] = sim_param.mean()
 
             estim_dict[estim_names[estim_name]] = df
 
