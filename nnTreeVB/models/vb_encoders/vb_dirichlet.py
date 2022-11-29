@@ -33,7 +33,7 @@ class VB_Dirichlet(nn.Module):
 
         # init parameters initialization
         self.input = init_parameters(self.init_params,
-                self.nb_params)
+                self.nb_params, in_shape[:-1])
 
         # Dist parameters transforms
         self.tr_to_alphas_constr = transform_to(
@@ -43,8 +43,7 @@ class VB_Dirichlet(nn.Module):
         # transform the initial values from constrained to
         # unconstrained space
         init_alphas_unconstr = self.tr_to_alphas_constr.inv(
-                self.input.repeat(
-                    [*self.in_shape[:-1],1])).to(self.device_)
+                self.input).to(self.device_)
 
         # Initialize the parameters of the distribution
         if self.learn_params:
@@ -103,10 +102,7 @@ class VB_Dirichlet_NN(nn.Module):
 
         # Input of the neural network
         self.input = init_parameters(self.init_params,
-                self.nb_params)
-
-        self.input = self.input.repeat(
-                [*self.in_shape[:-1],1]).to(self.device_)
+                self.nb_params, in_shape[:-1]).to(self.device_)
 
         self.net = build_neuralnet(
             self.in_dim,

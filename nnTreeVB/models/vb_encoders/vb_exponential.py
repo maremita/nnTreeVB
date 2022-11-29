@@ -45,18 +45,17 @@ class VB_Exponential(nn.Module):
 
         # init parameters initialization
         self.input = init_parameters(self.init_params,
-                self.nb_params)
+                self.nb_params, self.in_shape)
 
         # Dist parameters transforms
         self.tr_to_rate_constr = transform_to(
                 Exponential.arg_constraints['rate'])
-        
+ 
         # Pay attention here, we use inverse transforms to 
         # transform the initial values from constrained to
         # unconstrained space
         init_rate_unconstr = self.tr_to_rate_constr.inv(
-                self.input[0].repeat(
-                    [*self.in_shape])).to(self.device_)
+                self.input[...,0]).to(self.device_)
 
         # Initialize the parameters of the distribution
         if self.learn_params:
@@ -133,11 +132,8 @@ class VB_Exponential_NN(nn.Module):
 
         # Input of the neural network
         self.input = init_parameters(self.init_params,
-                self.nb_params)
+                self.nb_params, self.in_shape)
  
-        self.input = self.input.repeat(
-                [*self.in_shape, 1]).to(self.device_)
-
         # Construct the neural networks
         self.net_rate = build_neuralnet(
             self.in_dim,

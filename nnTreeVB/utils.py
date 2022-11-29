@@ -172,7 +172,7 @@ def build_neuralnet(
 
     return nn.Sequential(*layers)
 
-def init_parameters(init_params, nb_params):
+def init_parameters(init_params, nb_params, in_shape):
     if isinstance(init_params, (list)):
         # For example if freqs are represented by dirichlet(1)
         # we replicate init_params into 4 params
@@ -184,6 +184,8 @@ def init_parameters(init_params, nb_params):
         init_input = torch.tensor(init_params)
     else:
         init_input = torch.ones(nb_params)
+
+    init_input = init_input.repeat([*in_shape, 1])
 
     if init_params == "uniform":
         init_input = init_input.uniform_()

@@ -44,20 +44,18 @@ class VB_LogNormal(nn.Module):
 
         # init parameters initialization
         self.input = init_parameters(self.init_params,
-                self.nb_params)
+                self.nb_params, self.in_shape).to(self.device_)
 
         # Distr parameters transforms
         self.tr_to_sigma_constr = transform_to(
                 LogNormal.arg_constraints['scale'])
 
-        init_mu = self.input[0].repeat(
-                [*self.in_shape]).to(self.device_)
+        init_mu = self.input[...,0]
         # Pay attention here, we use inverse transforms to 
         # transform the initial values from constrained to
         # unconstrained space
         init_sigma_unconstr = self.tr_to_sigma_constr.inv(
-                self.input[1].repeat(
-                    [*self.in_shape])).to(self.device_)
+                self.input[...,1])
 
         # Initialize the parameters of the distribution
         if self.learn_params:
@@ -138,10 +136,7 @@ class VB_LogNormal_NN(nn.Module):
 
         # Input of the neural network
         self.input = init_parameters(self.init_params,
-                self.nb_params)
-
-        self.input = self.input.repeat(
-                [*self.in_shape, 1]).to(self.device_)
+                self.nb_params, self.in_shape).to(self.device_)
 
         # Construct the neural networks
         self.net_mu = build_neuralnet(

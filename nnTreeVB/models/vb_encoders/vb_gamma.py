@@ -45,7 +45,7 @@ class VB_Gamma(nn.Module):
 
         # init parameters initialization
         self.input = init_parameters(self.init_params,
-                self.nb_params)
+                self.nb_params, self.in_shape).to(self.device_)
 
         # Dist parameters transforms
         self.tr_to_alpha_constr = transform_to(
@@ -58,11 +58,9 @@ class VB_Gamma(nn.Module):
         # transform the initial values from constrained to
         # unconstrained space
         init_alpha_unconstr = self.tr_to_alpha_constr.inv(
-                self.input[0].repeat(
-                    [*self.in_shape])).to(self.device_)
+                self.input[...,0])
         init_beta_unconstr = self.tr_to_beta_constr.inv(
-                self.input[1].repeat(
-                    [*self.in_shape])).to(self.device_)
+                self.input[...,1])
 
         # Initialize the parameters of the distribution
         if self.learn_params:
@@ -146,10 +144,7 @@ class VB_Gamma_NN(nn.Module):
 
         # Input of the neural network
         self.input = init_parameters(self.init_params,
-                self.nb_params)
- 
-        self.input = self.input.repeat(
-                [*self.in_shape, 1]).to(self.device_)
+                self.nb_params, self.in_shape).to(self.device_)
 
         # Construct the neural networks
         self.net_alpha = build_neuralnet(
