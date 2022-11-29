@@ -1,8 +1,6 @@
 from .utils import set_postorder_ranks
 from nnTreeVB.utils import temp_random_seed
 
-import random 
-
 from pyvolve import read_tree, Model, Partition, Evolver
 from ete3 import Tree
 
