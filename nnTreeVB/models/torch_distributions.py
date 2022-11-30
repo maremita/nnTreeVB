@@ -17,7 +17,7 @@ torch_dist_names = [
 def build_torch_distribution(
         dist_type:str,
         dist_params:list,
-        dtype:torch.dtype = torch.float64)->TorchDistribution:
+        dtype:torch.dtype = torch.float32)->TorchDistribution:
  
     build_dist = {
         "normal":build_Normal,
@@ -34,7 +34,7 @@ def build_torch_distribution(
 
 def build_Normal(
         params: list,
-        dtype:torch.dtype = torch.float64)->TorchDistribution:
+        dtype:torch.dtype = torch.float32)->TorchDistribution:
 
     dist_params = torch.tensor(params, dtype=dtype)
 
@@ -48,7 +48,7 @@ def build_Normal(
 
 def build_LogNormal(
         params: list,
-        dtype:torch.dtype = torch.float64)->TorchDistribution:
+        dtype:torch.dtype = torch.float32)->TorchDistribution:
 
     dist_params = torch.tensor(params, dtype=dtype)
 
@@ -62,7 +62,7 @@ def build_LogNormal(
 
 def build_Gamma(
         params: list,
-        dtype:torch.dtype = torch.float64)->TorchDistribution:
+        dtype:torch.dtype = torch.float32)->TorchDistribution:
 
     dist_params = torch.tensor(params, dtype=dtype)
 
@@ -76,7 +76,7 @@ def build_Gamma(
 
 def build_Dirichlet(
         params: list,
-        dtype:torch.dtype = torch.float64)->TorchDistribution:
+        dtype:torch.dtype = torch.float32)->TorchDistribution:
 
     dist_params = torch.tensor(params, dtype=dtype)
 
@@ -85,7 +85,7 @@ def build_Dirichlet(
 
 def build_Categorical(
         params: list,
-        dtype:torch.dtype = torch.float64)->TorchDistribution:
+        dtype:torch.dtype = torch.float32)->TorchDistribution:
 
     dist_params = torch.tensor(params, dtype=dtype)
 
@@ -95,7 +95,7 @@ def build_Categorical(
 
 def build_Exponential(
         params: list,
-        dtype:torch.dtype = torch.float64)->TorchDistribution:
+        dtype:torch.dtype = torch.float32)->TorchDistribution:
 
     dist_params = torch.tensor(params, dtype=dtype)
 
@@ -105,7 +105,7 @@ def build_Exponential(
 
 def build_Uniform(
         params: list,
-        dtype:torch.dtype = torch.float64)->TorchDistribution:
+        dtype:torch.dtype = torch.float32)->TorchDistribution:
 
     dist_params = torch.tensor(params, dtype=dtype)
 

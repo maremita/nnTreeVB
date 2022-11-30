@@ -21,7 +21,8 @@ class VB_Gamma(nn.Module):
             learn_params: bool = True,
             # Sample biject transformation
             transform_dist: TorchTransform = None,
-            device=torch.device("cpu")):
+            device=torch.device("cpu"),
+            dtype=torch.float32):
 
         super().__init__()
 
@@ -42,10 +43,13 @@ class VB_Gamma(nn.Module):
         self.init_params = init_params
         self.learn_params = learn_params
         self.device_ = device
+        self.dtype_ = dtype
 
         # init parameters initialization
         self.input = init_parameters(self.init_params,
-                self.nb_params, self.in_shape).to(self.device_)
+                self.nb_params, self.in_shape).to(
+                        device=self.device_,
+                        dtype=self.dtype_)
 
         # Dist parameters transforms
         self.tr_to_alpha_constr = transform_to(
@@ -111,7 +115,8 @@ class VB_Gamma_NN(nn.Module):
             bias_layers: bool = True,
             activ_layers: str = "relu",# relu, tanh, or False
             dropout_layers: float = 0.,
-            device=torch.device("cpu")):
+            device=torch.device("cpu"),
+            dtype=torch.float32):
 
         super().__init__()
 
@@ -141,10 +146,13 @@ class VB_Gamma_NN(nn.Module):
         self.activ_layers = activ_layers
         self.dropout = dropout_layers 
         self.device_ = device
+        self.dtype_ = dtype
 
         # Input of the neural network
         self.input = init_parameters(self.init_params,
-                self.nb_params, self.in_shape).to(self.device_)
+                self.nb_params, self.in_shape).to(
+                        device=self.device_,
+                        dtype=self.dtype_)
 
         # Construct the neural networks
         self.net_alpha = build_neuralnet(
@@ -156,7 +164,8 @@ class VB_Gamma_NN(nn.Module):
             self.activ_layers,
             self.dropout,
             nn.Softplus(),
-            self.device_)
+            self.device_,
+            self.dtype_)
 
         self.net_beta = build_neuralnet(
             self.in_dim,
@@ -167,7 +176,8 @@ class VB_Gamma_NN(nn.Module):
             self.activ_layers,
             self.dropout,
             nn.Softplus(),
-            self.device_)
+            self.device_,
+            self.dtype_)
 
         if not self.learn_params:
             freeze_model_params(self.net_alpha)

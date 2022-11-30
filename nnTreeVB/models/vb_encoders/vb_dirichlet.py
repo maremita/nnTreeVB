@@ -18,7 +18,8 @@ class VB_Dirichlet(nn.Module):
             # list of floats, "uniform", "normal" or False
             init_params: Union[list, str, bool] = False,
             learn_params: bool = True,
-            device=torch.device("cpu")):
+            device=torch.device("cpu"),
+            dtype=torch.float32):
 
         super().__init__()
 
@@ -30,6 +31,7 @@ class VB_Dirichlet(nn.Module):
         self.init_params = init_params
         self.learn_params = learn_params
         self.device_ = device
+        self.dtype_ = dtype
 
         # init parameters initialization
         self.input = init_parameters(self.init_params,
@@ -43,7 +45,9 @@ class VB_Dirichlet(nn.Module):
         # transform the initial values from constrained to
         # unconstrained space
         init_alphas_unconstr = self.tr_to_alphas_constr.inv(
-                self.input).to(self.device_)
+                self.input).to(
+                        device=self.device_,
+                        dtype=self.dtype_)
 
         # Initialize the parameters of the distribution
         if self.learn_params:
@@ -79,7 +83,8 @@ class VB_Dirichlet_NN(nn.Module):
             bias_layers: bool = True,
             activ_layers: str = "relu",# relu, tanh, or False
             dropout_layers: float = 0.,
-            device=torch.device("cpu")):
+            device=torch.device("cpu"),
+            dtype=torch.float32):
 
         super().__init__()
 
@@ -99,10 +104,13 @@ class VB_Dirichlet_NN(nn.Module):
         self.activ_layers = activ_layers
         self.dropout = dropout_layers
         self.device_ = device
+        self.dtype_ = dtype
 
         # Input of the neural network
         self.input = init_parameters(self.init_params,
-                self.nb_params, in_shape[:-1]).to(self.device_)
+                self.nb_params, in_shape[:-1]).to(
+                        device=self.device_,
+                        dtype=self.dtype_)
 
         self.net = build_neuralnet(
             self.in_dim,
@@ -113,7 +121,8 @@ class VB_Dirichlet_NN(nn.Module):
             self.activ_layers,
             self.dropout,
             nn.Softplus(),
-            self.device_)
+            self.device_,
+            self.dtype_)
 
         if not self.learn_params:
             freeze_model_params(self.net)
@@ -141,7 +150,8 @@ class VB_Dirichlet_NNX(nn.Module):
             bias_layers: bool = True,
             activ_layers: str = "relu",# relu, tanh, or False
             dropout_layers: float = 0.,
-            device=torch.device("cpu")):
+            device=torch.device("cpu"),
+            dtype=torch.float32):
 
         super().__init__()
 
@@ -160,6 +170,7 @@ class VB_Dirichlet_NNX(nn.Module):
         self.activ_layers = activ_layers
         self.dropout = dropout_layers
         self.device_ = device
+        self.dtype_ = dtype
 
         self.net = build_neuralnet(
             self.in_dim,
@@ -170,7 +181,8 @@ class VB_Dirichlet_NNX(nn.Module):
             self.activ_layers,
             self.dropout,
             nn.Softplus(),
-            self.device_)
+            self.device_,
+            self.dtype_)
 
         if not self.learn_params:
             freeze_model_params(self.net)

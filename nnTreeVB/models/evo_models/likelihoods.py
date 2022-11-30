@@ -1,4 +1,3 @@
-#from nnTreeVB.models.evo_models import build_transition_matrix
 from .matrices import build_transition_matrix
 
 import torch
@@ -177,12 +176,13 @@ def compute_log_likelihood(
         tm_args,
         pi,
         rescaled_algo=False,
-        device=torch.device("cpu")):
+        device=torch.device("cpu"),
+        dtype=torch.float32):
 
         logl_algo = pruning
         if rescaled_algo: logl_algo = pruning_rescaled
 
         tm = build_transition_matrix(subs_model, tm_args,
-                device=device)
+                device=device, dtype=dtype)
 
         return logl_algo(arbre, x, tm, pi)

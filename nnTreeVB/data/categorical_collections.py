@@ -100,7 +100,10 @@ class BaseCollection(ABC):
 # For variable lengh sequences (unaligned)
 class FullNucCatCollection(BaseCollection):
 
-    def __init__(self, sequences, nuc_cat=True, dtype=np.float32):
+    def __init__(self,
+            sequences,
+            nuc_cat=True,
+            dtype=np.float32):
 
         if nuc_cat:
             self.nuc2rep = nuc2cat
@@ -130,7 +133,9 @@ class FullNucCatCollection(BaseCollection):
 # For aligned sequences (same length)
 class MSANucCatCollection(BaseCollection):
 
-    def __init__(self, sequences, nuc_cat=True,
+    def __init__(self,
+            sequences,
+            nuc_cat=True,
             dtype=np.float32):
 
         if nuc_cat: 
@@ -146,7 +151,7 @@ class MSANucCatCollection(BaseCollection):
         self.msa_len = len(sequences[0])
         self.nbseqs = len(sequences)
         self.ids = []
-        self.data = np.zeros((self.msa_len, self.nbseqs,4 ),
+        self.data = np.zeros((self.msa_len, self.nbseqs, 4),
                 dtype=self.dtype)
         self._compute_representations(sequences)
 

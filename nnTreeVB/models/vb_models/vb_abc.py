@@ -30,7 +30,8 @@ class BaseTreeVB(ABC):
         with torch.no_grad():
             if X_counts == None:
                 X_counts = torch.ones(X.shape[0]).to(
-                        self.device_)
+                        device=self.device_,
+                        dtype=self.dtype_)
             ret_dict = self(
                     X,
                     X_counts,

@@ -189,6 +189,18 @@ if __name__ == "__main__":
     config.set("settings", "device", device)
     device = torch.device(device)
 
+    # dtype configuration
+    # ########################
+    np_dtype = np.float32
+    torch_dtype = torch.float32
+
+    if stg.dtype == "float64":
+        np_dtype = np.float64
+        torch_dtype = torch.float64
+
+    if verbose:
+        print("\tDtype set to {}".format(stg.dtype))
+
     ## output path 
     ## ###########
     output_path = os.path.join(io.output_path,
@@ -388,7 +400,8 @@ if __name__ == "__main__":
 
         # Transform fitting sequences
         x_data = [torch.from_numpy(build_msa_categorical(
-            treeseqs[i], nuc_cat=False).data).to(device) \
+            treeseqs[i], nuc_cat=False, 
+            dtype=np_dtype).data).to(device) \
                     for i in range(nb_data)]
         x_patterns = [x_data[i].unique(dim=0, 
                 return_counts=True) for i in range(nb_data)]
@@ -402,7 +415,7 @@ if __name__ == "__main__":
                 t=np.sum(post_branches, axis=1, keepdims=1),
                 r=dat.sim_rates,
                 f=dat.sim_freqs,
-                k=dat.sim_kappa))
+                k=dat.sim_kappa), dtype=np_dtype)
 
             result_data["real_params"] = real_params_np
 
@@ -412,7 +425,7 @@ if __name__ == "__main__":
                 r=dat.sim_rates[i],
                 f=dat.sim_freqs[i],
                 k=dat.sim_kappa[i]),
-                device=device, dtype=torch.float32)\
+                device=device, dtype=torch_dtype)\
                         for i in range(nb_data)]
 
             for i in range(nb_data):
@@ -435,9 +448,10 @@ if __name__ == "__main__":
                             real_params_tensor[i],
                             torch.tensor(
                                 [dat.sim_freqs[i]]).to(
-                                device=device),
+                                device=device,
+                                dtype=torch_dtype),
                             rescaled_algo=True, 
-                            device=device)\
+                            device=device, dtype=torch_dtype)\
                                 *X_counts).sum().cpu().numpy()
 
                     logls.append(logl_data)
@@ -460,10 +474,11 @@ if __name__ == "__main__":
         if verbose: print()
         ## Evo model type
         ## ##############
-        EvoModelClass = VB_nnTree         
+        EvoModelClass = VB_nnTree
 
         model_arg = {
                 "device":device,
+                "dtype":torch_dtype,
                 **mdl.to_dict()
                 }
 
@@ -506,7 +521,6 @@ if __name__ == "__main__":
 
     if "b_names" in result_data and post_branche_names is None:
         post_branche_names = result_data["b_names"]
-
 
     ## Report and plot results
     ## #######################

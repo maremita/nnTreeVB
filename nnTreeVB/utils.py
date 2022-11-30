@@ -134,7 +134,8 @@ def build_neuralnet(
         activ_layers,
         dropout,
         last_layers, #nn.Softplus() for example
-        device):
+        device,
+        dtype):
 
     if activ_layers == "relu":
         activation = nn.ReLU
@@ -152,20 +153,20 @@ def build_neuralnet(
 
     # Construct the neural network
     layers = [nn.Linear(in_dim, h_dim,
-        bias=bias_layers).to(device)]
+        bias=bias_layers).to(device=device, dtype=dtype)]
     if activ_layers: layers.append(activation())
     if dropout: layers.append(
             nn.Dropout(p=dropout))
 
     for i in range(1, nb_layers-1):
         layers.extend([nn.Linear(h_dim, h_dim,
-            bias=bias_layers).to(device)])
+            bias=bias_layers).to(device=device, dtype=dtype)])
         if activ_layers: layers.append(activation())
         if dropout: layers.append(
                 nn.Dropout(p=dropout))
 
     layers.extend([nn.Linear(h_dim, out_dim,
-        bias=bias_layers).to(device)])
+        bias=bias_layers).to(device=device, dtype=dtype)])
 
     if last_layers is not None:
         layers.extend([last_layers])
@@ -194,23 +195,31 @@ def init_parameters(init_params, nb_params, in_shape):
 
     return init_input
 
-def sum_kls(kls, device=torch.device("cpu")):
-    sumkls = torch.zeros(1).to(device)
+def sum_kls(
+        kls,
+        device=torch.device("cpu"),
+        dtype=torch.float32):
+    sumkls = torch.zeros(1).to(device=device, dtype=dtype)
 
     for kl in kls:
         sumkls += kl.sum()
 
     return sumkls
 
-def sum_log_probs(log_probs, sample_size, sum_by_samples=True,
-        device=torch.device("cpu")):
+def sum_log_probs(
+        log_probs,
+        sample_size, 
+        sum_by_samples=True,
+        device=torch.device("cpu"),
+        dtype=torch.float32):
 
     nb_s_dim = len(sample_size)
 
     if sum_by_samples:
-        joint = torch.zeros(sample_size).to(device)
+        joint = torch.zeros(sample_size).to(
+                device=device, dtype=dtype)
     else:
-        joint = torch.zeros(1).to(device)
+        joint = torch.zeros(1).to(device=device, dtype=dtype)
 
     for log_p in log_probs:
         # Sum log probs by samples
@@ -457,19 +466,23 @@ def dict_to_cpu(some_dict):
 
     return new_dict
 
-def dict_to_numpy(some_dict):
+def dict_to_numpy(
+        some_dict,
+        dtype=np.float32):
     new_dict = dict()
 
     for key in some_dict:
         if isinstance(some_dict[key], torch.Tensor):
             new_dict[key] = some_dict[
-                    key].cpu().detach().numpy()
+                    key].cpu().detach().numpy().astype(dtype)
         elif isinstance(some_dict[key], list):
-            new_dict[key] = np.array(some_dict[key])
+            new_dict[key] = np.array(some_dict[key],
+                    dtype=dtype)
         elif isinstance(some_dict[key], (int, float)):
-            new_dict[key] = np.array([some_dict[key]])
+            new_dict[key] = np.array([some_dict[key]],
+                    dtype=dtype)
         elif isinstance(some_dict[key], np.ndarray):
-            new_dict[key] = some_dict[key]
+            new_dict[key] = some_dict[key].astype(dtype)
         else:
             raise ValueError("{} in dict_to_numpy() should be"\
                     " tensor, array, list, int or float")

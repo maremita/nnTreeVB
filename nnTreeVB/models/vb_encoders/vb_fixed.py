@@ -13,6 +13,7 @@ class Fixed(Distribution):
  
         self.data = data
         self.device_ = data.device
+        self.dtype_ = data.dtype
 
     def rsample(
             self, 
@@ -34,12 +35,14 @@ class Fixed(Distribution):
         return samples
  
     def log_prob(self, samples):
-        return torch.zeros(1).to(self.device_)
+        return torch.zeros(1).to(
+                        device=self.device_,
+                        dtype=self.dtype_)
 
 
 @register_kl(Fixed, Fixed)
 def kl_fixed_fixed(p, q):
-    return torch.zeros(1).to(p.device)
+    return torch.zeros(1).to(device=p.device, dtype=p.dtype)
 
 
 class VB_Fixed(nn.Module):
@@ -57,6 +60,7 @@ class VB_Fixed(nn.Module):
         self.data = init_params
         self.learn_params = False
         self.device_ = device
+        self.dtype_ = dtype
 
         if isinstance(self.data, list):
             self.data = torch.tensor(self.data)
@@ -65,7 +69,10 @@ class VB_Fixed(nn.Module):
                     " tensor in Fixed dist".format(self.data))
 
         if self.data.device != self.device_:
-            self.data = self.data.to(self.device_)
+            self.data = self.data.to(device=self.device_)
+        
+        if self.data.dtype != self.dtype_:
+            self.data = self.data.to(dtype=self.dtype_)
 
     def forward(self): 
         self.dist = Fixed(torch.Size(self.out_shape), 

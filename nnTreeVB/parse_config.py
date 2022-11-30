@@ -5,6 +5,7 @@ from nnTreeVB.checks import check_sim_blengths
 from nnTreeVB.checks import check_sim_simplex
 from nnTreeVB.checks import check_sim_float
 from nnTreeVB.checks import check_subs_model
+from nnTreeVB.checks import check_dtype
 #from nnTreeVB.checks import check_seed
 from nnTreeVB.checks import check_verbose
 from nnTreeVB.checks import check_prior_option
@@ -224,21 +225,23 @@ def parse_config(config_file):
 
     # setting parameters
     arg.stg = ArgObject()
-    arg.stg.nb_parallel = config.getint("settings", 
-            "nb_parallel", fallback=1)
+    arg.stg.nb_parallel = config.getint(
+        "settings", "nb_parallel", fallback=1)
     #arg.stg.seed = check_seed(config.get("settings", "seed",
     #        fallback=None))
-    arg.stg.device = config.get("settings", "device",
-            fallback="cpu")
-    arg.stg.verbose = check_verbose(config.get("settings", 
-        "verbose", fallback=1))
-    arg.stg.compress_files = config.getboolean("settings", 
-            "compress_files", fallback=False)
+    arg.stg.device = config.get(
+        "settings", "device", fallback="cpu")
+    arg.stg.dtype = check_dtype(config.get(
+        "settings", "dtype", fallback="float32"))
+    arg.stg.verbose = check_verbose(config.get(
+        "settings", "verbose", fallback=1))
+    arg.stg.compress_files = config.getboolean(
+        "settings", "compress_files", fallback=False)
 
     # plotting settings
     arg.plt = ArgObject()
-    arg.plt.size_font = config.getint("plotting", "size_font",
-            fallback=16)
+    arg.plt.size_font = config.getint("plotting",
+            "size_font", fallback=16)
     arg.plt.plt_usetex = config.getboolean("plotting",
             "plt_usetex", fallback=False)
     arg.plt.print_xtick_every = config.getint("plotting",

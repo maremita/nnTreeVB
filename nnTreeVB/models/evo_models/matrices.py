@@ -7,19 +7,28 @@ __author__ = "Amine Remita"
 # #############
 # JC69 matrices
 # #############
-def build_JC69_matrix(rate=1.0/3, device=torch.device("cpu")):
+def build_JC69_matrix(
+        rate=1.0/3,
+        device=torch.device("cpu"),
+        dtype=torch.float32):
 
-    rate_matrix = rate * torch.ones((4,4)).to(device)
+    rate_matrix = rate * torch.ones((4,4)).to(
+            device=device,
+            dtype=dtype)
 
     for i in range(4):
         rate_matrix[i,i] = -1.0
 
     return rate_matrix
 
-def build_JC69_transition_matrix(b,
-        device=torch.device("cpu")):
+def build_JC69_transition_matrix(
+        b,
+        device=torch.device("cpu"),
+        dtype=torch.float32):
 
-    rateM = build_JC69_matrix(device=device)
+    rateM = build_JC69_matrix(
+            device=device,
+            dtype=dtype)
     # print("rateM shape {}".format(rateM.shape))
     #[x_dim, x_dim]
     # print(rateM)
@@ -35,11 +44,14 @@ def build_JC69_transition_matrix(b,
 
     return tm
 
-
 # #############
 # K80 matrices
 # #############
-def build_K80_matrix(kappa, device=torch.device("cpu")):
+def build_K80_matrix(
+        kappa,
+        device=torch.device("cpu"),
+        dtype=torch.float32):
+
     #print("kappa shape {}".format(kappa.shape))
     #[sample_size, 1]
     sample_size = kappa.shape[:-1]
@@ -47,7 +59,8 @@ def build_K80_matrix(kappa, device=torch.device("cpu")):
     pA, pG, pC, pT = freqs
 
     rate_matrix = torch.zeros((*list(sample_size), 4, 4)).to(
-            device)
+            device=device,
+            dtype=dtype)
     #print(rate_matrix.shape) 
     #print(kappa[...,0])
 
@@ -77,10 +90,16 @@ def build_K80_matrix(kappa, device=torch.device("cpu")):
     return rate_matrix
 
 
-def build_K80_transition_matrix(b, kappa,
-        device=torch.device("cpu")):
+def build_K80_transition_matrix(
+        b,
+        kappa,
+        device=torch.device("cpu"),
+        dtype=torch.float32):
 
-    rateM = build_K80_matrix(kappa, device=device)
+    rateM = build_K80_matrix(
+            kappa,
+            device=device,
+            dtype=dtype)
     #print("rateM shape {}".format(rateM.shape))
     #[sample_size, x_dim, x_dim]
     # print(rateM)
@@ -95,11 +114,14 @@ def build_K80_transition_matrix(b, kappa,
 
     return tm
 
-
 # #############
 # HKY matrices
 # #############
-def build_HKY_matrix(freqs, kappa, device=torch.device("cpu")):
+def build_HKY_matrix(
+        freqs,
+        kappa,
+        device=torch.device("cpu"),
+        dtype=torch.float32):
     #print("kappa shape {}".format(kappa.shape))
     #[sample_size, 1]
 
@@ -113,7 +135,8 @@ def build_HKY_matrix(freqs, kappa, device=torch.device("cpu")):
     # [sample_size]
 
     rate_matrix = torch.zeros((*list(sample_size), 4, 4)).to(
-            device)
+            device=device,
+            dtype=dtype)
 
     for i in range(4):
         for j in range(4):
@@ -140,11 +163,18 @@ def build_HKY_matrix(freqs, kappa, device=torch.device("cpu")):
 
     return rate_matrix
 
-
-def build_HKY_transition_matrix(b, freqs, kappa,
-        device=torch.device("cpu")):
+def build_HKY_transition_matrix(
+        b,
+        freqs,
+        kappa,
+        device=torch.device("cpu"),
+        dtype=torch.float32):
     #print("b.shape {}".format(b.shape))
-    rateM = build_HKY_matrix(freqs, kappa, device=device)
+    rateM = build_HKY_matrix(
+            freqs,
+            kappa,
+            device=device,
+            dtype=dtype)
     #print("rateM shape {}".format(rateM.shape))
     #[sample_size, x_dim, x_dim]
     # print(rateM)
@@ -161,13 +191,16 @@ def build_HKY_transition_matrix(b, freqs, kappa,
 
     return tm
 
-
 # #############
 # GTR matrices
 # #############
 # Adapted from VBPI
 # https://github.com/zcrabbit/vbpi-nf/blob/main/code/rateMatrix.py
-def build_GTR_matrix(rates, freqs, device=torch.device("cpu")):
+def build_GTR_matrix(
+        rates, 
+        freqs, 
+        device=torch.device("cpu"),
+        dtype=torch.float32):
 
     # print("rates {}".format(rates.shape))
     # [sample_size, r_dim]
@@ -190,7 +223,8 @@ def build_GTR_matrix(rates, freqs, device=torch.device("cpu")):
     CT = rates[...,5]
  
     rate_matrix = torch.zeros((*list(sample_size), 4, 4)).to(
-            device)
+            device=device,
+            dtype=dtype)
 
     for i in range(4):
         for j in range(4):
@@ -236,13 +270,21 @@ def build_GTR_matrix(rates, freqs, device=torch.device("cpu")):
 
     return rate_matrix
 
-def build_GTR_transition_matrix(b, rates, freqs,
-        device=torch.device("cpu")):
+def build_GTR_transition_matrix(
+        b,
+        rates,
+        freqs,
+        device=torch.device("cpu"),
+        dtype=torch.float32):
     #print("\nb shape {}".format(b.shape))
     # [sample_size, b_dim]
     # print(b)
 
-    rateM = build_GTR_matrix(rates, freqs, device=device)
+    rateM = build_GTR_matrix(
+            rates,
+            freqs,
+            device=device,
+            dtype=dtype)
     #print("rateM shape {}".format(rateM.shape))
     #[sample_size, x_dim, x_dim]
     # print(rateM)
@@ -257,20 +299,26 @@ def build_GTR_transition_matrix(b, rates, freqs,
 
     return tm
 
-def build_transition_matrix(subs_model, args,
-        device=torch.device("cpu")):
+def build_transition_matrix(
+        subs_model,
+        args,
+        device=torch.device("cpu"),
+        dtype=torch.float32):
 
     if subs_model == "jc69":
         # args = {b}
-        tm = build_JC69_transition_matrix(b=args["b"],
-                device=device)
+        tm = build_JC69_transition_matrix(
+                b=args["b"],
+                device=device,
+                dtype=dtype)
 
     elif subs_model == "k80":
         # args = {b, kappa}
         tm = build_K80_transition_matrix(
                 b=args["b"],
                 kappa=args["k"],
-                device=device)
+                device=device,
+                dtype=dtype)
 
     elif subs_model == "hky":
         # args ={b, freqs, kappa}
@@ -278,7 +326,8 @@ def build_transition_matrix(subs_model, args,
                 b=args["b"],
                 freqs=args["f"],
                 kappa=args["k"],
-                device=device)
+                device=device,
+                dtype=dtype)
 
     elif subs_model == "gtr":
         # args = {b, rates, freqs}
@@ -286,7 +335,8 @@ def build_transition_matrix(subs_model, args,
                 b=args["b"],
                 rates=args["r"],
                 freqs=args["f"],
-                device=device)
+                device=device,
+                dtype=dtype)
 
     else:
         raise ValueError("Substitution model key {}"\

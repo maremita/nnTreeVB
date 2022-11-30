@@ -21,7 +21,8 @@ class VB_Exponential(nn.Module):
             learn_params: bool = True,
             # Sample biject transformation
             transform_dist: TorchTransform = None,
-            device=torch.device("cpu")):
+            device=torch.device("cpu"),
+            dtype=torch.float32):
 
         super().__init__()
 
@@ -42,6 +43,7 @@ class VB_Exponential(nn.Module):
         self.init_params = init_params
         self.learn_params = learn_params
         self.device_ = device
+        self.dtype_ = dtype
 
         # init parameters initialization
         self.input = init_parameters(self.init_params,
@@ -55,7 +57,9 @@ class VB_Exponential(nn.Module):
         # transform the initial values from constrained to
         # unconstrained space
         init_rate_unconstr = self.tr_to_rate_constr.inv(
-                self.input[...,0]).to(self.device_)
+                self.input[...,0]).to(
+                        device=self.device_,
+                        dtype=self.dtype_)
 
         # Initialize the parameters of the distribution
         if self.learn_params:
@@ -99,7 +103,8 @@ class VB_Exponential_NN(nn.Module):
             bias_layers: bool = True,
             activ_layers: str = "relu",# relu, tanh, or False
             dropout_layers: float = 0.,
-            device=torch.device("cpu")):
+            device=torch.device("cpu"),
+            dtype=torch.float32):
 
         super().__init__()
 
@@ -129,6 +134,7 @@ class VB_Exponential_NN(nn.Module):
         self.activ_layers = activ_layers
         self.dropout = dropout_layers 
         self.device_ = device
+        self.dtype_ = dtype
 
         # Input of the neural network
         self.input = init_parameters(self.init_params,
@@ -144,7 +150,8 @@ class VB_Exponential_NN(nn.Module):
             self.activ_layers,
             self.dropout,
             nn.Softplus(),
-            self.device_)
+            self.device_,
+            self.dtype_)
 
         if not self.learn_params:
             freeze_model_params(self.net_rate)

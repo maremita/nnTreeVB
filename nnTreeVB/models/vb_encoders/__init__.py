@@ -89,12 +89,14 @@ def build_vb_distribution(
         bias_layers: bool = True,    # True or False
         activ_layers: str = "relu",  # relu, tanh, or False
         dropout_layers:float = 0.,
-        device: torch.device = torch.device("cpu")):
+        device: torch.device = torch.device("cpu"),
+        dtype = torch.float32):
 
     distribution = get_distribution(dist_type)
 
     dist_args = dict(
-            device=device)
+            device=device,
+            dtype=dtype)
 
     if init_params is not False:
         dist_args.update(

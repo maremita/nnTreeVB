@@ -104,7 +104,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             bias_layers=True,     # True or False
             activ_layers="relu",  # relu, tanh, or False
             dropout_layers=0.,
-            device=torch.device("cpu")):
+            device=torch.device("cpu"),
+            dtype=torch.float32):
  
         super().__init__()
 
@@ -120,6 +121,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
         self.subs_model = subs_model
         self.device_ = device
+        self.dtype_ = dtype
 
         common_args = dict(
                 h_dim=h_dim,
@@ -127,7 +129,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                 bias_layers=bias_layers,
                 activ_layers=activ_layers,
                 dropout_layers=dropout_layers,
-                device=self.device_)
+                device=self.device_,
+                dtype=self.dtype_)
 
         self.b_compound = False
         if "dirichlet" in b_var_dist:
@@ -292,7 +295,9 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
         #
         pi = (torch.ones(4)/4).expand(
-                [*list(sample_size), 4]).to(self.device_)
+                [*list(sample_size), 4]).to(
+                        device=self.device_,
+                        dtype=self.dtype_)
         tm_args = dict()
 
         # Sum joint log probs by samples [True] or 
@@ -415,10 +420,13 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
         # Compute joint logprior, logq and kl
         logprior = sum_log_probs(logpriors, sample_size,
-                sum_by_samples, device=self.device_)
+                sum_by_samples, device=self.device_,
+                dtype=self.dtype_)
         logq = sum_log_probs(logqs, sample_size,
-                sum_by_samples,device=self.device_)
-        kl_qprior = sum_kls(kl_qpriors, device=self.device_)
+                sum_by_samples,device=self.device_,
+                dtype=self.dtype_)
+        kl_qprior = sum_kls(kl_qpriors, device=self.device_,
+                dtype=self.dtype_)
 
         #print("logprior {}".format(logprior.shape))
         #print("logq {}".format(logq.shape))
@@ -433,7 +441,8 @@ class VB_nnTree(nn.Module, BaseTreeVB):
                 tm_args,
                 pi,
                 rescaled_algo=True,
-                device=self.device_) * site_counts
+                device=self.device_,
+                dtype=self.dtype_) * site_counts
 
         if sum_by_samples:
             logl = (logl).sum(-1)

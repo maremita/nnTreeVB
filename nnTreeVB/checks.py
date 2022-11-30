@@ -17,6 +17,17 @@ __author__ = "amine remita"
 Check funcitons
 """
 
+def check_dtype (dtype_str):
+    dtype = dtype_str.lower()
+
+    if not dtype in ["float32", "float64"]:
+        print("\n'{}' dtype is not valid.\n".format(dtype),
+                "Valid values are: float32 and float64\n",
+                "Dtype set to float32\n")
+        dtype="float32"
+
+    return dtype
+
 def check_subs_model(model_str):
     model = model_str.lower()
 
