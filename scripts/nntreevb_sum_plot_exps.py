@@ -4,7 +4,8 @@ from nnTreeVB import __version__ as _version
 from nnTreeVB.reports import aggregate_estimate_values
 from nnTreeVB.reports import aggregate_sampled_estimates
 from nnTreeVB.reports import summarize_sampled_estimates
-from nnTreeVB.reports import plot_probs_distances_correlations
+from nnTreeVB.reports import plot_elbos_lls_kls
+from nnTreeVB.reports import plot_distances_correlations
 from nnTreeVB.utils import dictLists2combinations
 from nnTreeVB.checks import check_verbose
 
@@ -67,11 +68,12 @@ if __name__ == '__main__':
     max_iter = config.getint("evaluation", "max_iter")
     report_n_epochs = config.getint("evaluation",
             "report_n_epochs", fallback=max_iter)
+    save_fit_history = config.getboolean(
+            "hyperparams", "save_fit_history", fallback=False)
     nb_parallel = config.getint("settings", "nb_parallel",
             fallback=4)
     verbose = check_verbose(config.get("settings", "verbose",
         fallback=1))
-
     print_xtick_every = config.getint("plotting",
             "print_xtick_every", fallback=100)
     size_font = config.getint("plotting", "size_font",
@@ -143,12 +145,16 @@ if __name__ == '__main__':
         else:
             logl_data_exps[exp_name]=None
 
-        estimates_exps[exp_name] = aggregate_estimate_values(
-                rep_results,
-                "{}_estimates".format(history),
-                report_n_epochs)
+        if save_fit_history:
+            estimates_exps[exp_name] =\
+                    aggregate_estimate_values(
+                        rep_results,
+                        "{}_estimates".format(history),
+                        report_n_epochs)
 
-        real_param_exps[exp_name] = result_data["real_params"]
+        if "real_params" in result_data:
+            real_param_exps[exp_name] =\
+                    result_data["real_params"]
 
         samples_exps[exp_name] = aggregate_sampled_estimates(
                 rep_results, "samples")
@@ -183,14 +189,73 @@ if __name__ == '__main__':
         lvs = list(logl_data_combins.values())
         if lvs.count(None) == len(lvs): logl_data_combins=None
 
-        # Get the estimates results for each case
-        estim_combins = {c:[estimates_exps[x] for x in\
-                combins[c]] for c in combins}
+        # Plot estimate distances and correlations for each
+        # unique case 
+        print("\tPloting elbos, logls and kls...")
 
+        parallel = Parallel(n_jobs=nb_parallel, 
+                prefer="processes", verbose=verbose)
+
+        parallel(delayed(plot_elbos_lls_kls)(
+            prob_combins[combin],
+            combins[combin],
+            x_names,
+            #
+            out_file=os.path.join(output_case,
+                "{}_probs_fig_itr{}".format(combin, 
+                    report_n_epochs)),
+            lines=logl_data_combins[combin],
+            title=None,
+            legend=legend_elbo,
+            #
+            plot_validation=False,
+            usetex=plt_usetex,
+            sizefont=size_font,
+            print_xtick_every=print_xtick_every) \
+                    for combin in combins)
+
+        if save_fit_history:
+            # Get the estimates results for each case
+            estim_combins = {c:[estimates_exps[x] for x in\
+                    combins[c]] for c in combins}
+
+            # Plot estimate distances and correlations for each
+            # unique case 
+            print("\tPloting distances and correlations...")
+
+            parallel = Parallel(n_jobs=nb_parallel, 
+                    prefer="processes", verbose=verbose)
+
+            parallel(delayed(plot_distances_correlations)(
+                estim_scores=estim_combins[combin],
+                exp_values=combins[combin],
+                x_names=x_names,
+                sim_param_exps=real_param_exps,
+                #
+                dist_out_file=os.path.join(output_case,
+                    "{}_estim_dist_itr{}".format(combin, 
+                        report_n_epochs)),
+                scaled_dist_out_file=os.path.join(output_case,
+                    "{}_estim_scaled_dist_itr{}".format(
+                        combin, report_n_epochs)),
+                dist_legend=legend_dist,
+                dist_title=None,
+                #
+                corr_out_file=os.path.join(output_case, 
+                    "{}_estim_corr_itr{}".format(combin,
+                        report_n_epochs)),
+                corr_legend=legend_corr,
+                corr_title=None,
+                #
+                usetex=plt_usetex,
+                sizefont=size_font,
+                print_xtick_every=print_xtick_every) \
+                        for combin in combins)
+
+        print("\tSummarizing probs and samplinge stimates...")
         sample_combins = {c:[samples_exps[x] for x in\
                 combins[c]] for c in combins}
 
-        print("\tSummarizing probs and samplinge stimates...")
         out_file = os.path.join(output_sum,
                 "{}_sampling".format(eval_code))
 
@@ -201,44 +266,3 @@ if __name__ == '__main__':
             real_param_exps,
             out_file,
             logl_data_combins)
-
-        # Plot estimate distances and correlations for each
-        # unique case 
-        print("\tPloting...")
-
-        parallel = Parallel(n_jobs=nb_parallel, 
-                prefer="processes", verbose=verbose)
-
-        parallel(delayed(plot_probs_distances_correlations)(
-            probs_scores=prob_combins[combin],
-            estim_scores=estim_combins[combin],
-            exp_values=combins[combin],
-            x_names=x_names,
-            sim_param_exps=real_param_exps,
-            #
-            prob_out_file=os.path.join(output_case,
-                "{}_probs_fig_itr{}".format(combin, 
-                    report_n_epochs)),
-            prob_lines=logl_data_combins[combin],
-            prob_title=None,
-            prob_legend=legend_elbo,
-            #
-            dist_out_file=os.path.join(output_case,
-                "{}_estim_dist_itr{}".format(combin, 
-                    report_n_epochs)),
-            dist_y_limits=[-0.1, 1.1],
-            dist_legend=legend_dist,
-            dist_title=None,
-            #
-            corr_out_file=os.path.join(output_case, 
-                "{}_estim_corr_itr{}".format(combin,
-                    report_n_epochs)),
-            corr_y_limits=[-1.1, 1.1],
-            corr_legend=legend_corr,
-            corr_title=None,
-            #
-            plot_validation=False,
-            usetex=plt_usetex,
-            sizefont=size_font,
-            print_xtick_every=print_xtick_every) \
-                    for combin in combins)

@@ -519,6 +519,7 @@ def plot_fit_estim_distance(
         scores,
         sim_params,
         out_file,
+        scaled=False,
         sizefont=16,
         usetex=False,
         print_xtick_every=10,
@@ -561,6 +562,9 @@ def plot_fit_estim_distance(
                     sim_param - estim_scores, axis=-1)
             #print(name, dists.shape)
             # [nb_data, nb_fit_reps, nb_epochs]
+
+            if scaled:
+                dists = 1-(1/(1+dists))
 
             m = dists.mean((0,1))
             s = dists.std((0,1))
@@ -605,6 +609,7 @@ def plot_fit_estim_distances(
         x_names,
         sim_param_exps,
         out_file,
+        scaled=False,
         sizefont=14,
         y_limits=[0., None],
         usetex=False,
@@ -648,6 +653,9 @@ def plot_fit_estim_distances(
                         sim_param - estim_scores, axis=-1)
                 #print(name, dists.shape)
 
+                if scaled:
+                    dists = 1-(1/(1+dists))
+
                 m = dists.mean((0,1))
                 s = dists.std((0,1))
 
@@ -658,8 +666,7 @@ def plot_fit_estim_distances(
                 axs[i].fill_between(x, m-s, m+s, 
                         color=estim_colors[name],
                         alpha=0.2, interpolate=True)
-    
-        #axs[i].set_title(x_names[i].split("-")[1])
+
         axs[i].set_title(x_names[i])
         axs[i].set_xticks([t for t in range(1, nb_iters+1) if\
                 t==1 or t % print_xtick_every==0])
@@ -870,45 +877,24 @@ def plot_fit_estim_correlations(
 
     plt.close(f)
 
-def plot_probs_distances_correlations(
-        probs_scores,
+def plot_distances_correlations(
         estim_scores,
         exp_values,
         x_names,
         sim_param_exps,
         #
-        prob_out_file,
-        prob_lines,
-        prob_title,
-        prob_legend,
-        #
         dist_out_file,
-        dist_y_limits,
+        scaled_dist_out_file,
         dist_legend,
         dist_title,
         #
         corr_out_file,
-        corr_y_limits,
         corr_legend,
         corr_title,
         #
-        plot_validation=False,
         usetex=False,
         sizefont=14,
         print_xtick_every=100):
-
-    # Probabilities (elbo, logl, kl)
-    plot_elbos_lls_kls(
-            probs_scores,
-            exp_values,
-            x_names,
-            prob_out_file,
-            lines=prob_lines,
-            sizefont=sizefont,
-            print_xtick_every=print_xtick_every,
-            title=prob_title,
-            legend=prob_legend,
-            plot_validation=plot_validation)
 
     # Distances of estimates with sim params
     plot_fit_estim_distances(
@@ -917,9 +903,25 @@ def plot_probs_distances_correlations(
             x_names,
             sim_param_exps,
             dist_out_file,
+            scaled=False,
             sizefont=sizefont,
             print_xtick_every=print_xtick_every,
-            y_limits=dist_y_limits,
+            y_limits=[-0.1, None],
+            usetex=usetex,
+            legend=dist_legend,
+            title=dist_title)
+
+    # Scaled distances of estimates with sim params
+    plot_fit_estim_distances(
+            estim_scores,
+            exp_values,
+            x_names,
+            sim_param_exps,
+            scaled_dist_out_file,
+            scaled=True,
+            sizefont=sizefont,
+            print_xtick_every=print_xtick_every,
+            y_limits=[-0.1, 1.1],
             usetex=usetex,
             legend=dist_legend,
             title=dist_title)
@@ -933,7 +935,7 @@ def plot_probs_distances_correlations(
             corr_out_file,
             sizefont=sizefont,
             print_xtick_every=print_xtick_every,
-            y_limits=corr_y_limits,
+            y_limits=[-1.1, 1.1],
             usetex=usetex,
             legend=corr_legend,
             title=corr_title)

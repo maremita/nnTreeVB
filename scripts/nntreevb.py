@@ -578,10 +578,26 @@ if __name__ == "__main__":
                 real_params_np,
                 output_path+"/{}_{}_estim_dist".format(
                     job_name, history),
+                scaled=False,
                 sizefont=plt.size_font,
                 usetex=plt.plt_usetex,
                 print_xtick_every=plt.print_xtick_every,
                 y_limits=[-0.1, None],
+                legend='upper right')
+        
+        ## Distance between estimated paramerters 
+        ## and values given in the config file
+        ## scaled between 0 and 1
+        plot_fit_estim_distance(
+                estimates, 
+                real_params_np,
+                output_path+"/{}_{}_estim_scaled_dist".format(
+                    job_name, history),
+                scaled=True,
+                sizefont=plt.size_font,
+                usetex=plt.plt_usetex,
+                print_xtick_every=plt.print_xtick_every,
+                y_limits=[-0.1, 1.1],
                 legend='upper right')
 
         ## Correlation between estimated paramerters 
