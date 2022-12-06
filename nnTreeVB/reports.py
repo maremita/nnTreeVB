@@ -1102,14 +1102,16 @@ def report_sampled_estimates(
                 estimate_stats = compute_estim_stats(
                         estimate_avrg_reps,
                         confidence=0.95, axis=0)
+                
+                real_flg = real_params is not None\
+                        and name in real_params
 
                 # Names of stat columns
                 chaine += "   "
                 for stat_name in estimate_stats:
                     chaine += "\t"+stat_name
 
-                if real_params is not None\
-                        and name in real_params:
+                if real_flg:
                     chaine += "\tReal"
                 chaine += "\n"
 
@@ -1134,8 +1136,7 @@ def report_sampled_estimates(
                         chaine +="\t{:.4f}".format(
                                 stats[dim].item())
         
-                    if real_params is not None\
-                            and name in real_params:
+                    if real_flg:
                         real_val = real_params[name][i][dim]
                         chaine +="\t{:.4f}".format(real_val)
 
@@ -1143,9 +1144,7 @@ def report_sampled_estimates(
                 chaine += "\n"
             
                 # Compute distance and correlation
-                if real_params is not None\
-                        and name in real_params:
-
+                if real_flg:
                     sim_param = real_params[name][i]
                     estim_mean = estimate_stats["mean"]
 
@@ -1167,6 +1166,20 @@ def report_sampled_estimates(
                                 np.mean(corrs),
                                 np.mean(pvals))
 
+                if name == "b":
+                    estim_t = estimate_stats["mean"].sum()
+
+                    chaine += "\n## Tree length (sum of means"
+                    chaine += " of branch lengths)\n"
+                    chaine += "   \tSum"
+                    if real_flg:
+                        chaine += "\tReal"
+                    chaine += "\n"
+                    chaine += "T\t{:.4f}".format(estim_t)
+                    if real_flg:
+                        sim_t = real_params[name][i].sum()
+                        chaine += "\t{:.4f}".format(sim_t)
+                    chaine += "\n"
 
         chaine += "\n{}\n".format("#"*70)
     chaine += "END OF REPORT"

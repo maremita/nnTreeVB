@@ -68,7 +68,7 @@ defined in the config file.
 Once the nnTreeVB package is installed, you can run nntreevb.py 
 using this command line:
 
-# nntreevb.py -c evovgm_conf_template.ini [-s seed -j job_name]
+# nntreevb.py -c nntreevb_conf_template.ini [-s seed -j job_name]
 
 where <nntreevb_conf_template.ini> is the config file, and 
 seed (int) and job_name are optional
@@ -581,7 +581,7 @@ if __name__ == "__main__":
                 sizefont=plt.size_font,
                 usetex=plt.plt_usetex,
                 print_xtick_every=plt.print_xtick_every,
-                y_limits=[-0.1, 1.1],
+                y_limits=[-0.1, None],
                 legend='upper right')
 
         ## Correlation between estimated paramerters 
