@@ -43,14 +43,23 @@ class VB_Encoder(nn.Module):
                 max_clamp)
 
         with torch.set_grad_enabled(KL_gradient):
+            nb_samples = list(sample_size)[0] 
             try:
                 kl = kl_divergence(
                         self.dist_q.dist,
                         self.dist_p.dist)
                 #print("kl.shape {}".format(kl.shape))
             except Exception as e:
-                # TODO: use Monte Carlo to compute the kl_div
-                kl = torch.tensor(torch.inf)
+                # Compute Monte Carlo based KL divergence
+
+                # log of approximate posteriors
+                _logq = self.dist_q.dist.log_prob(samples)
+
+                # log prior of samples
+                _logp = self.dist_p.dist.log_prob(samples)
+
+                # Monte Carlo based KL divergence
+                kl = (_logq - _logp).sum()/nb_samples
 
         with torch.set_grad_enabled(not KL_gradient):
             # Compute log prior of samples
