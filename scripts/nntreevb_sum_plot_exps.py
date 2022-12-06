@@ -252,7 +252,7 @@ if __name__ == '__main__':
                 print_xtick_every=print_xtick_every) \
                         for combin in combins)
 
-        print("\tSummarizing probs and samplinge stimates...")
+        print("\tSummarizing probs and samplinge estimates...")
         sample_combins = {c:[samples_exps[x] for x in\
                 combins[c]] for c in combins}
 

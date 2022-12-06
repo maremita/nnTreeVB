@@ -317,10 +317,13 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         ## ######################
 
         # Sample b from q_d and compute log prior, log q
+        b_min_clamp = eps
+        if self.b_compound: b_min_clamp = False
+
         b_logprior, b_logq, b_kl, b_samples = self.b_encoder(
                 sample_size=sample_size,
                 KL_gradient=elbo_kl,
-                min_clamp=eps)
+                min_clamp=b_min_clamp)
 
         #print("b_logprior {}".format(b_logprior.shape))
         #print("b_logq {}".format(b_logq.shape))
@@ -330,10 +333,14 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         logqs.append(b_logq)
         kl_qpriors.append(b_kl)
 
-        ret_values["b"] = b_samples.detach().cpu().numpy()
+        b_samples_np = b_samples.detach().cpu().numpy()
+        ret_values["b"] = b_samples_np
         tm_args["b"] = b_samples
         #print("b_samples.shape {}".format(b_samples.shape))
         #print("b_samles {}".format(b_samples.device))
+
+        ret_values["t"] = b_samples_np.sum(axis=-1,
+                keepdims=-1)
 
         if self.b_compound:
             # Sample t from q_d and compute log prior, log q
@@ -357,7 +364,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
             kl_qpriors.append(t_kl)
 
             ret_values["t"] = t_samples.detach().cpu().numpy()
-            ret_values["b1"] = b_samples.detach().cpu().numpy()
+            ret_values["b1"] = b_samples_np
             ret_values["b"] = bt_samples.detach().cpu().numpy()
             tm_args["b"] = bt_samples
 

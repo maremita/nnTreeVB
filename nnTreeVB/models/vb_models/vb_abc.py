@@ -3,6 +3,9 @@ from nnTreeVB.utils import get_named_grad_stats
 from nnTreeVB.utils import get_named_weight_stats
 from nnTreeVB.utils import apply_on_submodules
 from nnTreeVB.utils import compute_estim_stats
+#
+from nnTreeVB.reports import estim_list
+#
 from nnTreeVB.checks import check_finite_grads
 from nnTreeVB.checks import check_sample_size
 
@@ -13,8 +16,6 @@ import numpy as np
 import torch
 
 __author__ = "amine remita"
-
-estim_names = ["b", "t", "b1", "r", "f", "k"]
 
 # This code is adapted from evoABCmodels.py module of evoVGM
 # https://github.com/maremita/evoVGM/blob/main/evoVGM/models/evoABCmodels.py
@@ -273,7 +274,7 @@ class BaseTreeVB(ABC):
                                             kls_val.item())
                         if verbose >= 3:
                             chaine += "\n"
-                            for estim in estim_names:
+                            for estim in estim_list:
                                 if estim in fit_dict:
                                     estim_vals = fit_dict[
                                         estim].mean(grad_axes
@@ -296,7 +297,7 @@ class BaseTreeVB(ABC):
 
                 if save_fit_history:
                     fit_estim = dict()
-                    for estim in estim_names:
+                    for estim in estim_list:
                         if estim in fit_dict:
                             estim_stats = compute_estim_stats(
                                     fit_dict[estim].reshape(
@@ -326,7 +327,7 @@ class BaseTreeVB(ABC):
 
                     if save_val_history:
                         val_estim = dict()
-                        for estim in estim_names:
+                        for estim in estim_list:
                             if estim in val_dict:
                                 estim_stats =\
                                     compute_estim_stats(

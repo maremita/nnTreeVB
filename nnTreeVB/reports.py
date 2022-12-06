@@ -33,12 +33,13 @@ estim_names = {
 
 estim_colors = { 
         "b":"#226E9C",
-        "t":"#226E9C",
+        "t":"#595F73",#2a9d8f
         "r":"#D12959", 
         "f":"#40AD5A",
         "k":"#FFAA00"}
 
-prob_names = {"elbo":"ELBO", 
+prob_names = {
+        "elbo":"ELBO", 
         "logl":"LogL",
         "logprior":"LogPrior",
         "logq":"LogQ",
@@ -55,7 +56,6 @@ kl_color =   "#7C1D69"  # pink
 elbo_color_v = "#6BE619"
 ll_color_v =   "#009ADE" # light blue
 kl_color_v =   "#AF58BA"  # light pink
-
 
 def plot_weights_grads_epochs(
         data,
@@ -544,8 +544,10 @@ def plot_fit_estim_distance(
 
     f, ax = plt.subplots(figsize=(8, 5))
 
-    nb_data = scores["b"]["mean"].shape[0]
-    nb_iters = scores["b"]["mean"].shape[-2]
+    an_estimate = list(scores.keys())[0]
+
+    nb_data = scores[an_estimate]["mean"].shape[0]
+    nb_iters = scores[an_estimate]["mean"].shape[-2]
 
     x = [j for j in range(1, nb_iters+1)]
 
@@ -558,13 +560,15 @@ def plot_fit_estim_distance(
                     1, 1, -1)
 
             # eucl dist
-            dists = np.linalg.norm(
-                    sim_param - estim_scores, axis=-1)
-            #print(name, dists.shape)
-            # [nb_data, nb_fit_reps, nb_epochs]
+            dists = np.linalg.norm(sim_param - estim_scores,
+                    axis=-1)
+            # ratio
+            #dists = np.squeeze(estim_scores/sim_param, -1)
 
             if scaled:
                 dists = 1-(1/(1+dists))
+            #print(name, dists.shape)
+            # [nb_data, nb_fit_reps, nb_epochs]
 
             m = dists.mean((0,1))
             s = dists.std((0,1))
@@ -633,8 +637,9 @@ def plot_fit_estim_distances(
         'text.usetex':usetex})
     plt.subplots_adjust(wspace=0.07, hspace=0.1)
 
-    nb_data = exp_scores[0]["b"]["mean"].shape[0]
-    nb_iters = exp_scores[0]["b"]["mean"].shape[-2]
+    an_estimate = list(exp_scores[0].keys())[0]
+    nb_data = exp_scores[0][an_estimate]["mean"].shape[0]
+    nb_iters = exp_scores[0][an_estimate]["mean"].shape[-2]
     x = [j for j in range(1, nb_iters+1)]
 
     for i, exp_value in enumerate(exp_values):
@@ -728,8 +733,9 @@ def plot_fit_estim_correlation(
         'text.usetex':usetex})
     plt.subplots_adjust(wspace=0.16, hspace=0.1)
 
-    nb_iters = scores["b"]["mean"].shape[-2]
-    nb_data = scores["b"]["mean"].shape[0]
+    an_estimate = list(scores.keys())[0]
+    nb_iters = scores[an_estimate]["mean"].shape[-2]
+    nb_data = scores[an_estimate]["mean"].shape[0]
     x = [j for j in range(1, nb_iters+1)]
 
     for ind, name in enumerate(scores):
@@ -813,7 +819,8 @@ def plot_fit_estim_correlations(
         'text.usetex':usetex})
     plt.subplots_adjust(wspace=0.07, hspace=0.1)
 
-    nb_iters = exp_scores[0]["b"]["mean"].shape[-2]
+    an_estimate = list(exp_scores[0].keys())[0]
+    nb_iters = exp_scores[0][an_estimate]["mean"].shape[-2]
     x = [j for j in range(1, nb_iters+1)]
 
     for i, exp_value in enumerate(exp_values):
@@ -942,7 +949,7 @@ def plot_distances_correlations(
 
 def aggregate_estimate_values(
         rep_results,
-        key, #val_hist_estim
+        key, #fit_estimates
         report_n_epochs=False,
         ):
 
@@ -1084,10 +1091,8 @@ def report_sampled_estimates(
             # TODO Get the full values to compute other 
             # statistics
             if len(prob.shape) > 1: prob = prob.mean()
-            chaine +="{}\t\t{:.4f}\n".format(
+            chaine +="{}\t{:.4f}\n".format(
                     prob_names[prob_name], prob.mean())
-
-        #chaine += "\n"
 
         for name in estim_names:
             if name in estim_data:
@@ -1154,8 +1159,8 @@ def report_sampled_estimates(
                             sim_param.reshape(1, 1, -1) -\
                             estimate, axis=-1)
                     # distance shape [nb_rep_fit, nb_samples]
-                    chaine += "\tEuclidean distance "\
-                            "Mean {:.4f} STD {:.4f}\n".format(
+                    chaine += "\tEuclidean distance: "\
+                            "Mean {:.4f}, STD {:.4f}\n".format(
                                     distance.mean(),
                                     distance.std())
 
@@ -1168,20 +1173,21 @@ def report_sampled_estimates(
                                 np.mean(corrs),
                                 np.mean(pvals))
 
-                if name == "b":
-                    estim_t = estimate_stats["mean"].sum()
+                # write total tree length
+                #if name == "b":
+                #    estim_t = estimate_stats["mean"].sum()
 
-                    chaine += "\n## Tree length (sum of means"
-                    chaine += " of branch lengths)\n"
-                    chaine += "   \tSum"
-                    if real_flg:
-                        chaine += "\tReal"
-                    chaine += "\n"
-                    chaine += "T\t{:.4f}".format(estim_t)
-                    if real_flg:
-                        sim_t = real_params[name][i].sum()
-                        chaine += "\t{:.4f}".format(sim_t)
-                    chaine += "\n"
+                #    chaine += "\n## Tree length (sum of means"
+                #    chaine += " of branch lengths)\n"
+                #    chaine += "   \tSum"
+                #    if real_flg:
+                #        chaine += "\tReal"
+                #    chaine += "\n"
+                #    chaine += "T\t{:.4f}".format(estim_t)
+                #    if real_flg:
+                #        sim_t = real_params[name][i].sum()
+                #        chaine += "\t{:.4f}".format(sim_t)
+                #    chaine += "\n"
 
         chaine += "\n{}\n".format("#"*70)
     chaine += "END OF REPORT"
@@ -1258,8 +1264,8 @@ def summarize_sampled_estimates(
         if estim_name in unique_names:
             if estim_name in ["b", "r", "f"]:
                 col_index = pd.MultiIndex.from_product(
-                        [x_names, ['Dist', 'Corr', 'Pval'],
-                            ['Mean', 'STD']])
+                    [x_names, ['Dist','Dist01','Corr','Pval'],
+                        ['Mean', 'STD']])
 
                 df = pd.DataFrame("-", index=row_index,
                         columns=col_index)
@@ -1298,10 +1304,18 @@ def summarize_sampled_estimates(
                                     nb_data,1,1,-1) - scores,
                                 axis=-1)
 
-                            df[x_names[c],"Dist","Mean"].loc[
+                            df[x_names[c],"Dist", "Mean"].loc[
                                     c_name] = dist.mean()
-                            df[x_names[c],"Dist","STD"].loc[
+                            df[x_names[c],"Dist", "STD"].loc[
                                     c_name] = dist.std()
+
+                            # Scaled distance within range 0,1
+                            scaled_dist = 1-(1/(1+dist))
+
+                            df[x_names[c],"Dist01","Mean"].loc[
+                                    c_name] =scaled_dist.mean()
+                            df[x_names[c],"Dist01", "STD"].loc[
+                                    c_name] =scaled_dist.std()
 
                             # correlation
                             corrs, pvals = compute_corr(
@@ -1358,7 +1372,7 @@ def write_dict_dfs(dict_df, filename):
         pd.options.display.float_format = '{:.4f}'.format
         with open(filename, "w") as fh:
             for code in dict_df:
-                fh.write(code)
+                fh.write("## {}".format(code))
                 fh.write("\n\n")
                 #fh.write(dict_df[code].to_csv(
                 #    float_format='%.3f'))
@@ -1369,7 +1383,8 @@ def write_dict_dfs(dict_df, filename):
                 #    df = df.drop("pval", axis=1, level=1)
                 fh.write(df.style.to_latex())
                 fh.write("\n")
-                fh.write(dict_df[code].to_string())
+                fh.write(dict_df[code].to_string(
+                    justify="left"))
                 fh.write("\n")
                 fh.write("\n")
                 fh.write("#" * 63)

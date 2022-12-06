@@ -522,34 +522,19 @@ if __name__ == "__main__":
     if "b_names" in result_data and post_branche_names is None:
         post_branche_names = result_data["b_names"]
 
+    #print(rep_results[0][0]["fit_estimates"][0].keys())
+    #print(rep_results[0][0]["samples"].keys())
+
     ## Report and plot results
     ## #######################
-    #scores = [result["fit_probs"] for\
-    #        result in rep_results]
-
-    scores = [[rep["fit_probs"] for rep in d ] \
-            for d in rep_results]
-
-    # Get min number of epoch of all reps 
-    # (maybe some reps stopped before max_iter)
-    # to slice the list of epochs with the same length 
-    # and be able to cast the list in ndarray        
-    #min_iter = scores[0][0].shape[1]
-    #for i in range(len(scores)):
-    #    for score in scores[i]:
-    #        if min_iter >= score.shape[1]:
-    #            min_iter = score.shape[1]
-    #the_scores = []
-    #for score in scores:
-    #    the_scores.append(score[:,:min_iter])
-
-    prob_scores = np.array(scores)
+    prob_scores = np.array([[rep["fit_probs"] for rep in d ]\
+            for d in rep_results])
     #print("The scores {}".format(prob_scores.shape))
 
     ## Ploting results
     ## ###############
     if verbose: print("\nPlotting...")
-    
+ 
     logl_data = None
     if "logl_data" in result_data and plt.logl_data: 
         logl_data = result_data["logl_data"]
@@ -568,7 +553,7 @@ if __name__ == "__main__":
         history = "fit" # [fit | val]
         estimates = aggregate_estimate_values(rep_results,
                 "{}_estimates".format(history))
-        #print(estimates)
+        #print(estimates.keys())
         #return a dictionary of dictionary of arrays
 
         ## Distance between estimated paramerters 
