@@ -52,7 +52,8 @@ if __name__ == '__main__':
         jobs_code = now.strftime("%m%d%H%M")
         scores_from_file = "False"
 
-    print("Runing {} experiments...\n".format(jobs_code))
+    print("Runing {} experiments...\n".format(jobs_code), 
+            flush=True)
 
     ## Fetch argument values from ini file
     ## ###################################
@@ -260,9 +261,9 @@ if __name__ == '__main__':
         n_jobs += 1
 
         if not os.path.isfile(res_file):
-            print("\n", exp_name)
+            print("\n", exp_name, flush=True)
             if run_jobs:
-                print(cmd)
+                print(cmd, flush=True)
                 os.system(cmd)
                 n_runs += 1
 

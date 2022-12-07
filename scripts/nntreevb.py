@@ -159,11 +159,13 @@ if __name__ == "__main__":
     config.set("io", "job_name", job_name)
 
     if verbose:
-        print("\tJob name set to {}".format(job_name))
-        print("\tVerbose set to {}".format(verbose))
+        print("\tJob name set to {}".format(job_name), 
+                flush=True)
+        print("\tVerbose set to {}".format(verbose), 
+                flush=True)
 
     if seed:
-        print("\tSeed set to {}".format(seed))
+        print("\tSeed set to {}".format(seed), flush=True)
         config.set("settings", "seed", str(seed))
 
     # Computing device setting
@@ -174,18 +176,18 @@ if __name__ == "__main__":
             not torch.cuda.is_available():
         if verbose: 
             print("\nCuda is not available."\
-                    " Changing device to 'cpu'")
+                    " Changing device to 'cpu'", flush=True)
         device = "cpu"
 
     elif "mps" in device and\
             not torch.backends.mps.is_available():
         if verbose: 
             print("\nMPS is not available."\
-                    " Changing device to 'cpu'")
+                    " Changing device to 'cpu'", flush=True)
         device = "cpu"
 
     if verbose:
-        print("\tDevice set to {}".format(device))
+        print("\tDevice set to {}".format(device), flush=True)
 
     config.set("settings", "device", device)
     device = torch.device(device)
@@ -200,7 +202,7 @@ if __name__ == "__main__":
         torch_dtype = torch.float64
 
     if verbose:
-        print("\tDtype set to {}".format(stg.dtype))
+        print("\tDtype set to {}".format(stg.dtype),flush=True)
 
     ## output path 
     ## ###########
@@ -218,7 +220,7 @@ if __name__ == "__main__":
 
     if verbose:
         print("\nExperiment output: {}".format(
-            output_path))
+            output_path), flush=True)
 
     nb_data = dat.nb_rep_data
     nb_fits = fit.nb_rep_fit
@@ -282,7 +284,8 @@ if __name__ == "__main__":
     post_branche_names = None
 
     if os.path.isfile(results_file) and io.scores_from_file:
-        if verbose: print("\nLoading scores from file...")
+        if verbose: 
+            print("\nLoading scores from file...", flush=True)
 
         # Get the results
         result_data = load(results_file)
@@ -291,7 +294,8 @@ if __name__ == "__main__":
     ## Execute the evaluation and save results
     ## #######################################
     else:
-        if verbose: print("\nRunning the evaluation...")
+        if verbose:
+            print("\nRunning the evaluation...", flush=True)
 
         result_data = dict()
 
@@ -309,8 +313,9 @@ if __name__ == "__main__":
 
             trf = all([os.path.isfile(f) for f in tree_files])
             if trf and dat.nwk_from_file:
-                if verbose: print("\nExtracting simulated"\
-                        " trees from ...")
+                if verbose: 
+                    print("\nExtracting simulated"\
+                        " trees from ...", flush=True)
 
                 tree_data = parallel(delayed(
                     build_tree_from_nwk)(tree_files[i]) \
@@ -323,7 +328,9 @@ if __name__ == "__main__":
                 # if tree files are not given, or 
                 # dat.nwk_from_file is false: simulate trees
                 # using ete3 populate function
-                if verbose:print("\nSimulating new trees...")
+                if verbose:
+                    print("\nSimulating new trees...", 
+                            flush=True)
 
                 tree_data = parallel(delayed(
                     simulate_tree)(dat.nb_taxa,
@@ -347,7 +354,8 @@ if __name__ == "__main__":
             sqf= all([os.path.isfile(f) for f in fasta_files])
             if not sqf or not dat.seq_from_file:
                 if verbose:
-                    print("\nSimulating new sequences...")
+                    print("\nSimulating new sequences...", 
+                            flush=True)
  
                 parallel = Parallel(n_jobs=nb_data, 
                     prefer="processes", verbose=verbose)
@@ -383,7 +391,7 @@ if __name__ == "__main__":
                     SeqIO.write(recs, fasta_files[i], "fasta")
 
         if verbose: print("\nLoading data to"\
-                " TreeSeqCollection collection...")
+                " TreeSeqCollection collection...", flush=True)
 
         treeseqs = [TreeSeqCollection(fasta_files[i],
             tree_files[i]) for i in range(nb_data)]
@@ -461,7 +469,7 @@ if __name__ == "__main__":
                 if verbose:
                     print("Log likelihood of the data {}""\
                         using input params: {:.4f}".format(
-                                i, logl_data))
+                                i, logl_data), flush=True)
 
             result_data["logl_data"] = np.array(logls)
 
@@ -532,7 +540,7 @@ if __name__ == "__main__":
 
     ## Ploting results
     ## ###############
-    if verbose: print("\nPlotting...")
+    if verbose: print("\nPlotting...", flush=True)
  
     if fit.save_fit_history:
         prob_scores = np.array([[rep["fit_probs"] for rep in\
@@ -625,7 +633,7 @@ if __name__ == "__main__":
 
     ## Generate report file from sampling step
     ## #######################################
-    if verbose: print("\nGenerate reports...")
+    if verbose: print("\nGenerate reports...", flush=True)
 
     estim_samples = aggregate_sampled_estimates(
             rep_results, "samples")
@@ -638,4 +646,4 @@ if __name__ == "__main__":
             real_params=real_params_np,
             branch_names=post_branche_names)
 
-    print("\nFin normale du programme\n")
+    print("\nFin normale du programme\n", flush=True)

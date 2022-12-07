@@ -50,7 +50,8 @@ if __name__ == '__main__':
     config_file = cmd_args.config_file
     jobs_code = cmd_args.job_code
 
-    print("Summarizing {} experiments...\n".format(jobs_code))
+    print("Summarizing {} experiments...\n".format(jobs_code),
+            flush=True)
 
     ## Fetch argument values from ini file
     ## ###################################
@@ -162,7 +163,8 @@ if __name__ == '__main__':
                 rep_results, "samples")
 
     for ind, eval_code in enumerate(eval_codes):
-        print("\nSummarizing {} results".format(eval_code))
+        print("\nSummarizing {} results".format(eval_code),
+                flush=True)
 
         # Get unique combinations for each ind
         combins = defaultdict(list)
@@ -197,7 +199,8 @@ if __name__ == '__main__':
                     combins[c]] for c in combins}
 
             # Plot elbos, logls and kls
-            print("\tPloting elbos, logls and kls...")
+            print("\tPloting elbos, logls and kls...", 
+                    flush=True)
 
             parallel(delayed(plot_elbos_lls_kls)(
                 prob_combins[combin],
@@ -223,7 +226,7 @@ if __name__ == '__main__':
             # Plot estimate distances and correlations for each
             # unique case 
             print("\tPlotting distances and correlations"
-                    " of fit esimates history...")
+                    " of fit esimates history...", flush=True)
 
             parallel(delayed(plot_fit_estim_statistics)(
                 estim_scores=estim_combins[combin],
@@ -248,7 +251,8 @@ if __name__ == '__main__':
                 print_xtick_every=print_xtick_every) \
                         for combin in combins)
 
-        print("\tSummarizing probs and samplinge estimates...")
+        print("\tSummarizing probs and samplinge estimates...",
+                flush=True)
         sample_combins = {c:[samples_exps[x] for x in\
                 combins[c]] for c in combins}
 
@@ -264,7 +268,7 @@ if __name__ == '__main__':
             logl_data_combins)
  
         print("\tBoxplotting distances and correlations of"
-                " sampled estimates")
+                " sampled estimates", flush=True)
 
         output_sample = os.path.join(output_sum, 
                     eval_code+"_sampling")

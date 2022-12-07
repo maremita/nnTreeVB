@@ -404,7 +404,8 @@ def compute_corr(main, batch, verbose=False):
 
     nb_data, nb_reps, nb_epochs, shape = batch.shape
 
-    parallel = Parallel(prefer="processes", verbose=verbose)
+    parallel = Parallel(prefer="processes", 
+            n_jobs=-2, verbose=verbose)
 
     corrs = np.zeros((nb_data, nb_reps, nb_epochs))
     pvals = np.zeros((nb_data, nb_reps, nb_epochs))
