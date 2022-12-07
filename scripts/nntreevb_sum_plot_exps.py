@@ -205,8 +205,7 @@ if __name__ == '__main__':
                 x_names,
                 #
                 out_file=os.path.join(output_fit,
-                    "{}_probs_fig_itr{}".format(combin, 
-                        report_n_epochs)),
+                    "{}_estim_probs".format(combin)),
                 lines=logl_data_combins[combin],
                 title=None,
                 legend=legend_elbo,
@@ -233,17 +232,14 @@ if __name__ == '__main__':
                 sim_param_exps=real_param_exps,
                 #
                 dist_out_file=os.path.join(output_fit,
-                    "{}_estim_dist_itr{}".format(combin, 
-                        report_n_epochs)),
+                    "{}_estim_dists".format(combin)),
                 scaled_dist_out_file=os.path.join(output_fit,
-                    "{}_estim_scaled_dist_itr{}".format(
-                        combin, report_n_epochs)),
+                    "{}_estim_scaled_dists".format(combin)),
                 dist_legend=legend_dist,
                 dist_title=None,
                 #
                 corr_out_file=os.path.join(output_fit, 
-                    "{}_estim_corr_itr{}".format(combin,
-                        report_n_epochs)),
+                    "{}_estim_corrs".format(combin)),
                 corr_legend=legend_corr,
                 corr_title=None,
                 #

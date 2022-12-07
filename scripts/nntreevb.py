@@ -545,7 +545,7 @@ if __name__ == "__main__":
 
         plot_elbo_ll_kl(
                 prob_scores,
-                output_path+"/{}_probs_fig".format(job_name),
+                output_path+"/{}_estim_probs".format(job_name),
                 line=logl_data,
                 sizefont=plt.size_font,
                 usetex=plt.plt_usetex,
@@ -565,7 +565,7 @@ if __name__ == "__main__":
         plot_fit_estim_distance(
                 estimates, 
                 real_params_np,
-                output_path+"/{}_{}_estim_dist".format(
+                output_path+"/{}_{}_estim_dists".format(
                     job_name, history),
                 scaled=False,
                 sizefont=plt.size_font,
@@ -580,7 +580,7 @@ if __name__ == "__main__":
         plot_fit_estim_distance(
                 estimates, 
                 real_params_np,
-                output_path+"/{}_{}_estim_scaled_dist".format(
+                output_path+"/{}_{}_estim_scaled_dists".format(
                     job_name, history),
                 scaled=True,
                 sizefont=plt.size_font,
@@ -594,7 +594,7 @@ if __name__ == "__main__":
         plot_fit_estim_correlation(
                 estimates, 
                 real_params_np,
-                output_path+"/{}_{}_estim_corr".format(
+                output_path+"/{}_{}_estim_corrs".format(
                     job_name, history),
                 sizefont=plt.size_font,
                 usetex=plt.plt_usetex,
