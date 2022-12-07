@@ -15,7 +15,7 @@ import torch
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-
+import seaborn as sns
 
 __author__ = "amine remita"
 
@@ -33,7 +33,7 @@ estim_names = {
 
 estim_colors = { 
         "b":"#226E9C",
-        "t":"#595F73",#2a9d8f
+        "t":"#595F73", #2a9d8f
         "r":"#D12959", 
         "f":"#40AD5A",
         "k":"#FFAA00"}
@@ -705,6 +705,162 @@ def plot_fit_estim_distances(
 
     plt.close(f)
 
+def violinplot_sampled_estim_statistics(
+        sample_scores,
+        exp_names,
+        x_names,
+        sim_param_exps,
+        output_path,
+        sizefont=14,
+        usetex=False):
+
+    unique_names = []
+    for exp_scores in sample_scores:
+        unique_names.extend(exp_scores[0].keys())
+    unique_names = set(unique_names)
+
+    nb_data = len(sample_scores[0])
+
+    # aggregate data
+    estim_dict = dict()
+    for estim_name in estim_names:
+        if estim_name in unique_names:
+            if estim_name in ["b", "r", "f"]:
+                col_index = pd.MultiIndex.from_product(
+                    [x_names, ['Dist','Dist01','Corr']])
+
+                df = pd.DataFrame(columns=col_index)
+
+                for c, exp_scores in \
+                        enumerate(sample_scores):
+
+                    # exp_scores is a list with nb_data 
+                    # elements. Each element contains a 
+                    # dictionary for estimates [b, r, f..]
+                    # that have values of shape
+                    # [nb_rep, nb_sample,shape of estimate]
+                    #print(estim_name)
+                    #print(exp_scores[0][estim_name].shape)
+                    if estim_name in exp_scores[0]:
+                        scores = np.array([exp_scores[d][
+                            estim_name] 
+                            for d in range(nb_data)])
+                        #print(estim_name, scores.shape)
+                        #[nb_data, nb_fit_reps, 
+                        # nb_samples, estim_shape]
+
+                        sim_param = sim_param_exps[
+                            exp_names[c]][estim_name]
+                        #print("sim_param {}".format(
+                        #    sim_param.shape))
+                        #[nb_data, estim shape]
+
+                        # euclidean distance
+                        dists = np.linalg.norm(
+                            sim_param.reshape(
+                                nb_data,1,1,-1) - scores,
+                            axis=-1)
+
+                        df[x_names[c],"Dist"]=dists.mean((0,1))
+
+                        # Scaled distance within range 0,1
+                        scaled_dists = 1-(1/(1+dists))
+
+                        df[x_names[c], "Dist01"] = \
+                                scaled_dists.mean((0,1))
+
+                        # correlation
+                        corrs, pvals = compute_corr(
+                            sim_param, scores) 
+                        #print("corrs", corrs.shape)
+                        #[nb_data, nb_fit_reps, nb_samples]
+
+                        df[x_names[c],"Corr"]=corrs.mean((0,1))
+
+            elif estim_name in ["t", "k"]:
+                col_index = pd.MultiIndex.from_product(
+                        [x_names, ['Ratio']])
+
+                df = pd.DataFrame(columns=col_index)
+
+                for c, exp_scores in \
+                        enumerate(sample_scores):
+                    if estim_name in exp_scores[0]:
+                        scores = np.array([exp_scores[d][
+                            estim_name] 
+                            for d in range(nb_data)])
+                        #print(estim_name, scores.shape)
+
+                        sim_param = sim_param_exps[
+                            exp_names[c]][estim_name]
+
+                        ratio = np.squeeze(scores/sim_param,-1)
+
+                        df[x_names[c], "Ratio"] = \
+                                ratio.mean((0,1))
+
+            estim_dict[estim_name] = df
+
+    y_limits = {
+            "Dist": [-0.1, None],
+            "Dist01": [-0.1, 1.1],
+            "Corr": [-1.1, 1.1],
+            "Ratio": [-0.1, None]
+            }
+
+    # plotting
+    for estim_name in estim_dict:
+        df = estim_dict[estim_name]
+        for stat in ['Dist', 'Dist01', 'Corr', 'Ratio']:
+            if stat in df.columns.get_level_values(1):
+                #print(estim_name, stat)
+                out_file = output_path+estim_name+"_"+stat
+                title=os.path.basename(out_file)
+
+                x_df = df.iloc[:,
+                        df.columns.get_level_values(1)==stat]
+                x_df.columns = x_df.columns.droplevel(1)
+                #print(estim_name, stat, "\n", x_df.describe())
+
+                violinplot_from_dataframe(
+                        x_df,
+                        out_file,
+                        y_limit=y_limits[stat],
+                        sizefont=sizefont,
+                        usetex=usetex,
+                        title=title)
+
+def violinplot_from_dataframe(
+        df,
+        out_file,
+        y_limit=[0, None],
+        sizefont=14,
+        usetex=False,
+        title=None):
+
+    fig_format= "png"
+    fig_dpi = 300
+
+    fig_file = out_file+"."+fig_format
+
+    f, ax = plt.subplots(figsize=(8, 5))
+    sns.set_theme()
+    plt.rcParams.update({'font.size':sizefont,
+        'text.usetex':usetex})
+    plt.subplots_adjust(wspace=0.07, hspace=0.1)
+
+    sns.violinplot(data=df, palette="husl")
+
+    plt.ylim(*y_limit)
+
+    if title:
+        plt.suptitle(title)
+
+    plt.savefig(fig_file, bbox_inches="tight", 
+            format=fig_format, dpi=fig_dpi)
+
+    plt.close(f)
+
 def plot_fit_estim_correlation(
         scores,
         sim_params,
@@ -850,7 +1006,6 @@ def plot_fit_estim_correlations(
                             color=estim_colors[name],
                             alpha=0.2, interpolate=True)
 
-        #axs[i].set_title(x_names[i].split("-")[1])
         axs[i].set_title(x_names[i])
         axs[i].set_xticks([t for t in range(1, nb_iters+1) if\
                 t==1 or t % print_xtick_every==0])
@@ -884,7 +1039,7 @@ def plot_fit_estim_correlations(
 
     plt.close(f)
 
-def plot_distances_correlations(
+def plot_fit_estim_statistics(
         estim_scores,
         exp_values,
         x_names,
@@ -1299,23 +1454,23 @@ def summarize_sampled_estimates(
                             #[nb_data, estim shape]
 
                             # euclidean distance
-                            dist = np.linalg.norm(
+                            dists = np.linalg.norm(
                                 sim_param.reshape(
                                     nb_data,1,1,-1) - scores,
                                 axis=-1)
 
                             df[x_names[c],"Dist", "Mean"].loc[
-                                    c_name] = dist.mean()
+                                    c_name] = dists.mean()
                             df[x_names[c],"Dist", "STD"].loc[
-                                    c_name] = dist.std()
+                                    c_name] = dists.std()
 
                             # Scaled distance within range 0,1
-                            scaled_dist = 1-(1/(1+dist))
+                            scaled_dists = 1-(1/(1+dists))
 
                             df[x_names[c],"Dist01","Mean"].loc[
-                                    c_name] =scaled_dist.mean()
+                                    c_name]=scaled_dists.mean()
                             df[x_names[c],"Dist01", "STD"].loc[
-                                    c_name] =scaled_dist.std()
+                                    c_name]=scaled_dists.std()
 
                             # correlation
                             corrs, pvals = compute_corr(

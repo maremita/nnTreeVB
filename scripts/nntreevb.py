@@ -88,11 +88,12 @@ def eval_evomodel(EvoModel, m_args, fit_args):
     ## Fitting and param3ter estimation
     ret = e.fit(**fit_args)
 
-    ret["fit_probs"] = np.array([
-            ret["elbos_list"],
-            ret["lls_list"],
-            ret["kls_list"]
-            ])
+    if fit_args["save_fit_history"]:
+        ret["fit_probs"] = np.array([
+                ret["elbos_list"],
+                ret["lls_list"],
+                ret["kls_list"]
+                ])
 
     ## Sampling after fitting
     ## ########################
@@ -207,8 +208,9 @@ if __name__ == "__main__":
             job_name)
     makedirs(output_path, mode=0o700, exist_ok=True)
 
-    pg_path = os.path.join(output_path, "params_grads")
-    makedirs(pg_path, mode=0o700, exist_ok=True)
+    if fit.save_grad_stats and fit.save_weight_stats:
+        pg_path = os.path.join(output_path, "params_grads")
+        makedirs(pg_path, mode=0o700, exist_ok=True)
 
     if dat.sim_data:
         data_path = os.path.join(output_path, "data")
@@ -527,27 +529,29 @@ if __name__ == "__main__":
 
     ## Report and plot results
     ## #######################
-    prob_scores = np.array([[rep["fit_probs"] for rep in d ]\
-            for d in rep_results])
-    #print("The scores {}".format(prob_scores.shape))
 
     ## Ploting results
     ## ###############
     if verbose: print("\nPlotting...")
  
-    logl_data = None
-    if "logl_data" in result_data and plt.logl_data: 
-        logl_data = result_data["logl_data"]
+    if fit.save_fit_history:
+        prob_scores = np.array([[rep["fit_probs"] for rep in\
+                d] for d in rep_results])
+        #print("The scores {}".format(prob_scores.shape))
 
-    plot_elbo_ll_kl(
-            prob_scores,
-            output_path+"/{}_probs_fig".format(job_name),
-            line=logl_data,
-            sizefont=plt.size_font,
-            usetex=plt.plt_usetex,
-            print_xtick_every=plt.print_xtick_every,
-            title=None,
-            plot_validation=False)
+        logl_data = None
+        if "logl_data" in result_data and plt.logl_data: 
+            logl_data = result_data["logl_data"]
+
+        plot_elbo_ll_kl(
+                prob_scores,
+                output_path+"/{}_probs_fig".format(job_name),
+                line=logl_data,
+                sizefont=plt.size_font,
+                usetex=plt.plt_usetex,
+                print_xtick_every=plt.print_xtick_every,
+                title=None,
+                plot_validation=False)
 
     if fit.save_fit_history and real_params_np:
         history = "fit" # [fit | val]
@@ -569,7 +573,7 @@ if __name__ == "__main__":
                 print_xtick_every=plt.print_xtick_every,
                 y_limits=[-0.1, None],
                 legend='upper right')
-        
+
         ## Distance between estimated paramerters 
         ## and values given in the config file
         ## scaled between 0 and 1

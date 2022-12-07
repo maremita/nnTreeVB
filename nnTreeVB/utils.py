@@ -528,7 +528,7 @@ def get_modules_versions():
 
     module_names = ["nnTreeVB", "numpy", "scipy", "pandas",
             "torch", "Bio", "joblib", "matplotlib", "pyvolve", 
-            "ete3"]
+            "ete3", "seaborn"]
 
     for module_name in module_names:
         found = importlib.util.find_spec(module_name)

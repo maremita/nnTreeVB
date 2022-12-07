@@ -123,37 +123,37 @@ class BaseTreeVB(ABC):
         # it will contain the results of fit/val
         ret = {}
 
-        # Time for printing
-        start = time.time()
-
-        # Times of fitting and validation steps
+        # Total time of fitting step
         # without pre/post processing tasks
         ret["total_fit_time"] = 0
-        ret["total_val_time"] = 0
         ret["optimized"] = []
-
-        if X_val_counts is not None:
-            N_val_dim = X_val_counts.sum()
-        elif X_val is not None: N_val_dim = X_val.shape[0]
  
-        ret["elbos_list"] = []
-        ret["lls_list"] = []
-        ret["lps_list"] = []
-        ret["lqs_list"] = []
-        ret["kls_list"] = []
+        if save_fit_history:
+            ret["elbos_list"] = []
+            ret["lls_list"] = []
+            ret["lps_list"] = []
+            ret["lqs_list"] = []
+            ret["kls_list"] = []
+            #
+            ret["fit_estimates"] = []
 
-        if save_fit_history: ret["fit_estimates"] = []
-        if save_val_history: ret["val_estimates"] = []
+        validation = X_val is not None
+
+        if validation:
+            # Total time of validation step
+            ret["total_val_time"] = 0
+
+            if save_val_history:
+                ret["elbos_val_list"] = []
+                ret["lls_val_list"] = []
+                ret["lps_val_list"] = []
+                ret["lqs_val_list"] = []
+                ret["kls_val_list"] = []
+                #
+                ret["val_estimates"] = []
+
         if save_grad_stats: ret["grad_stats"] = []
         if save_weight_stats: ret["weight_stats"] = []
-
-        if X_val is not None:
-            np_X_val = X_val.cpu().numpy()
-            ret["elbos_val_list"] = []
-            ret["lls_val_list"] = []
-            ret["lps_val_list"] = []
-            ret["lqs_val_list"] = []
-            ret["kls_val_list"] = []
 
         grad_samples = check_sample_size(grad_samples)
         val_samples = check_sample_size(val_samples)
@@ -167,6 +167,9 @@ class BaseTreeVB(ABC):
             tgs *= grad_samples[1]
         if len(val_samples) == 2:
             tvs *= val_samples[1]
+
+        # Time for printing
+        start = time.time()
 
         optim_nb = 0
         for epoch in range(1, max_iter + 1):
@@ -215,7 +218,7 @@ class BaseTreeVB(ABC):
 
             with torch.no_grad():
                 ## Validation
-                if X_val is not None:
+                if validation:
                     val_time = time.time()
                     try:
                         val_dict = self.sample(
@@ -261,7 +264,7 @@ class BaseTreeVB(ABC):
                                         lqs.item(),
                                         kls.item())
 
-                        if X_val is not None:
+                        if validation:
                             chaine += "\nVal\tELBO: {:.3f}"\
                                     "\tLogL: {:.3f}"\
                                     "\tLogP: {:.3f}"\
@@ -288,14 +291,16 @@ class BaseTreeVB(ABC):
                                     chaine += "\n"
                         print(chaine, end="\n")
 
-                ## Adding measure values to lists if all is OK
-                ret["elbos_list"].append(elbo.item())
-                ret["lls_list"].append(lls.item())
-                ret["lps_list"].append(lps.item())
-                ret["lqs_list"].append(lqs.item())
-                ret["kls_list"].append(kls.item())
-
                 if save_fit_history:
+                    ## Adding measure values to lists
+                    ## if all is OK
+                    ret["elbos_list"].append(elbo.item())
+                    ret["lls_list"].append(lls.item())
+                    ret["lps_list"].append(lps.item())
+                    ret["lqs_list"].append(lqs.item())
+                    ret["kls_list"].append(kls.item())
+
+                    ## Estimates
                     fit_estim = dict()
                     for estim in estim_list:
                         if estim in fit_dict:
@@ -317,7 +322,7 @@ class BaseTreeVB(ABC):
                             apply_on_submodules(
                                 get_named_weight_stats, self))
 
-                if X_val is not None:
+                if validation and save_val_history:
                     ret["elbos_val_list"].append(
                             elbo_val.item())
                     ret["lls_val_list"].append(lls_val.item())
@@ -325,29 +330,28 @@ class BaseTreeVB(ABC):
                     ret["lqs_val_list"].append(lqs_val.item())
                     ret["kls_val_list"].append(kls_val.item())
 
-                    if save_val_history:
-                        val_estim = dict()
-                        for estim in estim_list:
-                            if estim in val_dict:
-                                estim_stats =\
-                                    compute_estim_stats(
-                                        val_dict[estim]\
-                                                .reshape(
-                                                    tvs, -1),
-                                            confidence=0.95,
-                                            axis=0)
-                                val_estim[estim] = estim_stats
-                        ret["val_estimates"].append(val_estim)
+                    val_estim = dict()
+                    for estim in estim_list:
+                        if estim in val_dict:
+                            estim_stats =compute_estim_stats(
+                                val_dict[estim].reshape(tvs,
+                                    -1), confidence=0.95, 
+                                axis=0)
+                            val_estim[estim] = estim_stats
+                    ret["val_estimates"].append(val_estim)
         # End of fitting/validating
 
         with torch.no_grad():
             # Convert to ndarray to facilitate post-processing
-            ret["elbos_list"] = np.array(ret["elbos_list"])
-            ret["lls_list"] = np.array(ret["lls_list"]) 
-            ret["lps_list"] = np.array(ret["lps_list"])
-            ret["lqs_list"] = np.array(ret["lqs_list"])
-            ret["kls_list"] = np.array(ret["kls_list"])
-            if X_val is not None:
+
+            if save_fit_history:
+                ret["elbos_list"] = np.array(ret["elbos_list"])
+                ret["lls_list"] = np.array(ret["lls_list"]) 
+                ret["lps_list"] = np.array(ret["lps_list"])
+                ret["lqs_list"] = np.array(ret["lqs_list"])
+                ret["kls_list"] = np.array(ret["kls_list"])
+
+            if validation and save_val_history:
                 ret["elbos_val_list"]=np.array(
                         ret["elbos_val_list"])
                 ret["lls_val_list"] = np.array(
