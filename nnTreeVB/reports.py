@@ -794,7 +794,9 @@ def violinplot_sampled_estim_statistics(
                         sim_param = sim_param_exps[
                             exp_names[c]][estim_name]
 
-                        ratio = np.squeeze(scores/sim_param,-1)
+                        ratio = np.squeeze(
+                                scores/sim_param.reshape(
+                                    nb_data,1,1,-1), -1)
 
                         df[x_names[c], "Ratio"] = \
                                 ratio.mean((0,1))
@@ -821,6 +823,10 @@ def violinplot_sampled_estim_statistics(
                         df.columns.get_level_values(1)==stat]
                 x_df.columns = x_df.columns.droplevel(1)
                 #print(estim_name, stat, "\n", x_df.describe())
+                # TODO Check if x_df is empty
+                # https://stackoverflow.com/a/72086939
+                x_df = x_df.replace([np.inf, -np.inf],
+                        np.nan).dropna(axis=1)
 
                 violinplot_from_dataframe(
                         x_df,
