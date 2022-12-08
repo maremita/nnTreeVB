@@ -727,7 +727,7 @@ def violinplot_sampled_estim_statistics(
         if estim_name in unique_names:
             if estim_name in ["b", "r", "f"]:
                 col_index = pd.MultiIndex.from_product(
-                    [x_names, ['Dist','Dist01','Corr']])
+                    [x_names,['dists','scaled_dists','corrs']])
 
                 df = pd.DataFrame(columns=col_index)
 
@@ -761,12 +761,13 @@ def violinplot_sampled_estim_statistics(
                                 nb_data,1,1,-1) - scores,
                             axis=-1)
 
-                        df[x_names[c],"Dist"]=dists.mean((0,1))
+                        df[x_names[c],"dists"]=dists.mean(
+                                (0,1))
 
                         # Scaled distance within range 0,1
                         scaled_dists = 1-(1/(1+dists))
 
-                        df[x_names[c], "Dist01"] = \
+                        df[x_names[c], "scaled_dists"] = \
                                 scaled_dists.mean((0,1))
 
                         # correlation
@@ -775,7 +776,8 @@ def violinplot_sampled_estim_statistics(
                         #print("corrs", corrs.shape)
                         #[nb_data, nb_fit_reps, nb_samples]
 
-                        df[x_names[c],"Corr"]=corrs.mean((0,1))
+                        df[x_names[c],"corrs"]=corrs.mean(
+                                (0,1))
 
             elif estim_name in ["t", "k"]:
                 col_index = pd.MultiIndex.from_product(
@@ -804,16 +806,16 @@ def violinplot_sampled_estim_statistics(
             estim_dict[estim_name] = df
 
     y_limits = {
-            "Dist": [-0.1, None],
-            "Dist01": [-0.1, 1.1],
-            "Corr": [-1.1, 1.1],
-            "Ratio": [-0.1, None]
+            "dists": [-0.1, None],
+            "scaled_dists": [-0.1, 1.1],
+            "corrs": [-1.1, 1.1],
+            "ratios": [-0.1, None]
             }
 
     # plotting
     for estim_name in estim_dict:
         df = estim_dict[estim_name]
-        for stat in ['Dist', 'Dist01', 'Corr', 'Ratio']:
+        for stat in ['dists','scaled_dists','corrs','ratios']:
             if stat in df.columns.get_level_values(1):
                 #print(estim_name, stat)
                 out_file = output_path+estim_name+"_"+stat
@@ -828,13 +830,14 @@ def violinplot_sampled_estim_statistics(
                 x_df = x_df.replace([np.inf, -np.inf],
                         np.nan).dropna(axis=1)
 
-                violinplot_from_dataframe(
-                        x_df,
-                        out_file,
-                        y_limit=y_limits[stat],
-                        sizefont=sizefont,
-                        usetex=usetex,
-                        title=title)
+                if not x_df.empty:
+                    violinplot_from_dataframe(
+                            x_df,
+                            out_file,
+                            y_limit=y_limits[stat],
+                            sizefont=sizefont,
+                            usetex=usetex,
+                            title=title)
 
 def violinplot_from_dataframe(
         df,
@@ -1252,7 +1255,7 @@ def report_sampled_estimates(
             # TODO Get the full values to compute other 
             # statistics
             if len(prob.shape) > 1: prob = prob.mean()
-            chaine +="{}\t{:.4f}\n".format(
+            chaine +="{}\t{:.5f}\n".format(
                     prob_names[prob_name], prob.mean())
 
         for name in estim_names:
@@ -1301,12 +1304,12 @@ def report_sampled_estimates(
  
                     for stat_name in estimate_stats:
                         stats = estimate_stats[stat_name]
-                        chaine +="\t{:.4f}".format(
+                        chaine +="\t{:.5f}".format(
                                 stats[dim].item())
         
                     if real_flg:
                         real_val = real_params[name][i][dim]
-                        chaine +="\t{:.4f}".format(real_val)
+                        chaine +="\t{:.5f}".format(real_val)
 
                     chaine += "\n"
                 chaine += "\n"
@@ -1321,7 +1324,7 @@ def report_sampled_estimates(
                             estimate, axis=-1)
                     # distance shape [nb_rep_fit, nb_samples]
                     chaine += "\tEuclidean distance: "\
-                            "Mean {:.4f}, STD {:.4f}\n".format(
+                            "Mean {:.5f}, STD {:.5f}\n".format(
                                     distance.mean(),
                                     distance.std())
 
@@ -1330,25 +1333,9 @@ def report_sampled_estimates(
                             np.expand_dims(estimate, axis=0))
                     # corrs shape [1, nb_rep_fit, nb_samples]
                     chaine += "\tCorrelation and p-value:"\
-                        " {:.4f}, {:.4e}\n".format(
+                        " {:.5f}, {:.5e}\n".format(
                                 np.mean(corrs),
                                 np.mean(pvals))
-
-                # write total tree length
-                #if name == "b":
-                #    estim_t = estimate_stats["mean"].sum()
-
-                #    chaine += "\n## Tree length (sum of means"
-                #    chaine += " of branch lengths)\n"
-                #    chaine += "   \tSum"
-                #    if real_flg:
-                #        chaine += "\tReal"
-                #    chaine += "\n"
-                #    chaine += "T\t{:.4f}".format(estim_t)
-                #    if real_flg:
-                #        sim_t = real_params[name][i].sum()
-                #        chaine += "\t{:.4f}".format(sim_t)
-                #    chaine += "\n"
 
         chaine += "\n{}\n".format("#"*70)
     chaine += "END OF REPORT"
@@ -1425,8 +1412,8 @@ def summarize_sampled_estimates(
         if estim_name in unique_names:
             if estim_name in ["b", "r", "f"]:
                 col_index = pd.MultiIndex.from_product(
-                    [x_names, ['Dist','Dist01','Corr','Pval'],
-                        ['Mean', 'STD']])
+                    [x_names, ['dists','scaled_dists',
+                        'corrs','pvals'], ['Mean', 'STD']])
 
                 df = pd.DataFrame("-", index=row_index,
                         columns=col_index)
@@ -1465,18 +1452,20 @@ def summarize_sampled_estimates(
                                     nb_data,1,1,-1) - scores,
                                 axis=-1)
 
-                            df[x_names[c],"Dist", "Mean"].loc[
+                            df[x_names[c],"dists", "Mean"].loc[
                                     c_name] = dists.mean()
-                            df[x_names[c],"Dist", "STD"].loc[
+                            df[x_names[c],"dists", "STD"].loc[
                                     c_name] = dists.std()
 
                             # Scaled distance within range 0,1
                             scaled_dists = 1-(1/(1+dists))
 
-                            df[x_names[c],"Dist01","Mean"].loc[
-                                    c_name]=scaled_dists.mean()
-                            df[x_names[c],"Dist01", "STD"].loc[
-                                    c_name]=scaled_dists.std()
+                            df[x_names[c],"scaled_dists",
+                                    "Mean"].loc[c_name]=\
+                                            scaled_dists.mean()
+                            df[x_names[c],"scaled_dists",
+                                    "STD"].loc[c_name]=\
+                                            scaled_dists.std()
 
                             # correlation
                             corrs, pvals = compute_corr(
@@ -1484,15 +1473,15 @@ def summarize_sampled_estimates(
                             #print("corrs", corrs.shape)
                             #[nb_data, nb_fit_reps, nb_samples]
 
-                            df[x_names[c],"Corr", "Mean"].loc[
+                            df[x_names[c],"corrs", "Mean"].loc[
                                     c_name] = corrs.mean()
-                            df[x_names[c],"Corr", "STD"].loc[
+                            df[x_names[c],"corrs", "STD"].loc[
                                     c_name] = corrs.std()
-                            df[x_names[c],"Pval","Mean"].loc[
-                                    c_name] = "{:.4e}".format(
+                            df[x_names[c],"pvals","Mean"].loc[
+                                    c_name] = "{:.5e}".format(
                                             pvals.mean())
-                            df[x_names[c],"Pval","STD"].loc[
-                                    c_name] = "{:.4e}".format(
+                            df[x_names[c],"pvals","STD"].loc[
+                                    c_name] = "{:.5e}".format(
                                             pvals.std())
 
             elif estim_name in ["t", "k"]:
@@ -1530,7 +1519,7 @@ def write_dict_dfs(dict_df, filename):
     with pd.option_context(
             'display.max_rows', None,
             'display.max_columns', None):
-        pd.options.display.float_format = '{:.4f}'.format
+        pd.options.display.float_format = '{:.5f}'.format
         with open(filename, "w") as fh:
             for code in dict_df:
                 fh.write("## {}".format(code))

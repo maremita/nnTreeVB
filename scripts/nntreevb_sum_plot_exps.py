@@ -93,7 +93,7 @@ if __name__ == '__main__':
     output_dir = os.path.join(output_eval, "exp_outputs/",
             jobs_code)
 
-    now_str = datetime.now().strftime("%H%M") 
+    now_str = datetime.now().strftime("%m%d%H%M") 
     output_sum = os.path.join(output_dir,
             "summarize_{}".format(now_str))
             #"summarize")

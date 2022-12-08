@@ -37,21 +37,24 @@ from datetime import datetime
 import random
 import argparse
 import copy
+import warnings
 
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 
-import numpy as np
-import torch
-
 from joblib import Parallel, delayed
 
-import warnings
-warnings.filterwarnings("ignore",category=DeprecationWarning) 
-warnings.filterwarnings("ignore",category=UserWarning)
-warnings.filterwarnings('ignore', 
-        "r'All-NaN (slice|axis) encountered'")
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", 
+            category=DeprecationWarning) 
+    warnings.filterwarnings("ignore", 
+            category=UserWarning)
+    warnings.filterwarnings('ignore', 
+            "r'All-NaN (slice|axis) encountered'")
+
+    import numpy as np
+    import torch
 
 __author__ = "amine remita"
 
@@ -468,7 +471,7 @@ if __name__ == "__main__":
 
                 if verbose:
                     print("Log likelihood of the data {}""\
-                        using input params: {:.4f}".format(
+                        using input params: {:.5f}".format(
                                 i, logl_data), flush=True)
 
             result_data["logl_data"] = np.array(logls)

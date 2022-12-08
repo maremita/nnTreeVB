@@ -15,6 +15,7 @@ import numpy as np
 from joblib import Parallel, delayed
 import scipy.stats
 from scipy.stats.stats import pearsonr#, spearmanr
+import scipy.special as sc
 
 import torch
 import torch.nn as nn
@@ -390,7 +391,32 @@ def apply_on_submodules(func, nn_module):
 
     return ret
 
-def compute_corr(main, batch, verbose=False):
+# Adapted from the answer https://stackoverflow.com/a/61176168
+def compute_corr(x, ys, verbose=False):
+    x_mean = x.mean(axis=-1)
+    y_means = ys.mean(axis=-1)
+
+    xm = x - x_mean[..., np.newaxis]
+    yms = ys - y_means[..., np.newaxis]
+
+    p1 = np.squeeze(np.einsum('dfsij,djk->dfsik',
+        np.expand_dims(yms, -2), xm[...,np.newaxis]), (-2, -1))
+
+    p2 = np.expand_dims(np.einsum('di,di->d', xm, xm), (-2,-1))
+
+    with np.errstate(all='ignore'):
+        rs = p1 / np.sqrt(p2 * (yms * yms).sum(axis=-1))
+        rs = rs.clip(-1, 1)
+
+        probs = sc.betainc(
+            x.shape[-1] / 2 - 1,
+            0.5,
+            1 / (1 + rs * rs / (1 - rs * rs))
+        )
+
+    return rs, probs
+
+def compute_corr_legacy(main, batch, verbose=False):
 
     def pearson(v1, v2):
         r = (np.nan, np.nan)
