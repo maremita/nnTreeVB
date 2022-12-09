@@ -8,8 +8,7 @@ import os.path
 import numpy as np
 import pandas as pd
 
-from scipy.stats.stats import pearsonr
-from scipy.spatial.distance import pdist
+from scipy.stats import kruskal
 
 import torch
 
@@ -1393,10 +1392,11 @@ def summarize_sampled_estimates(
                         # [nb_data, nb_fit_reps]
 
                         df[x_names[c], "Mean"].loc[c_name] =\
-                                scores.mean().item()
+                            np.ma.masked_invalid(
+                                scores).mean().item()
                         df[x_names[c], "STD"].loc[c_name] =\
-                                np.ma.masked_invalid(
-                                    scores).std().item()
+                            np.ma.masked_invalid(
+                                scores).std().item()
 
                         if logl_real and\
                             logl_data_combins[c_name] != None:
@@ -1411,6 +1411,8 @@ def summarize_sampled_estimates(
     for estim_name in estim_names:
         if estim_name in unique_names:
             if estim_name in ["b", "r", "f"]:
+
+                ## Dataframe for estimate statistics
                 col_index = pd.MultiIndex.from_product(
                     [x_names, ['dists','scaled_dists',
                         'corrs','pvals'], ['Mean', 'STD']])
@@ -1418,9 +1420,23 @@ def summarize_sampled_estimates(
                 df = pd.DataFrame("-", index=row_index,
                         columns=col_index)
 
+                ## Dataframe for Kruskal tests
+                col_index_k = pd.MultiIndex.from_product(
+                    [['dists', 'scaled_dists', 'corrs',],
+                        ['kruskal', 'pvalue']])
+
+                df_k = pd.DataFrame("-", index=row_index,
+                        columns=col_index_k)
+
                 for c_name in combins:
                     exp_names = combins[c_name]
                     #print(exp_names)
+
+                    k_dists = []
+                    k_dists01 = []
+                    k_corrs = []
+                    # samples are multidimentionals 
+                    #k_samples = []
 
                     for c, exp_scores in \
                             enumerate(sample_combins[c_name]):
@@ -1457,6 +1473,8 @@ def summarize_sampled_estimates(
                             df[x_names[c],"dists", "STD"].loc[
                                     c_name] = dists.std()
 
+                            k_dists.append(dists.flatten())
+
                             # Scaled distance within range 0,1
                             scaled_dists = 1-(1/(1+dists))
 
@@ -1467,6 +1485,9 @@ def summarize_sampled_estimates(
                                     "STD"].loc[c_name]=\
                                             scaled_dists.std()
 
+                            k_dists01.append(
+                                    scaled_dists.flatten())
+                            
                             # correlation
                             corrs, pvals = compute_corr(
                                 sim_param, scores) 
@@ -1484,6 +1505,35 @@ def summarize_sampled_estimates(
                                     c_name] = "{:.5e}".format(
                                             pvals.std())
 
+                            k_corrs.append(corrs.flatten())
+
+                            #k_samples.append(scores.flatten())
+
+                    # Compute Kruskal tests and populate df_k
+                    kdst = kruskal(*k_dists)
+                    df_k["dists","kruskal"].loc[
+                            c_name] = "{:.5f}".format(kdst[0])
+                    df_k["dists","pvalue"].loc[
+                            c_name] = "{:.5e}".format(kdst[1])
+
+                    kd01 = kruskal(*k_dists01)
+                    df_k["scaled_dists","kruskal"].loc[
+                            c_name] = "{:.5f}".format(kd01[0])
+                    df_k["scaled_dists","pvalue"].loc[
+                            c_name] = "{:.5e}".format(kd01[1])
+
+                    kcor = kruskal(*k_corrs)
+                    df_k["corrs","kruskal"].loc[
+                            c_name] = "{:.5f}".format(kcor[0])
+                    df_k["corrs","pvalue"].loc[
+                            c_name] = "{:.5e}".format(kcor[1])
+
+                    #ksmp = kruskal(*k_samples)
+                    #df_k["samples","kruskal"].loc[
+                    #        c_name] = "{:.5f}".format(ksmp[0])
+                    #df_k["samples","pvalue"].loc[
+                    #        c_name] = "{:.5e}".format(ksmp[1])
+
             elif estim_name in ["t", "k"]:
                 col_index = pd.MultiIndex.from_product(
                         [x_names, ['Mean','STD','Real']])
@@ -1491,8 +1541,17 @@ def summarize_sampled_estimates(
                 df = pd.DataFrame("", index=row_index,
                         columns=col_index)
 
+                ## Dataframe for Kruskal tests
+                col_index_k = pd.MultiIndex.from_product(
+                    [['samples'], ['kruskal', 'pvalue']])
+
+                df_k = pd.DataFrame("-", index=row_index,
+                        columns=col_index_k)
+
                 for c_name in combins:
                     exp_names = combins[c_name]
+                    k_samples = []
+
                     for c, exp_scores in \
                             enumerate(sample_combins[c_name]):
                         if estim_name in exp_scores[0]:
@@ -1511,7 +1570,17 @@ def summarize_sampled_estimates(
                             df[x_names[c],"Real"].loc[
                                     c_name] = sim_param.mean()
 
+                            k_samples.append(scores.flatten())
+
+                    ksmp = kruskal(*k_samples)
+                    df_k["samples","kruskal"].loc[
+                            c_name] = "{:.5f}".format(ksmp[0])
+                    df_k["samples","pvalue"].loc[
+                            c_name] = "{:.5e}".format(ksmp[1])
+
             estim_dict[estim_names[estim_name]] = df
+            estim_dict[estim_names[estim_name]+\
+                    ": Kruskal-Wallis tests"] = df_k
 
     write_dict_dfs(estim_dict, out_file+"_estim.txt")
 

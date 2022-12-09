@@ -50,7 +50,7 @@ if __name__ == '__main__':
     config_file = cmd_args.config_file
     jobs_code = cmd_args.job_code
 
-    print("Summarizing {} experiments...\n".format(jobs_code),
+    print("Summarizing {} experiments...".format(jobs_code),
             flush=True)
 
     ## Fetch argument values from ini file
