@@ -318,12 +318,18 @@ class VB_nnTree(nn.Module, BaseTreeVB):
 
         # Sample b from q_d and compute log prior, log q
         b_min_clamp = eps
-        if self.b_compound: b_min_clamp = False
+        b_max_clamp = 1e2
+        if self.b_compound:
+            # Don't clamp if branch prior follow
+            # a Compound Dirichlet-Gamma distribution
+            b_min_clamp = False
+            b_max_clamp = False
 
         b_logprior, b_logq, b_kl, b_samples = self.b_encoder(
                 sample_size=sample_size,
                 KL_gradient=elbo_kl,
-                min_clamp=b_min_clamp)
+                min_clamp=b_min_clamp,
+                max_clamp=b_max_clamp)
 
         #print("b_logprior {}".format(b_logprior.shape))
         #print("b_logq {}".format(b_logq.shape))

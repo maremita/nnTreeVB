@@ -1277,12 +1277,12 @@ def report_sampled_estimates(
                         and name in real_params
 
                 # Names of stat columns
-                chaine += "   "
+                chaine += "{:10s}".format("")
                 for stat_name in estimate_stats:
-                    chaine += "\t"+stat_name
+                    chaine += "\t{:7s}".format(stat_name)
 
                 if real_flg:
-                    chaine += "\tReal"
+                    chaine += "\t{:7s}".format("Real")
                 chaine += "\n"
 
                 for dim in range(param_dim):
@@ -1299,7 +1299,7 @@ def report_sampled_estimates(
                     else:
                         the_name = name
 
-                    chaine += the_name
+                    chaine += "{:10s}".format(the_name)
  
                     for stat_name in estimate_stats:
                         stats = estimate_stats[stat_name]
@@ -1312,7 +1312,7 @@ def report_sampled_estimates(
 
                     chaine += "\n"
                 chaine += "\n"
-            
+ 
                 # Compute distance and correlation
                 if real_flg:
                     sim_param = real_params[name][i]

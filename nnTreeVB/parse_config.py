@@ -12,6 +12,12 @@ from nnTreeVB.checks import check_prior_option
 from nnTreeVB.checks import check_var_option
 
 import re
+import torch
+
+eps = torch.finfo().eps
+
+MIN_BLENS = eps
+MAX_BLENS = 1e2
 
 @dataclass
 class ArgObject:
@@ -67,7 +73,8 @@ def parse_config(config_file):
             "data", "sim_rep_trees", fallback=True)
     arg.dat.sim_blengths = check_sim_blengths(config.get(
         "data", "sim_blengths", fallback="0.1,1."), nb_taxa,
-        nb_data)
+        nb_rep=nb_data, min_clamp=MIN_BLENS,
+        max_clamp=MAX_BLENS)
     arg.dat.sim_rates = check_sim_simplex(config.get(
         "data", "sim_rates", fallback="0.16"), 6, nb_data)
     arg.dat.sim_freqs = check_sim_simplex(config.get(

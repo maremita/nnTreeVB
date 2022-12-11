@@ -40,7 +40,12 @@ def check_subs_model(model_str):
 
     return model
 
-def check_sim_blengths(sim_blengths, nb_taxa, nb_rep=1):
+def check_sim_blengths(
+        sim_blengths,
+        nb_taxa,
+        nb_rep=1,
+        min_clamp=None,
+        max_clamp=None):
     """
     Possible values:
 
@@ -98,15 +103,19 @@ def check_sim_blengths(sim_blengths, nb_taxa, nb_rep=1):
             # A set of nb_rep will be simulated
             values = torch.cat((blen_dists[0].sample([nb_rep,
                 nb_taxa]), blen_dists[1].sample([nb_rep,
-                    nb_interns])), dim=1).numpy()
+                    nb_interns])), dim=1).clamp(
+                            min=min_clamp,
+                            max=max_clamp).numpy()
         else:
             # Only one set of branches will be simulated
             values=torch.cat((blen_dists[0].sample([nb_taxa]),
-                blen_dists[1].sample([nb_interns]))).numpy()
+                blen_dists[1].sample([nb_interns]))).clamp(
+                            min=min_clamp,
+                            max=max_clamp).numpy()
 
             values = np.resize(values, (nb_rep,
                 nb_taxa+nb_interns))
-    
+ 
     return values.tolist()
 
 def check_sim_float(sim_float, nb_rep=1):
