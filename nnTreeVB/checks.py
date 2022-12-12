@@ -1,4 +1,5 @@
 from nnTreeVB.typing import dist_types
+from nnTreeVB.utils import min_max_clamp
 from nnTreeVB.utils import str2floats
 from nnTreeVB.utils import str2values
 from nnTreeVB.utils import getboolean
@@ -103,15 +104,17 @@ def check_sim_blengths(
             # A set of nb_rep will be simulated
             values = torch.cat((blen_dists[0].sample([nb_rep,
                 nb_taxa]), blen_dists[1].sample([nb_rep,
-                    nb_interns])), dim=1).clamp(
-                            min=min_clamp,
-                            max=max_clamp).numpy()
+                    nb_interns])), dim=1)
+            values = min_max_clamp(values,
+                    min_clamp=min_clamp,
+                    max_clamp=max_clamp).numpy()
         else:
             # Only one set of branches will be simulated
             values=torch.cat((blen_dists[0].sample([nb_taxa]),
-                blen_dists[1].sample([nb_interns]))).clamp(
-                            min=min_clamp,
-                            max=max_clamp).numpy()
+                blen_dists[1].sample([nb_interns])))
+            values = min_max_clamp(values,
+                    min_clamp=min_clamp,
+                    max_clamp=max_clamp).numpy()
 
             values = np.resize(values, (nb_rep,
                 nb_taxa+nb_interns))
