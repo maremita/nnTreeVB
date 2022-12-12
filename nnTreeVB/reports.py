@@ -833,7 +833,9 @@ def violinplot_sampled_estim_statistics(
                     violinplot_from_dataframe(
                             x_df,
                             out_file,
-                            y_limit=y_limits[stat],
+                            color=estim_colors[estim_name],
+                            #y_limit=y_limits[stat],
+                            y_limit=[None, None],
                             sizefont=sizefont,
                             usetex=usetex,
                             title=title)
@@ -841,6 +843,7 @@ def violinplot_sampled_estim_statistics(
 def violinplot_from_dataframe(
         df,
         out_file,
+        color="#2a9d8f",
         y_limit=[0, None],
         sizefont=14,
         usetex=False,
@@ -857,7 +860,13 @@ def violinplot_from_dataframe(
         'text.usetex':usetex})
     plt.subplots_adjust(wspace=0.07, hspace=0.1)
 
-    sns.violinplot(data=df, palette="husl")
+    sns.violinplot(data=df, color=color, saturation=1.)
+
+    # Rotate labels if they are too long
+    nb_cols = len(df.columns)
+    max_len = max([len(c) for c in df.columns])
+    if nb_cols >=5 and max_len >=10:
+        plt.xticks(rotation=45)
 
     plt.ylim(*y_limit)
 
