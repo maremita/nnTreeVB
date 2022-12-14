@@ -466,7 +466,7 @@ class VB_nnTree(nn.Module, BaseTreeVB):
         if elbo_kl:
             elbo = torch.mean(logl, 0) - (alpha_kl * kl_qprior)
         else:
-            elbo = logl + logprior - logq
+            elbo = logl + (alpha_kl * (logprior - logq))
 
             if elbo_iws:
                 nb_sample = logl.shape[-1]
