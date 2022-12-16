@@ -207,9 +207,9 @@ if __name__ == '__main__':
 
         if run_slurm:
             s_error = os.path.join(job_dir,
-                    exp_name+"_%j.err")
+                    "%j_"+exp_name+".err")
             s_output = os.path.join(job_dir, 
-                    exp_name+"_%j.out")
+                    "%j_"+exp_name+".out")
 
             cmd = "sbatch"\
                     " --account={}"\

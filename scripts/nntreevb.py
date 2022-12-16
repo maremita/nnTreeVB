@@ -311,7 +311,7 @@ if __name__ == "__main__":
             update_sim_parameters(dat)
             dat.real_params = True
 
-            parallel = Parallel(n_jobs=nb_data, 
+            parallel = Parallel(n_jobs=stg.nb_parallel, 
                 prefer="processes", verbose=verbose)
 
             trf = all([os.path.isfile(f) for f in tree_files])
@@ -360,7 +360,7 @@ if __name__ == "__main__":
                     print("\nSimulating new sequences...", 
                             flush=True)
  
-                parallel = Parallel(n_jobs=nb_data, 
+                parallel = Parallel(n_jobs=stg.nb_parallel, 
                     prefer="processes", verbose=verbose)
 
                 # The order of freqs is different for pyvolve
