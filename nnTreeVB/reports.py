@@ -760,14 +760,13 @@ def violinplot_sampled_estim_statistics(
                                 nb_data,1,1,-1) - scores,
                             axis=-1)
 
-                        df[x_names[c],"dists"]=dists.mean(
-                                (0,1))
+                        df[x_names[c],"dists"]=dists.flatten()
 
                         # Scaled distance within range 0,1
                         scaled_dists = 1-(1/(1+dists))
 
                         df[x_names[c], "scaled_dists"] = \
-                                scaled_dists.mean((0,1))
+                                scaled_dists.flatten()
 
                         # correlation
                         corrs, pvals = compute_corr(
@@ -775,8 +774,7 @@ def violinplot_sampled_estim_statistics(
                         #print("corrs", corrs.shape)
                         #[nb_data, nb_fit_reps, nb_samples]
 
-                        df[x_names[c],"corrs"]=corrs.mean(
-                                (0,1))
+                        df[x_names[c],"corrs"]=corrs.flatten()
 
             elif estim_name in ["t", "k"]:
                 col_index = pd.MultiIndex.from_product(
@@ -800,7 +798,7 @@ def violinplot_sampled_estim_statistics(
                                     nb_data,1,1,-1), -1)
 
                         df[x_names[c], "Ratio"] = \
-                                ratio.mean((0,1))
+                                ratio.flatten()
 
             estim_dict[estim_name] = df
 
