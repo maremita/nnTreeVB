@@ -73,7 +73,7 @@ if __name__ == '__main__':
             "report_n_epochs", fallback=max_iter)
     save_fit_history = config.getboolean(
             "hyperparams", "save_fit_history", fallback=False)
-    nb_parallel = config.getint("settings", "nb_parallel",
+    nb_parallel = config.getint("evaluation", "nb_parallel",
             fallback=4)
     verbose = check_verbose(config.get("settings", "verbose",
         fallback=1))
@@ -285,3 +285,5 @@ if __name__ == '__main__':
                 #
                 usetex=plt_usetex,
                 sizefont=size_font) for combin in combins)
+
+    print("\nFin normale du programme\n", flush=True)

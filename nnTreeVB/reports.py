@@ -1421,7 +1421,7 @@ def summarize_sampled_estimates(
 
                 ## Dataframe for estimate statistics
                 col_index = pd.MultiIndex.from_product(
-                    [x_names, ['dists','scaled_dists',
+                    [x_names, ['dists', 'scaled_dists',
                         'corrs','pvals'], ['Mean', 'STD']])
 
                 df = pd.DataFrame("-", index=row_index,
@@ -1430,7 +1430,7 @@ def summarize_sampled_estimates(
                 ## Dataframe for Kruskal tests
                 col_index_k = pd.MultiIndex.from_product(
                     [['dists', 'scaled_dists', 'corrs',],
-                        ['kruskal', 'pvalue']])
+                        ['kruskal', 'pvalue', 'nb_groups']])
 
                 df_k = pd.DataFrame("-", index=row_index,
                         columns=col_index_k)
@@ -1517,28 +1517,40 @@ def summarize_sampled_estimates(
                             #k_samples.append(scores.flatten())
 
                     # Compute Kruskal tests and populate df_k
-                    kdst = kruskal(*k_dists)
-                    df_k["dists","kruskal"].loc[
+                    df_k["dists", "nb_groups"].loc[
+                        c_name] = "{}".format(len(k_dists))
+                    if len(k_dists) >= 2:
+                        kdst = kruskal(*k_dists)
+                        df_k["dists","kruskal"].loc[
                             c_name] = "{:.5f}".format(kdst[0])
-                    df_k["dists","pvalue"].loc[
+                        df_k["dists","pvalue"].loc[
                             c_name] = "{:.5e}".format(kdst[1])
 
-                    kd01 = kruskal(*k_dists01)
-                    df_k["scaled_dists","kruskal"].loc[
+                    df_k["scaled_dists", "nb_groups"].loc[
+                        c_name] = "{}".format(len(k_dists01))
+                    if len(k_dists01) >= 2:
+                        kd01 = kruskal(*k_dists01)
+                        df_k["scaled_dists","kruskal"].loc[
                             c_name] = "{:.5f}".format(kd01[0])
-                    df_k["scaled_dists","pvalue"].loc[
+                        df_k["scaled_dists","pvalue"].loc[
                             c_name] = "{:.5e}".format(kd01[1])
 
-                    kcor = kruskal(*k_corrs)
-                    df_k["corrs","kruskal"].loc[
+                    df_k["corrs", "nb_groups"].loc[
+                        c_name] = "{}".format(len(k_corrs))
+                    if len(k_corrs) >= 2:
+                        kcor = kruskal(*k_corrs)
+                        df_k["corrs","kruskal"].loc[
                             c_name] = "{:.5f}".format(kcor[0])
-                    df_k["corrs","pvalue"].loc[
+                        df_k["corrs","pvalue"].loc[
                             c_name] = "{:.5e}".format(kcor[1])
 
-                    #ksmp = kruskal(*k_samples)
-                    #df_k["samples","kruskal"].loc[
+                    #df_k["samples", "nb_groups"].loc[
+                    #    c_name] = "{}".format(len(k_samples))
+                    #if len(k_samples) >= 2:
+                    #    ksmp = kruskal(*k_samples)
+                    #    df_k["samples","kruskal"].loc[
                     #        c_name] = "{:.5f}".format(ksmp[0])
-                    #df_k["samples","pvalue"].loc[
+                    #    df_k["samples","pvalue"].loc[
                     #        c_name] = "{:.5e}".format(ksmp[1])
 
             elif estim_name in ["t", "k"]:
@@ -1550,7 +1562,8 @@ def summarize_sampled_estimates(
 
                 ## Dataframe for Kruskal tests
                 col_index_k = pd.MultiIndex.from_product(
-                    [['samples'], ['kruskal', 'pvalue']])
+                    [['samples'], ['kruskal', 'pvalue',
+                        "nb_groups"]])
 
                 df_k = pd.DataFrame("-", index=row_index,
                         columns=col_index_k)
@@ -1579,10 +1592,13 @@ def summarize_sampled_estimates(
 
                             k_samples.append(scores.flatten())
 
-                    ksmp = kruskal(*k_samples)
-                    df_k["samples","kruskal"].loc[
+                    df_k["samples", "nb_groups"].loc[
+                        c_name] = "{}".format(len(k_samples))
+                    if len(k_samples) >= 2:
+                        ksmp = kruskal(*k_samples)
+                        df_k["samples","kruskal"].loc[
                             c_name] = "{:.5f}".format(ksmp[0])
-                    df_k["samples","pvalue"].loc[
+                        df_k["samples","pvalue"].loc[
                             c_name] = "{:.5e}".format(ksmp[1])
 
             estim_dict[estim_names[estim_name]] = df
