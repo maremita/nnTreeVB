@@ -6,8 +6,8 @@ from nnTreeVB.reports import aggregate_sampled_estimates
 from nnTreeVB.reports import summarize_sampled_estimates
 from nnTreeVB.reports import plot_elbos_lls_kls
 from nnTreeVB.reports import plot_fit_estim_statistics
-from nnTreeVB.reports import \
-        violinplot_sampled_estim_statistics
+from nnTreeVB.reports import compute_samples_statistics
+from nnTreeVB.reports import violinplot_samples_statistics
 from nnTreeVB.utils import dictLists2combinations
 from nnTreeVB.checks import check_verbose
 
@@ -95,8 +95,8 @@ if __name__ == '__main__':
 
     now_str = datetime.now().strftime("%m%d%H%M") 
     output_sum = os.path.join(output_dir,
-            "summarize_{}".format(now_str))
-            #"summarize")
+            #"summarize_{}".format(now_str))
+            "summarize")
     makedirs(output_sum, mode=0o700, exist_ok=True)
 
     #
@@ -118,9 +118,11 @@ if __name__ == '__main__':
     estimates_exps = dict()
     real_param_exps = dict()
     samples_exps = dict()
+    metrics_exps = dict()
 
     for ind, eval_combin in enumerate(eval_combins):
         exp_name = name_combins[ind]
+        #print(exp_name) # an atomic evaluation
 
         res_file = os.path.join(output_dir, 
                 "{}/{}_results.pkl".format(exp_name,
@@ -162,6 +164,11 @@ if __name__ == '__main__':
         samples_exps[exp_name] = aggregate_sampled_estimates(
                 rep_results, "samples")
 
+        #
+        metrics_exps[exp_name] = compute_samples_statistics(
+                samples_exps[exp_name],
+                real_param_exps[exp_name])
+
     for ind, eval_code in enumerate(eval_codes):
         print("\nSummarizing {} results".format(eval_code),
                 flush=True)
@@ -173,6 +180,7 @@ if __name__ == '__main__':
             combins["_".join([xp[i] for i, _ in\
                     enumerate(xp) if i!=ind])].append(
                             exp_name)
+        #print(combins)
         #{'d-jc69_t-8':['d-jc69_l-100_t-8',
         #    'd-jc69_l-1000_t-8']...
         a_key = list(combins.keys())[0] # l-100_t-8_m-jc69
@@ -255,6 +263,7 @@ if __name__ == '__main__':
                 flush=True)
         sample_combins = {c:[samples_exps[x] for x in\
                 combins[c]] for c in combins}
+        #print(sample_combins.keys())
 
         out_file = os.path.join(output_sum,
                 "{}_sampling".format(eval_code))
@@ -267,19 +276,22 @@ if __name__ == '__main__':
             out_file,
             logl_data_combins)
  
-        print("\tBoxplotting distances and correlations of"
+        print("\tPlotting distances and correlations of"
                 " sampled estimates", flush=True)
 
         output_sample = os.path.join(output_sum, 
                     eval_code+"_sampling")
         makedirs(output_sample, mode=0o700, exist_ok=True)
 
+        metric_combins = {c:[metrics_exps[x] for x in\
+                combins[c]] for c in combins}
+        #print(metric_combins.keys())
+
         parallel(delayed(
-            violinplot_sampled_estim_statistics)(
-                sample_scores=sample_combins[combin],
+            violinplot_samples_statistics)(
+                metric_scores=metric_combins[combin],
                 exp_names=combins[combin],
                 x_names=x_names,
-                sim_param_exps=real_param_exps,
                 output_path=os.path.join(output_sample,
                     "{}_estim_".format(combin)),
                 #

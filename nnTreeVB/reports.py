@@ -704,115 +704,155 @@ def plot_fit_estim_distances(
 
     plt.close(f)
 
-def violinplot_sampled_estim_statistics(
-        sample_scores,
+def compute_samples_statistics(
+        exp_scores,
+        exp_sim_param):
+
+    nb_data = len(exp_scores)
+
+    # aggregate data
+    estim_dict = dict()
+    for estim_name in estim_names:
+        if estim_name in ["b", "r", "f"]:
+            col_index = ['Dists','Scaled_dists','Corrs',
+                    'Pvals']
+
+            df = pd.DataFrame(columns=col_index)
+
+            # exp_scores is a list with nb_data 
+            # elements. Each element contains a 
+            # dictionary for estimates [b, r, f..]
+            # that have values of shape
+            # [nb_rep, nb_sample,shape of estimate]
+            #print(estim_name)
+            #print(exp_scores[0][estim_name].shape)
+            if estim_name in exp_scores[0]:
+                scores = np.array([exp_scores[d][
+                    estim_name] 
+                    for d in range(nb_data)])
+                #print(estim_name, scores.shape)
+                #[nb_data, nb_fit_reps, 
+                # nb_samples, estim_shape]
+
+                sim_param = exp_sim_param[estim_name]
+                #print("sim_param {}".format(
+                #    sim_param.shape))
+                #[nb_data, estim shape]
+
+                # euclidean distance
+                dists = np.linalg.norm(
+                    sim_param.reshape(
+                        nb_data,1,1,-1) - scores,
+                    axis=-1)
+
+                df["Dists"]=dists.flatten()
+
+                # Scaled distance within range 0,1
+                scaled_dists = 1-(1/(1+dists))
+
+                df["Scaled_dists"] = scaled_dists.flatten()
+
+                # correlation
+                corrs, pvals = compute_corr(
+                    sim_param, scores) 
+                #print("corrs", corrs.shape)
+                #[nb_data, nb_fit_reps, nb_samples]
+
+                df["Corrs"]=corrs.flatten()
+                df["Pvals"]=pvals.flatten()
+
+                estim_dict[estim_name] = df
+
+        elif estim_name in ["t", "k"]:
+            col_index = ['Ratios']
+
+            df = pd.DataFrame(columns=col_index)
+
+            if estim_name in exp_scores[0]:
+                scores = np.array([exp_scores[d][
+                    estim_name] 
+                    for d in range(nb_data)])
+                #print(estim_name, scores.shape)
+
+                sim_param = exp_sim_param[estim_name]
+
+                ratio = np.squeeze(
+                        scores/sim_param.reshape(
+                            nb_data,1,1,-1), -1)
+
+                df["Ratios"] = ratio.flatten()
+
+                estim_dict[estim_name] = df
+
+    return estim_dict
+
+def violinplot_samples_statistics(
+        #sample_scores,
+        metric_scores, # list
         exp_names,
         x_names,
-        sim_param_exps,
         output_path,
         sizefont=14,
         usetex=False):
 
     unique_names = []
-    for exp_scores in sample_scores:
-        unique_names.extend(exp_scores[0].keys())
+    for exp_metrics in metric_scores:
+        unique_names.extend(exp_metrics.keys())
     unique_names = set(unique_names)
 
-    nb_data = len(sample_scores[0])
-
-    # aggregate data
+    # Aggregate result data
     estim_dict = dict()
     for estim_name in estim_names:
         if estim_name in unique_names:
             if estim_name in ["b", "r", "f"]:
                 col_index = pd.MultiIndex.from_product(
-                    [x_names,['dists','scaled_dists','corrs']])
+                    [x_names,['Dists','Scaled_dists','Corrs']])
 
                 df = pd.DataFrame(columns=col_index)
 
-                for c, exp_scores in \
-                        enumerate(sample_scores):
-
-                    # exp_scores is a list with nb_data 
-                    # elements. Each element contains a 
-                    # dictionary for estimates [b, r, f..]
-                    # that have values of shape
-                    # [nb_rep, nb_sample,shape of estimate]
-                    #print(estim_name)
-                    #print(exp_scores[0][estim_name].shape)
-                    if estim_name in exp_scores[0]:
-                        scores = np.array([exp_scores[d][
-                            estim_name] 
-                            for d in range(nb_data)])
-                        #print(estim_name, scores.shape)
-                        #[nb_data, nb_fit_reps, 
-                        # nb_samples, estim_shape]
-
-                        sim_param = sim_param_exps[
-                            exp_names[c]][estim_name]
-                        #print("sim_param {}".format(
-                        #    sim_param.shape))
-                        #[nb_data, estim shape]
+                for c, exp_metrics in \
+                        enumerate(metric_scores):
+                    if estim_name in exp_metrics:
 
                         # euclidean distance
-                        dists = np.linalg.norm(
-                            sim_param.reshape(
-                                nb_data,1,1,-1) - scores,
-                            axis=-1)
-
-                        df[x_names[c],"dists"]=dists.flatten()
+                        df[x_names[c],"Dists"]=\
+                            exp_metrics[estim_name]["Dists"]
 
                         # Scaled distance within range 0,1
-                        scaled_dists = 1-(1/(1+dists))
-
-                        df[x_names[c], "scaled_dists"] = \
-                                scaled_dists.flatten()
+                        df[x_names[c], "Scaled_dists"]=\
+                            exp_metrics[estim_name][
+                                    "Scaled_dists"]
 
                         # correlation
-                        corrs, pvals = compute_corr(
-                            sim_param, scores) 
-                        #print("corrs", corrs.shape)
-                        #[nb_data, nb_fit_reps, nb_samples]
-
-                        df[x_names[c],"corrs"]=corrs.flatten()
+                        df[x_names[c],"Corrs"]=\
+                            exp_metrics[estim_name]["Corrs"]
 
             elif estim_name in ["t", "k"]:
                 col_index = pd.MultiIndex.from_product(
-                        [x_names, ['Ratio']])
+                        [x_names, ['Ratios']])
 
                 df = pd.DataFrame(columns=col_index)
 
                 for c, exp_scores in \
-                        enumerate(sample_scores):
-                    if estim_name in exp_scores[0]:
-                        scores = np.array([exp_scores[d][
-                            estim_name] 
-                            for d in range(nb_data)])
-                        #print(estim_name, scores.shape)
+                        enumerate(metric_scores):
+                    if estim_name in exp_metrics:
 
-                        sim_param = sim_param_exps[
-                            exp_names[c]][estim_name]
-
-                        ratio = np.squeeze(
-                                scores/sim_param.reshape(
-                                    nb_data,1,1,-1), -1)
-
-                        df[x_names[c], "Ratio"] = \
-                                ratio.flatten()
+                        df[x_names[c], "Ratios"] = \
+                            exp_metrics[estim_name]["Ratios"]
 
             estim_dict[estim_name] = df
 
     y_limits = {
-            "dists": [-0.1, None],
-            "scaled_dists": [-0.1, 1.1],
-            "corrs": [-1.1, 1.1],
-            "ratios": [-0.1, None]
+            "Dists": [-0.1, None],
+            "Scaled_dists": [-0.1, 1.1],
+            "Corrs": [-1.1, 1.1],
+            "Ratios": [-0.1, None]
             }
 
     # plotting
     for estim_name in estim_dict:
         df = estim_dict[estim_name]
-        for stat in ['dists','scaled_dists','corrs','ratios']:
+        for stat in ['Dists','Scaled_dists','Corrs','Ratios']:
             if stat in df.columns.get_level_values(1):
                 #print(estim_name, stat)
                 out_file = output_path+estim_name+"_"+stat
