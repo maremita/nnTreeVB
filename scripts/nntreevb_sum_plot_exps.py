@@ -10,6 +10,7 @@ from nnTreeVB.reports import compute_samples_statistics
 from nnTreeVB.reports import violinplot_samples_statistics
 from nnTreeVB.reports import plot_grouped_statistics
 from nnTreeVB.utils import dictLists2combinations
+from nnTreeVB.utils import str2list
 from nnTreeVB.checks import check_verbose
 
 import sys
@@ -85,9 +86,30 @@ if __name__ == '__main__':
     plt_usetex = config.getboolean("plotting",
             "plt_usetex", fallback=False)
 
-    legend_elbo = 'best'
-    legend_dist = 'best'
-    legend_corr = 'best' # lower right
+    # y limits
+    y_limits = dict()
+    y_limits["Dists"] = str2list(config.get("plotting",
+        "ylim_dists", fallback="-0.01,None"), cast=float)
+    y_limits["Scaled_dists"]= str2list(config.get("plotting",
+        "ylim_scaled_dists", fallback="-0.01,1.01"),
+        cast=float)
+    y_limits["Corrs"] = str2list(config.get("plotting",
+        "ylim_corrs", fallback="-1.01,1.01"), cast=float)
+    y_limits["Ratios"] = str2list(config.get("plotting",
+        "ylim_ratios", fallback="-0.01,None"), cast=float)
+
+    # Legends positions
+    legends = dict()
+    legends["Elbos"] = config.get("plotting",
+        "legend_elbos", fallback="best")
+    legends["Dists"] = config.get("plotting",
+        "legend_dists", fallback="best")
+    legends["Scaled_dists"] = config.get("plotting",
+        "legend_scaled_dists", fallback="best")
+    legends["Corrs"] = config.get("plotting",
+        "legend_corrs", fallback="lower right")
+    legends["Ratios"] = config.get("plotting",
+        "legend_ratios", fallback="best")
 
     ## Output directories
     ## ##################
@@ -239,7 +261,7 @@ if __name__ == '__main__':
                     "{}_estim_probs".format(combin)),
                 lines=logl_data_combins[combin],
                 title=None,
-                legend=legend_elbo,
+                legend=legends["Elbos"],
                 #
                 plot_validation=False,
                 usetex=plt_usetex,
@@ -266,12 +288,12 @@ if __name__ == '__main__':
                     "{}_estim_dists".format(combin)),
                 scaled_dist_out_file=os.path.join(output_fit,
                     "{}_estim_scaled_dists".format(combin)),
-                dist_legend=legend_dist,
+                dist_legend=legends["Dists"],
                 dist_title=None,
                 #
                 corr_out_file=os.path.join(output_fit, 
                     "{}_estim_corrs".format(combin)),
-                corr_legend=legend_corr,
+                corr_legend=legends["Corrs"],
                 corr_title=None,
                 #
                 usetex=plt_usetex,
@@ -321,6 +343,7 @@ if __name__ == '__main__':
                 output_path=os.path.join(output_violin,
                     "{}_samples_".format(combin)),
                 #
+                y_limits={}, # use default values
                 usetex=plt_usetex,
                 sizefont=size_font) for combin in combins)
 
@@ -339,11 +362,12 @@ if __name__ == '__main__':
         parallel(delayed(
             plot_grouped_statistics)(
                 metric_scores=metric_combins2[combin2],
-                #exp_names=combins2[combin2],
                 x_names=x_names,
                 output_path=os.path.join(output_lines,
                     "{}_samples_".format(combin2)),
                 #
+                legends=legends,
+                y_limits=y_limits,
                 usetex=plt_usetex,
                 sizefont=size_font) for combin2 in combins2)
 
