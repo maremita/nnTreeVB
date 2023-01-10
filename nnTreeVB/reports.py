@@ -1549,9 +1549,26 @@ def violinplot_samples_statistics(
         exp_names,
         x_names,
         output_path,
+        y_limits={},
         sizefont=14,
         usetex=False):
 
+    # Process y limits
+    y_def_lims = {
+            "Dists": [-0.01, None],
+            "Scaled_dists": [-0.01, 1.01],
+            "Corrs": [-1.01, 1.01],
+            "Ratios": [-0.01, None]
+            }
+
+    y_lims = {}
+    for y in y_def_lims:
+        if y in y_limits:
+            y_lims[y] = y_limits[y]
+        else:
+            y_lims[y] = y_def_lims[y]
+    
+    # Get estimate names of this batch
     unique_names = []
     for exp_metrics in metric_scores:
         unique_names.extend(exp_metrics.keys())
@@ -1599,12 +1616,6 @@ def violinplot_samples_statistics(
 
             estim_dict[estim_name] = df
 
-    y_limits = {
-            "Dists": [-0.01, None],
-            "Scaled_dists": [-0.01, 1.01],
-            "Corrs": [-1.01, 1.01],
-            "Ratios": [-0.01, None]
-            }
 
     # plotting
     for estim_name in estim_dict:
@@ -1629,7 +1640,7 @@ def violinplot_samples_statistics(
                             x_df,
                             out_file,
                             color=estim_colors[estim_name],
-                            #y_limit=y_limits[stat],
+                            #y_limit=y_lims[stat],
                             y_limit=[None, None],
                             sizefont=sizefont,
                             usetex=usetex,
@@ -1679,9 +1690,26 @@ def plot_grouped_statistics(
         #exp_names,
         x_names,
         output_path,
+        y_limits={},
         sizefont=14,
         usetex=False):
 
+    # Process y limits
+    y_def_lims = {
+            "Dists": [-0.01, None],
+            "Scaled_dists": [-0.01, 1.01],
+            "Corrs": [-1.01, 1.01],
+            "Ratios": [-0.01, None]
+            }
+
+    y_lims = {}
+    for y in y_def_lims:
+        if y in y_limits:
+            y_lims[y] = y_limits[y]
+        else:
+            y_lims[y] = y_def_lims[y]
+
+    # Get estimate names in this batch
     unique_names = []
     # second level combination
     l2_names = list(metric_scores.keys())
@@ -1775,12 +1803,6 @@ def plot_grouped_statistics(
             estim_dict[estim_name] = df
             #print(df)
 
-    y_limits = {
-            "Dists": [-0.01, None],
-            "Scaled_dists": [-0.01, 1.01],
-            "Corrs": [-1.01, 1.01],
-            "Ratios": [-0.01, None]
-            }
 
     # plotting
     for estim_name in estim_dict:
@@ -1807,7 +1829,7 @@ def plot_grouped_statistics(
                             x_df,
                             out_file,
                             color=estim_colors[estim_name],
-                            y_limit=y_limits[stat],
+                            y_limit=y_lims[stat],
                             #y_limit=[None, None],
                             sizefont=sizefont,
                             usetex=usetex,

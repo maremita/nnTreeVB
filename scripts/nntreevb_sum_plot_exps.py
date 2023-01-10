@@ -85,6 +85,12 @@ if __name__ == '__main__':
     plt_usetex = config.getboolean("plotting",
             "plt_usetex", fallback=False)
 
+    y_limits=dict()
+    y_limits["Dists"]= config.get("plotting", "ylim_dists", fallback="-0.01,None")
+    y_limits["Scaled_dists"]= False
+    y_limits["Corrs"]= False
+    y_limits["Ratios"]= False
+
     legend_elbo = 'best'
     legend_dist = 'best'
     legend_corr = 'best' # lower right
@@ -321,6 +327,7 @@ if __name__ == '__main__':
                 output_path=os.path.join(output_violin,
                     "{}_samples_".format(combin)),
                 #
+                y_limits={},
                 usetex=plt_usetex,
                 sizefont=size_font) for combin in combins)
 
@@ -344,6 +351,7 @@ if __name__ == '__main__':
                 output_path=os.path.join(output_lines,
                     "{}_samples_".format(combin2)),
                 #
+                y_limits={},
                 usetex=plt_usetex,
                 sizefont=size_font) for combin2 in combins2)
 

@@ -274,7 +274,12 @@ def str2list(chaine, sep=",", cast=None):
     c = lambda x: x
     if cast: c = cast
 
-    return [c(i.strip()) for i in chaine.strip().split(sep)]
+    liste=[l.strip() for l in chaine.strip().split(sep)]
+
+    return [c(l) if l.lower() != "none" else None 
+            for l in liste ]
+
+    #return [c(i.strip()) for i in chaine.strip().split(sep)]
 
 def str2values(chaine, nb_repeat=1, sep=",", cast=None):
     chaine = chaine.rstrip(sep)
