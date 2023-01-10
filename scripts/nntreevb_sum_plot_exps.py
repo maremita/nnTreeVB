@@ -8,6 +8,7 @@ from nnTreeVB.reports import plot_elbos_lls_kls
 from nnTreeVB.reports import plot_fit_estim_statistics
 from nnTreeVB.reports import compute_samples_statistics
 from nnTreeVB.reports import violinplot_samples_statistics
+from nnTreeVB.reports import plot_grouped_statistics
 from nnTreeVB.utils import dictLists2combinations
 from nnTreeVB.checks import check_verbose
 
@@ -185,7 +186,26 @@ if __name__ == '__main__':
         #    'd-jc69_l-1000_t-8']...
         a_key = list(combins.keys())[0] # l-100_t-8_m-jc69
         x_names = [c.split("_")[ind] for c in combins[a_key]]
+        #print(x_names)
         # example of x_names: ['d-jc69', 'd-gtr']
+
+        # Get second level combinations
+        combins2 = dict()
+        for exp_name in name_combins:
+            xp = exp_name.split("_")
+
+            name1 = "_".join([xp[i] 
+                for i,_ in enumerate(xp) if i!=ind])
+            # "l-500_t-4"
+            name1_splt = name1.split("_") # ['l-500', 't-4']
+            for j, v in enumerate(name1_splt):
+                name2 = "_".join([name1_splt[i]
+                    for i,_ in enumerate(name1_splt) if i!=j])
+
+                if not name2 in combins2:
+                    combins2[name2] = defaultdict(list)
+                combins2[name2][v].append(exp_name)
+        #print(combins2)
 
         # Get the logl of sim data for each case
         logl_data_combins = {c:[logl_data_exps[x] for x in\
@@ -199,7 +219,7 @@ if __name__ == '__main__':
 
         if save_fit_history:
             output_fit = os.path.join(output_sum, 
-                    eval_code+"_fitting")
+                    eval_code,"fitting")
             makedirs(output_fit, mode=0o700, exist_ok=True)
 
             # Get the prob results for each case
@@ -231,7 +251,7 @@ if __name__ == '__main__':
             estim_combins = {c:[estimates_exps[x] for x in\
                     combins[c]] for c in combins}
 
-            # Plot estimate distances and correlations for each
+            #Plot estimate distances and correlations for each
             # unique case 
             print("\tPlotting distances and correlations"
                     " of fit esimates history...", flush=True)
@@ -264,8 +284,12 @@ if __name__ == '__main__':
         sample_combins = {c:[samples_exps[x] for x in\
                 combins[c]] for c in combins}
         #print(sample_combins.keys())
+        
+        output_samples = os.path.join(output_sum, 
+                "{}".format(eval_code), "sampling")
+        makedirs(output_samples, mode=0o700, exist_ok=True)
 
-        out_file = os.path.join(output_sum,
+        out_file = os.path.join(output_samples,
                 "{}_sampling".format(eval_code))
 
         summarize_sampled_estimates(
@@ -279,23 +303,48 @@ if __name__ == '__main__':
         print("\tPlotting distances and correlations of"
                 " sampled estimates", flush=True)
 
-        output_sample = os.path.join(output_sum, 
-                    eval_code+"_sampling")
-        makedirs(output_sample, mode=0o700, exist_ok=True)
+        ## Violin plots
+        output_violin = os.path.join(output_samples, 
+                "violinplots")
+        makedirs(output_violin, mode=0o700, exist_ok=True)
 
         metric_combins = {c:[metrics_exps[x] for x in\
                 combins[c]] for c in combins}
         #print(metric_combins.keys())
+        # ['l-500_t-4','l-500_t-8','l-1000_t-4','l-1000_t-8']
 
         parallel(delayed(
             violinplot_samples_statistics)(
                 metric_scores=metric_combins[combin],
                 exp_names=combins[combin],
                 x_names=x_names,
-                output_path=os.path.join(output_sample,
-                    "{}_estim_".format(combin)),
+                output_path=os.path.join(output_violin,
+                    "{}_samples_".format(combin)),
                 #
                 usetex=plt_usetex,
                 sizefont=size_font) for combin in combins)
+
+        # Line plots
+        output_lines = os.path.join(output_samples, 
+                "lineplots")
+        makedirs(output_lines, mode=0o700, exist_ok=True)
+
+        metric_combins2 = {n2:{v:[metrics_exps[x] 
+            for x in combins2[n2][v]] 
+            for v in combins2[n2]} 
+            for n2 in combins2}
+        #print(metric_combins2.keys())
+        # ['t-4', 'l-500', 't-8', 'l-1000']
+
+        parallel(delayed(
+            plot_grouped_statistics)(
+                metric_scores=metric_combins2[combin2],
+                #exp_names=combins2[combin2],
+                x_names=x_names,
+                output_path=os.path.join(output_lines,
+                    "{}_samples_".format(combin2)),
+                #
+                usetex=plt_usetex,
+                sizefont=size_font) for combin2 in combins2)
 
     print("\nFin normale du programme\n", flush=True)

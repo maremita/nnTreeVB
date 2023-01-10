@@ -704,218 +704,6 @@ def plot_fit_estim_distances(
 
     plt.close(f)
 
-def compute_samples_statistics(
-        exp_scores,
-        exp_sim_param):
-
-    nb_data = len(exp_scores)
-
-    # aggregate data
-    estim_dict = dict()
-    for estim_name in estim_names:
-        if estim_name in ["b", "r", "f"]:
-            col_index = ['Dists','Scaled_dists','Corrs',
-                    'Pvals']
-
-            df = pd.DataFrame(columns=col_index)
-
-            # exp_scores is a list with nb_data 
-            # elements. Each element contains a 
-            # dictionary for estimates [b, r, f..]
-            # that have values of shape
-            # [nb_rep, nb_sample,shape of estimate]
-            #print(estim_name)
-            #print(exp_scores[0][estim_name].shape)
-            if estim_name in exp_scores[0]:
-                scores = np.array([exp_scores[d][
-                    estim_name] 
-                    for d in range(nb_data)])
-                #print(estim_name, scores.shape)
-                #[nb_data, nb_fit_reps, 
-                # nb_samples, estim_shape]
-
-                sim_param = exp_sim_param[estim_name]
-                #print("sim_param {}".format(
-                #    sim_param.shape))
-                #[nb_data, estim shape]
-
-                # euclidean distance
-                dists = np.linalg.norm(
-                    sim_param.reshape(
-                        nb_data,1,1,-1) - scores,
-                    axis=-1)
-
-                df["Dists"]=dists.flatten()
-
-                # Scaled distance within range 0,1
-                scaled_dists = 1-(1/(1+dists))
-
-                df["Scaled_dists"] = scaled_dists.flatten()
-
-                # correlation
-                corrs, pvals = compute_corr(
-                    sim_param, scores) 
-                #print("corrs", corrs.shape)
-                #[nb_data, nb_fit_reps, nb_samples]
-
-                df["Corrs"]=corrs.flatten()
-                df["Pvals"]=pvals.flatten()
-
-                estim_dict[estim_name] = df
-
-        elif estim_name in ["t", "k"]:
-            col_index = ['Ratios']
-
-            df = pd.DataFrame(columns=col_index)
-
-            if estim_name in exp_scores[0]:
-                scores = np.array([exp_scores[d][
-                    estim_name] 
-                    for d in range(nb_data)])
-                #print(estim_name, scores.shape)
-
-                sim_param = exp_sim_param[estim_name]
-
-                ratio = np.squeeze(
-                        scores/sim_param.reshape(
-                            nb_data,1,1,-1), -1)
-
-                df["Ratios"] = ratio.flatten()
-
-                estim_dict[estim_name] = df
-
-    return estim_dict
-
-def violinplot_samples_statistics(
-        #sample_scores,
-        metric_scores, # list
-        exp_names,
-        x_names,
-        output_path,
-        sizefont=14,
-        usetex=False):
-
-    unique_names = []
-    for exp_metrics in metric_scores:
-        unique_names.extend(exp_metrics.keys())
-    unique_names = set(unique_names)
-
-    # Aggregate result data
-    estim_dict = dict()
-    for estim_name in estim_names:
-        if estim_name in unique_names:
-            if estim_name in ["b", "r", "f"]:
-                col_index = pd.MultiIndex.from_product(
-                    [x_names,['Dists','Scaled_dists','Corrs']])
-
-                df = pd.DataFrame(columns=col_index)
-
-                for c, exp_metrics in \
-                        enumerate(metric_scores):
-                    if estim_name in exp_metrics:
-
-                        # euclidean distance
-                        df[x_names[c],"Dists"]=\
-                            exp_metrics[estim_name]["Dists"]
-
-                        # Scaled distance within range 0,1
-                        df[x_names[c], "Scaled_dists"]=\
-                            exp_metrics[estim_name][
-                                    "Scaled_dists"]
-
-                        # correlation
-                        df[x_names[c],"Corrs"]=\
-                            exp_metrics[estim_name]["Corrs"]
-
-            elif estim_name in ["t", "k"]:
-                col_index = pd.MultiIndex.from_product(
-                        [x_names, ['Ratios']])
-
-                df = pd.DataFrame(columns=col_index)
-
-                for c, exp_scores in \
-                        enumerate(metric_scores):
-                    if estim_name in exp_metrics:
-
-                        df[x_names[c], "Ratios"] = \
-                            exp_metrics[estim_name]["Ratios"]
-
-            estim_dict[estim_name] = df
-
-    y_limits = {
-            "Dists": [-0.1, None],
-            "Scaled_dists": [-0.1, 1.1],
-            "Corrs": [-1.1, 1.1],
-            "Ratios": [-0.1, None]
-            }
-
-    # plotting
-    for estim_name in estim_dict:
-        df = estim_dict[estim_name]
-        for stat in ['Dists','Scaled_dists','Corrs','Ratios']:
-            if stat in df.columns.get_level_values(1):
-                #print(estim_name, stat)
-                out_file = output_path+estim_name+"_"+stat
-                title=os.path.basename(out_file)
-
-                x_df = df.iloc[:,
-                        df.columns.get_level_values(1)==stat]
-                x_df.columns = x_df.columns.droplevel(1)
-                #print(estim_name, stat, "\n", x_df.describe())
-                # TODO Check if x_df is empty
-                # https://stackoverflow.com/a/72086939
-                x_df = x_df.replace([np.inf, -np.inf],
-                        np.nan).dropna(axis=1)
-
-                if not x_df.empty:
-                    violinplot_from_dataframe(
-                            x_df,
-                            out_file,
-                            color=estim_colors[estim_name],
-                            #y_limit=y_limits[stat],
-                            y_limit=[None, None],
-                            sizefont=sizefont,
-                            usetex=usetex,
-                            title=title)
-
-def violinplot_from_dataframe(
-        df,
-        out_file,
-        color="#2a9d8f",
-        y_limit=[0, None],
-        sizefont=14,
-        usetex=False,
-        title=None):
-
-    fig_format= "png"
-    fig_dpi = 300
-
-    fig_file = out_file+"."+fig_format
-
-    f, ax = plt.subplots(figsize=(8, 5))
-    sns.set_theme()
-    plt.rcParams.update({'font.size':sizefont,
-        'text.usetex':usetex})
-    plt.subplots_adjust(wspace=0.07, hspace=0.1)
-
-    sns.violinplot(data=df, color=color, saturation=1.)
-
-    # Rotate labels if they are too long
-    nb_cols = len(df.columns)
-    max_len = max([len(c) for c in df.columns])
-    if nb_cols >=5 and max_len >=10:
-        plt.xticks(rotation=45)
-
-    plt.ylim(*y_limit)
-
-    if title:
-        plt.suptitle(title)
-
-    plt.savefig(fig_file, bbox_inches="tight", 
-            format=fig_format, dpi=fig_dpi)
-
-    plt.close(f)
-
 def plot_fit_estim_correlation(
         scores,
         sim_params,
@@ -1645,7 +1433,7 @@ def summarize_sampled_estimates(
             estim_dict[estim_names[estim_name]+\
                     ": Kruskal-Wallis tests"] = df_k
 
-    write_dict_dfs(estim_dict, out_file+"_estim.txt")
+    write_dict_dfs(estim_dict, out_file+"_samples.txt")
 
 def write_dict_dfs(dict_df, filename):
     with pd.option_context(
@@ -1672,3 +1460,423 @@ def write_dict_dfs(dict_df, filename):
                 fh.write("#" * 63)
                 fh.write("\n")
                 fh.write("\n")
+
+def compute_samples_statistics(
+        exp_scores,
+        exp_sim_param):
+
+    nb_data = len(exp_scores)
+
+    # aggregate data
+    estim_dict = dict()
+    for estim_name in estim_names:
+        if estim_name in ["b", "r", "f"]:
+            col_index = ['Dists','Scaled_dists','Corrs',
+                    'Pvals']
+
+            df = pd.DataFrame(columns=col_index)
+
+            # exp_scores is a list with nb_data 
+            # elements. Each element contains a 
+            # dictionary for estimates [b, r, f..]
+            # that have values of shape
+            # [nb_rep, nb_sample,shape of estimate]
+            #print(estim_name)
+            #print(exp_scores[0][estim_name].shape)
+            if estim_name in exp_scores[0]:
+                scores = np.array([exp_scores[d][
+                    estim_name] 
+                    for d in range(nb_data)])
+                #print(estim_name, scores.shape)
+                #[nb_data, nb_fit_reps, 
+                # nb_samples, estim_shape]
+
+                sim_param = exp_sim_param[estim_name]
+                #print("sim_param {}".format(
+                #    sim_param.shape))
+                #[nb_data, estim shape]
+
+                # euclidean distance
+                dists = np.linalg.norm(
+                    sim_param.reshape(
+                        nb_data,1,1,-1) - scores,
+                    axis=-1)
+
+                df["Dists"]=dists.flatten()
+
+                # Scaled distance within range 0,1
+                scaled_dists = 1-(1/(1+dists))
+
+                df["Scaled_dists"] = scaled_dists.flatten()
+
+                # correlation
+                corrs, pvals = compute_corr(
+                    sim_param, scores) 
+                #print("corrs", corrs.shape)
+                #[nb_data, nb_fit_reps, nb_samples]
+
+                df["Corrs"]=corrs.flatten()
+                df["Pvals"]=pvals.flatten()
+
+                estim_dict[estim_name] = df
+
+        elif estim_name in ["t", "k"]:
+            col_index = ['Ratios']
+
+            df = pd.DataFrame(columns=col_index)
+
+            if estim_name in exp_scores[0]:
+                scores = np.array([exp_scores[d][
+                    estim_name] 
+                    for d in range(nb_data)])
+                #print(estim_name, scores.shape)
+
+                sim_param = exp_sim_param[estim_name]
+
+                ratio = np.squeeze(
+                        scores/sim_param.reshape(
+                            nb_data,1,1,-1), -1)
+
+                df["Ratios"] = ratio.flatten()
+
+                estim_dict[estim_name] = df
+
+    return estim_dict
+
+def violinplot_samples_statistics(
+        #sample_scores,
+        metric_scores, # list
+        exp_names,
+        x_names,
+        output_path,
+        sizefont=14,
+        usetex=False):
+
+    unique_names = []
+    for exp_metrics in metric_scores:
+        unique_names.extend(exp_metrics.keys())
+    unique_names = set(unique_names)
+
+    # Aggregate result data
+    estim_dict = dict()
+    for estim_name in estim_names:
+        if estim_name in unique_names:
+            if estim_name in ["b", "r", "f"]:
+                col_index = pd.MultiIndex.from_product(
+                    [x_names,['Dists','Scaled_dists','Corrs']])
+
+                df = pd.DataFrame(columns=col_index)
+
+                for c, exp_metrics in \
+                        enumerate(metric_scores):
+                    if estim_name in exp_metrics:
+
+                        # euclidean distance
+                        df[x_names[c],"Dists"]=\
+                            exp_metrics[estim_name]["Dists"]
+
+                        # Scaled distance within range 0,1
+                        df[x_names[c], "Scaled_dists"]=\
+                            exp_metrics[estim_name][
+                                    "Scaled_dists"]
+
+                        # correlation
+                        df[x_names[c],"Corrs"]=\
+                            exp_metrics[estim_name]["Corrs"]
+
+            elif estim_name in ["t", "k"]:
+                col_index = pd.MultiIndex.from_product(
+                        [x_names, ['Ratios']])
+
+                df = pd.DataFrame(columns=col_index)
+
+                for c, exp_scores in \
+                        enumerate(metric_scores):
+                    if estim_name in exp_metrics:
+
+                        df[x_names[c], "Ratios"] = \
+                            exp_metrics[estim_name]["Ratios"]
+
+            estim_dict[estim_name] = df
+
+    y_limits = {
+            "Dists": [-0.1, None],
+            "Scaled_dists": [-0.1, 1.1],
+            "Corrs": [-1.1, 1.1],
+            "Ratios": [-0.1, None]
+            }
+
+    # plotting
+    for estim_name in estim_dict:
+        df = estim_dict[estim_name]
+        for stat in ['Dists','Scaled_dists','Corrs','Ratios']:
+            if stat in df.columns.get_level_values(1):
+                #print(estim_name, stat)
+                out_file = output_path+estim_name+"_"+stat
+                title=os.path.basename(out_file)
+
+                x_df = df.iloc[:,
+                        df.columns.get_level_values(1)==stat]
+                x_df.columns = x_df.columns.droplevel(1)
+                #print(estim_name, stat, "\n", x_df.describe())
+                # TODO Check if x_df is empty
+                # https://stackoverflow.com/a/72086939
+                x_df = x_df.replace([np.inf, -np.inf],
+                        np.nan).dropna(axis=1)
+
+                if not x_df.empty:
+                    violinplot_from_dataframe(
+                            x_df,
+                            out_file,
+                            color=estim_colors[estim_name],
+                            #y_limit=y_limits[stat],
+                            y_limit=[None, None],
+                            sizefont=sizefont,
+                            usetex=usetex,
+                            title=title)
+
+def violinplot_from_dataframe(
+        df,
+        out_file,
+        color="#2a9d8f",
+        y_limit=[0, None],
+        sizefont=14,
+        usetex=False,
+        title=None):
+
+    fig_format= "png"
+    fig_dpi = 300
+
+    fig_file = out_file+"."+fig_format
+
+    f, ax = plt.subplots(figsize=(8, 5))
+    sns.set_theme()
+    plt.rcParams.update({'font.size':sizefont,
+        'text.usetex':usetex})
+    plt.subplots_adjust(wspace=0.07, hspace=0.1)
+
+    sns.violinplot(data=df, color=color, saturation=1.)
+
+    # Rotate labels if they are too long
+    nb_cols = len(df.columns)
+    max_len = max([len(c) for c in df.columns])
+    if nb_cols >=5 and max_len >=10:
+        plt.xticks(rotation=45)
+
+    plt.ylim(*y_limit)
+
+    if title:
+        plt.suptitle(title)
+
+    plt.savefig(fig_file, bbox_inches="tight", 
+            format=fig_format, dpi=fig_dpi)
+
+    plt.close(f)
+
+
+def plot_grouped_statistics(
+        metric_scores, # dict
+        #exp_names,
+        x_names,
+        output_path,
+        sizefont=14,
+        usetex=False):
+
+    unique_names = []
+    # second level combination
+    l2_names = list(metric_scores.keys())
+
+    for l2 in metric_scores:
+        for exp_metrics in metric_scores[l2]:
+            unique_names.extend(list(exp_metrics.keys()))
+    unique_names = set(unique_names)
+
+    # Aggregate result data
+    estim_dict = dict()
+    for estim_name in estim_names:
+        if estim_name in unique_names:
+            if estim_name in ["b", "r", "f"]:
+                col_index = pd.MultiIndex.from_product(
+                    [l2_names,['Dists','Scaled_dists','Corrs'],
+                        ["mean", "std"]])
+
+                df = pd.DataFrame(columns=col_index,
+                        index=x_names)
+
+                for l, l2 in enumerate(metric_scores):
+                    for c, exp_metrics in\
+                            enumerate(metric_scores[l2]):
+                        #print(exp_metrics.keys())
+                        if estim_name in exp_metrics:
+
+                            # euclidean distance
+                            dists = exp_metrics[estim_name][
+                                    "Dists"]
+
+                            if len(dists)>0: 
+                                df[l2_names[l],"Dists",
+                                    "mean"].loc[x_names[c]]=\
+                                        np.nanmean(dists)
+                                
+                                df[l2_names[l],"Dists",
+                                    "std"].loc[x_names[c]]=\
+                                        np.nanstd(dists)
+
+                            # Scaled distance within range 0,1
+                            s_dists=exp_metrics[estim_name][
+                                        "Scaled_dists"]
+
+                            if len(s_dists)>0: 
+                                df[l2_names[l],"Scaled_dists", 
+                                    "mean"].loc[x_names[c]]=\
+                                        np.nanmean(s_dists)
+
+                                df[l2_names[l],"Scaled_dists", 
+                                    "std"].loc[x_names[c]]=\
+                                        np.nanstd(s_dists)
+
+                            # correlation
+                            corrs = exp_metrics[estim_name][
+                                "Corrs"]
+
+                            if len(corrs)>0: 
+                                df[l2_names[l], "Corrs", 
+                                    "mean"].loc[x_names[c]]=\
+                                        np.mean(corrs)
+
+                                df[l2_names[l], "Corrs", 
+                                    "std"].loc[x_names[c]]=\
+                                        np.std(corrs)
+
+            elif estim_name in ["t", "k"]:
+                col_index = pd.MultiIndex.from_product(
+                        [l2_names, ['Ratios'],["mean", "std"]])
+
+                df = pd.DataFrame(columns=col_index,
+                        index=x_names)
+
+                for l, l2 in enumerate(metric_scores):
+                    for c, exp_metrics in \
+                            enumerate(metric_scores[l2]):
+                        if estim_name in exp_metrics:
+
+                            ratios = exp_metrics[estim_name][
+                                "Ratios"]
+
+                            if len(ratios)>0: 
+                                df[l2_names[l],"Ratios",
+                                    "mean"].loc[x_names[c]]=\
+                                        np.nanmean(ratios)
+
+                                df[l2_names[l],"Ratios",
+                                    "std"].loc[x_names[c]]=\
+                                        np.nanstd(ratios)
+
+            estim_dict[estim_name] = df
+            #print(df)
+
+    y_limits = {
+            "Dists": [-0.1, None],
+            "Scaled_dists": [-0.1, 1.1],
+            "Corrs": [-1.1, 1.1],
+            "Ratios": [-0.1, None]
+            }
+
+    # plotting
+    for estim_name in estim_dict:
+        df = estim_dict[estim_name]
+        for stat in ['Dists','Scaled_dists','Corrs','Ratios']:
+            if stat in df.columns.get_level_values(1):
+                #print(estim_name, stat)
+                out_file = output_path+estim_name+"_"+stat
+                title=os.path.basename(out_file)
+
+                x_df = df.iloc[:,
+                        df.columns.get_level_values(1)==stat]
+                x_df.columns = x_df.columns.droplevel(1)
+                #print(estim_name, stat, "\n", x_df.describe())
+                # TODO Check if x_df is empty
+                # https://stackoverflow.com/a/72086939
+                x_df = x_df.replace([np.inf, -np.inf],
+                        np.nan).dropna(axis=1)
+
+                #print(x_df)
+
+                if not x_df.empty:
+                    plotlines_from_dataframe(
+                            x_df,
+                            out_file,
+                            color=estim_colors[estim_name],
+                            #y_limit=y_limits[stat],
+                            y_limit=[None, None],
+                            sizefont=sizefont,
+                            usetex=usetex,
+                            title=title)
+
+def plotlines_from_dataframe(
+        df,
+        out_file,
+        color="#2a9d8f",
+        y_limit=[0, None],
+        legend='best',
+        sizefont=14,
+        usetex=False,
+        title=None):
+
+    fig_format= "png"
+    fig_dpi = 300
+
+    fig_file = out_file+"."+fig_format
+
+    f, ax = plt.subplots(figsize=(8, 5))
+    sns.set_theme()
+    plt.rcParams.update({'font.size':sizefont,
+        'text.usetex':usetex})
+    plt.subplots_adjust(wspace=0.07, hspace=0.1)
+
+    x = df.index
+    ms = df.iloc[:, df.columns.get_level_values(1)=='mean']
+    ss = df.iloc[:, df.columns.get_level_values(1)=='std']
+    ms.columns = ms.columns.droplevel(1)
+    ss.columns = ss.columns.droplevel(1)
+
+    cmap = cm.get_cmap('viridis')
+    nbc = len(ms.columns)
+    colors = [cmap(j/nbc) for j in range(0, nbc)]
+
+    for c, col in enumerate(ms.columns):
+        m = ms[col]
+        s = ss[col]
+
+        ax.plot(x, m, '.-', label=col, color=colors[c])
+        ax.fill_between(x, m-s, m+s,
+                color=colors[c],
+                alpha=0.2, interpolate=True)
+
+    ax.grid(zorder=-1)
+
+    # Rotate labels if they are too long
+    nb_rows = len(df.index)
+    max_len = max([len(i) for i in df.index])
+    if nb_rows >=5 and max_len >=10:
+        plt.xticks(rotation=45)
+
+    plt.ylim(*y_limit)
+
+    if title:
+        plt.suptitle(title)
+
+    if legend:
+        handles,labels = [],[]
+        for ax in f.axes:
+            for h,l in zip(*ax.get_legend_handles_labels()):
+                if l not in labels:
+                    handles.append(h)
+                    labels.append(l)
+        plt.legend(handles, labels, loc=legend, framealpha=1,
+                facecolor="white", fancybox=True)
+
+    plt.savefig(fig_file, bbox_inches="tight", 
+            format=fig_format, dpi=fig_dpi)
+
+    plt.close(f)
