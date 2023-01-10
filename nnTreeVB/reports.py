@@ -1600,10 +1600,10 @@ def violinplot_samples_statistics(
             estim_dict[estim_name] = df
 
     y_limits = {
-            "Dists": [-0.1, None],
-            "Scaled_dists": [-0.1, 1.1],
-            "Corrs": [-1.1, 1.1],
-            "Ratios": [-0.1, None]
+            "Dists": [-0.01, None],
+            "Scaled_dists": [-0.01, 1.01],
+            "Corrs": [-1.01, 1.01],
+            "Ratios": [-0.01, None]
             }
 
     # plotting
@@ -1776,10 +1776,10 @@ def plot_grouped_statistics(
             #print(df)
 
     y_limits = {
-            "Dists": [-0.1, None],
-            "Scaled_dists": [-0.1, 1.1],
-            "Corrs": [-1.1, 1.1],
-            "Ratios": [-0.1, None]
+            "Dists": [-0.01, None],
+            "Scaled_dists": [-0.01, 1.01],
+            "Corrs": [-1.01, 1.01],
+            "Ratios": [-0.01, None]
             }
 
     # plotting
@@ -1807,8 +1807,8 @@ def plot_grouped_statistics(
                             x_df,
                             out_file,
                             color=estim_colors[estim_name],
-                            #y_limit=y_limits[stat],
-                            y_limit=[None, None],
+                            y_limit=y_limits[stat],
+                            #y_limit=[None, None],
                             sizefont=sizefont,
                             usetex=usetex,
                             title=title)
