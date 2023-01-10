@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import seaborn as sns
 
+
 __author__ = "amine remita"
 
 
@@ -46,6 +47,8 @@ prob_names = {
 
 rates_list = ["AG", "AC", "AT", "GC", "GT", "CT"]
 freqs_list = ["A", "G", "C", "T"]
+
+stats_list = ['Dists','Scaled_dists','Corrs','Ratios']
 
 line_color = "#c13e4c"
 elbo_color = "#3EC1B3"  # green
@@ -1620,7 +1623,7 @@ def violinplot_samples_statistics(
     # plotting
     for estim_name in estim_dict:
         df = estim_dict[estim_name]
-        for stat in ['Dists','Scaled_dists','Corrs','Ratios']:
+        for stat in stats_list:
             if stat in df.columns.get_level_values(1):
                 #print(estim_name, stat)
                 out_file = output_path+estim_name+"_"+stat
@@ -1660,39 +1663,43 @@ def violinplot_from_dataframe(
 
     fig_file = out_file+"."+fig_format
 
-    f, ax = plt.subplots(figsize=(8, 5))
-    sns.set_theme()
-    plt.rcParams.update({'font.size':sizefont,
-        'text.usetex':usetex})
-    plt.subplots_adjust(wspace=0.07, hspace=0.1)
+    with plt.style.context('seaborn-darkgrid'):
+        f, ax = plt.subplots(figsize=(8, 5))
+        plt.rcParams.update({'font.size':sizefont,
+            'text.usetex':usetex})
 
-    sns.violinplot(data=df, color=color, saturation=1.)
+        sns.violinplot(data=df, color=color, saturation=1.)
 
-    # Rotate labels if they are too long
-    nb_cols = len(df.columns)
-    max_len = max([len(c) for c in df.columns])
-    if nb_cols >=5 and max_len >=10:
-        plt.xticks(rotation=45)
+        # Rotate labels if they are too long
+        nb_cols = len(df.columns)
+        max_len = max([len(c) for c in df.columns])
+        if nb_cols >=5 and max_len >=10:
+            plt.xticks(rotation=45)
 
-    plt.ylim(*y_limit)
+        plt.ylim(*y_limit)
 
-    if title:
-        plt.suptitle(title)
+        if title:
+            plt.suptitle(title)
 
-    plt.savefig(fig_file, bbox_inches="tight", 
-            format=fig_format, dpi=fig_dpi)
+        plt.savefig(fig_file, bbox_inches="tight", 
+                format=fig_format, dpi=fig_dpi)
 
-    plt.close(f)
+        plt.close(f)
 
 
 def plot_grouped_statistics(
         metric_scores, # dict
-        #exp_names,
         x_names,
         output_path,
+        legends={},
         y_limits={},
         sizefont=14,
         usetex=False):
+
+    # Process legends
+    for stat in stats_list:
+        if not stat in legends:
+            legends[stat] = 'best'
 
     # Process y limits
     y_def_lims = {
@@ -1807,7 +1814,7 @@ def plot_grouped_statistics(
     # plotting
     for estim_name in estim_dict:
         df = estim_dict[estim_name]
-        for stat in ['Dists','Scaled_dists','Corrs','Ratios']:
+        for stat in stats_list:
             if stat in df.columns.get_level_values(1):
                 #print(estim_name, stat)
                 out_file = output_path+estim_name+"_"+stat
@@ -1816,7 +1823,7 @@ def plot_grouped_statistics(
                 x_df = df.iloc[:,
                         df.columns.get_level_values(1)==stat]
                 x_df.columns = x_df.columns.droplevel(1)
-                #print(estim_name, stat, "\n", x_df.describe())
+                #print(estim_name, stat, "\n",x_df.describe())
                 # TODO Check if x_df is empty
                 # https://stackoverflow.com/a/72086939
                 x_df = x_df.replace([np.inf, -np.inf],
@@ -1828,7 +1835,7 @@ def plot_grouped_statistics(
                     plotlines_from_dataframe(
                             x_df,
                             out_file,
-                            color=estim_colors[estim_name],
+                            legend=legends[stat],
                             y_limit=y_lims[stat],
                             #y_limit=[None, None],
                             sizefont=sizefont,
@@ -1838,7 +1845,6 @@ def plot_grouped_statistics(
 def plotlines_from_dataframe(
         df,
         out_file,
-        color="#2a9d8f",
         y_limit=[0, None],
         legend='best',
         sizefont=14,
@@ -1850,55 +1856,57 @@ def plotlines_from_dataframe(
 
     fig_file = out_file+"."+fig_format
 
-    f, ax = plt.subplots(figsize=(8, 5))
-    sns.set_theme()
-    plt.rcParams.update({'font.size':sizefont,
-        'text.usetex':usetex})
-    plt.subplots_adjust(wspace=0.07, hspace=0.1)
+    with plt.style.context('seaborn-darkgrid'):
+        f, ax = plt.subplots(figsize=(8, 5))
+        plt.rcParams.update({'font.size':sizefont,
+            'text.usetex':usetex})
 
-    x = df.index
-    ms = df.iloc[:, df.columns.get_level_values(1)=='mean']
-    ss = df.iloc[:, df.columns.get_level_values(1)=='std']
-    ms.columns = ms.columns.droplevel(1)
-    ss.columns = ss.columns.droplevel(1)
+        x = df.index
+        ms = df.iloc[:,
+                df.columns.get_level_values(1)=='mean']
+        ss = df.iloc[:, df.columns.get_level_values(1)=='std']
+        ms.columns = ms.columns.droplevel(1)
+        ss.columns = ss.columns.droplevel(1)
 
-    cmap = cm.get_cmap('viridis')
-    nbc = len(ms.columns)
-    colors = [cmap(j/nbc) for j in range(0, nbc)]
+        cmap = cm.get_cmap('viridis')
+        nbc = len(ms.columns)
+        colors = [cmap(j/nbc) for j in range(0, nbc)]
 
-    for c, col in enumerate(ms.columns):
-        m = ms[col]
-        s = ss[col]
+        for c, col in enumerate(ms.columns):
+            m = ms[col]
+            s = ss[col]
 
-        ax.plot(x, m, '.-', label=col, color=colors[c])
-        ax.fill_between(x, m-s, m+s,
-                color=colors[c],
-                alpha=0.2, interpolate=True)
+            ax.plot(x, m, '.-', label=col, color=colors[c])
+            ax.fill_between(x, m-s, m+s,
+                    color=colors[c],
+                    alpha=0.2, interpolate=True)
 
-    ax.grid(zorder=-1)
+        ax.grid(zorder=-1)
 
-    # Rotate labels if they are too long
-    nb_rows = len(df.index)
-    max_len = max([len(i) for i in df.index])
-    if nb_rows >=5 and max_len >=10:
-        plt.xticks(rotation=45)
+        # Rotate labels if they are too long
+        nb_rows = len(df.index)
+        max_len = max([len(i) for i in df.index])
+        if nb_rows >=5 and max_len >=10:
+            plt.xticks(rotation=45)
 
-    plt.ylim(*y_limit)
+        plt.ylim(*y_limit)
 
-    if title:
-        plt.suptitle(title)
+        if title:
+            plt.suptitle(title)
 
-    if legend:
-        handles,labels = [],[]
-        for ax in f.axes:
-            for h,l in zip(*ax.get_legend_handles_labels()):
-                if l not in labels:
-                    handles.append(h)
-                    labels.append(l)
-        plt.legend(handles, labels, loc=legend, framealpha=1,
-                facecolor="white", fancybox=True)
+        if legend and legend.lower() not in ["none", "false"]:
+            handles,labels = [],[]
+            for ax in f.axes:
+                for h,l in \
+                        zip(*ax.get_legend_handles_labels()):
+                    if l not in labels:
+                        handles.append(h)
+                        labels.append(l)
+            plt.legend(handles, labels, loc=legend,
+                    framealpha=1, facecolor="white", 
+                    fancybox=True)
 
-    plt.savefig(fig_file, bbox_inches="tight", 
-            format=fig_format, dpi=fig_dpi)
+        plt.savefig(fig_file, bbox_inches="tight", 
+                format=fig_format, dpi=fig_dpi)
 
-    plt.close(f)
+        plt.close(f)
