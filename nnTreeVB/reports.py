@@ -1223,24 +1223,25 @@ def summarize_sampled_estimates(
                         enumerate(sample_combins[c_name]):
                     if p_name in exp_scores[0]:
 
-                        scores = np.array(
-                            [exp_scores[d][p_name]\
-                                for d in range(nb_data)])
+                        scores = np.ma.masked_invalid(
+                            np.array([exp_scores[d][p_name]\
+                                for d in range(nb_data)]))
                         # print(p_name, scores.shape)
                         # [nb_data, nb_fit_reps]
 
                         df[x_names[c], "Mean"].loc[c_name] =\
-                            np.ma.masked_invalid(
-                                scores).mean().item()
+                            "{:.5f}".format(
+                                scores.mean().item())
                         df[x_names[c], "STD"].loc[c_name] =\
-                            np.ma.masked_invalid(
-                                scores).std().item()
+                            "{:.5f}".format(
+                                scores.std().item())
 
                         if logl_real and\
                             logl_data_combins[c_name] != None:
-                            df[x_names[c], "Real"].loc[c_name]\
-                                = logl_data_combins[c_name][
-                                        c].mean()
+                            df[x_names[c], "Real"].loc[
+                                c_name] = "{:.5f}".format(
+                                    logl_data_combins[c_name][
+                                        c].mean())
 
             probs_dict[prob_names[p_name]] = df
 
@@ -1307,9 +1308,11 @@ def summarize_sampled_estimates(
                                 axis=-1)
 
                             df[x_names[c],"dists", "Mean"].loc[
-                                    c_name] = dists.mean()
+                                c_name] = "{:.5f}".format(
+                                    dists.mean())
                             df[x_names[c],"dists", "STD"].loc[
-                                    c_name] = dists.std()
+                                c_name] = "{:.5f}".format(
+                                    dists.std())
 
                             k_dists.append(dists.flatten())
 
@@ -1317,11 +1320,13 @@ def summarize_sampled_estimates(
                             scaled_dists = 1-(1/(1+dists))
 
                             df[x_names[c],"scaled_dists",
-                                    "Mean"].loc[c_name]=\
-                                            scaled_dists.mean()
+                                "Mean"].loc[c_name] =\
+                                    "{:.5f}".format(
+                                        scaled_dists.mean())
                             df[x_names[c],"scaled_dists",
-                                    "STD"].loc[c_name]=\
-                                            scaled_dists.std()
+                                "STD"].loc[c_name]=\
+                                    "{:.5f}".format(
+                                        scaled_dists.std())
 
                             k_dists01.append(
                                     scaled_dists.flatten())
@@ -1333,15 +1338,17 @@ def summarize_sampled_estimates(
                             #[nb_data, nb_fit_reps, nb_samples]
 
                             df[x_names[c],"corrs", "Mean"].loc[
-                                    c_name] = corrs.mean()
+                                c_name] = "{:.5f}".format(
+                                    corrs.mean())
                             df[x_names[c],"corrs", "STD"].loc[
-                                    c_name] = corrs.std()
+                                c_name] = "{:.5f}".format(
+                                    corrs.std())
                             df[x_names[c],"pvals","Mean"].loc[
-                                    c_name] = "{:.5e}".format(
-                                            pvals.mean())
+                                c_name] = "{:.5e}".format(
+                                    pvals.mean())
                             df[x_names[c],"pvals","STD"].loc[
-                                    c_name] = "{:.5e}".format(
-                                            pvals.std())
+                                c_name] = "{:.5e}".format(
+                                    pvals.std())
 
                             k_corrs.append(corrs.flatten())
 
@@ -1415,11 +1422,14 @@ def summarize_sampled_estimates(
                                 exp_names[c]][estim_name]
 
                             df[x_names[c],"Mean"].loc[
-                                    c_name] = scores.mean()
+                                c_name] = "{:.5f}".format(
+                                    scores.mean())
                             df[x_names[c],"STD"].loc[
-                                    c_name] = scores.std()
+                                c_name] = "{:.5f}".format(
+                                    scores.std())
                             df[x_names[c],"Real"].loc[
-                                    c_name] = sim_param.mean()
+                                c_name] = "{:.5f}".format(
+                                    sim_param.mean())
 
                             k_samples.append(scores.flatten())
 
@@ -1447,14 +1457,12 @@ def write_dict_dfs(dict_df, filename):
             for code in dict_df:
                 fh.write("## {}".format(code))
                 fh.write("\n\n")
-                #fh.write(dict_df[code].to_csv(
-                #    float_format='%.3f'))
-                #fh.write("\n")
-                #fh.write("\n")
                 df = dict_df[code]
                 #if "pval" in df.columns.get_level_values(1):
                 #    df = df.drop("pval", axis=1, level=1)
                 fh.write(df.style.to_latex())
+                fh.write("\n")
+                fh.write(df.to_csv())
                 fh.write("\n")
                 fh.write(dict_df[code].to_string(
                     justify="left"))
