@@ -1810,7 +1810,6 @@ def plot_grouped_statistics(
             estim_dict[estim_name] = df
             #print(df)
 
-
     # plotting
     for estim_name in estim_dict:
         df = estim_dict[estim_name]
@@ -1891,22 +1890,15 @@ def plotlines_from_dataframe(
 
         plt.ylim(*y_limit)
 
-        if title:
-            plt.suptitle(title)
+    # keep it outside style context to control legend     
+    if legend and legend.lower() not in ["none", "false"]:
+        ax.legend(loc=legend, framealpha=1,
+                facecolor="white", fancybox=True)
 
-        if legend and legend.lower() not in ["none", "false"]:
-            handles,labels = [],[]
-            for ax in f.axes:
-                for h,l in \
-                        zip(*ax.get_legend_handles_labels()):
-                    if l not in labels:
-                        handles.append(h)
-                        labels.append(l)
-            plt.legend(handles, labels, loc=legend,
-                    framealpha=1, facecolor="white", 
-                    fancybox=True)
+    if title:
+        plt.suptitle(title)
 
-        plt.savefig(fig_file, bbox_inches="tight", 
-                format=fig_format, dpi=fig_dpi)
+    plt.savefig(fig_file, bbox_inches="tight", 
+            format=fig_format, dpi=fig_dpi)
 
-        plt.close(f)
+    plt.close(f)
