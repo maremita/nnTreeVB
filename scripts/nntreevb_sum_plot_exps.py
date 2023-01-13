@@ -312,7 +312,7 @@ if __name__ == '__main__':
         makedirs(output_samples, mode=0o700, exist_ok=True)
 
         out_file = os.path.join(output_samples,
-                "{}_sampling".format(eval_code))
+                "{}_samples".format(eval_code))
 
         summarize_sampled_estimates(
             sample_combins,

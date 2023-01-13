@@ -8,3 +8,4 @@ joblib
 pandas
 matplotlib
 seaborn
+openpyxl

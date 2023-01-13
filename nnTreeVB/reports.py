@@ -1246,6 +1246,8 @@ def summarize_sampled_estimates(
             probs_dict[prob_names[p_name]] = df
 
     write_dict_dfs(probs_dict, out_file+"_probs.txt")
+    write_dict_dfs_to_excel(probs_dict, out_file+".xlsx",
+            sheet_name="probs")
 
     for estim_name in estim_names:
         if estim_name in unique_names:
@@ -1446,7 +1448,9 @@ def summarize_sampled_estimates(
             estim_dict[estim_names[estim_name]+\
                     ": Kruskal-Wallis tests"] = df_k
 
-    write_dict_dfs(estim_dict, out_file+"_samples.txt")
+    write_dict_dfs(estim_dict, out_file+"_stats.txt")
+    write_dict_dfs_to_excel(estim_dict, out_file+".xlsx",
+            sheet_name="stats")
 
 def write_dict_dfs(dict_df, filename):
     with pd.option_context(
@@ -1454,6 +1458,8 @@ def write_dict_dfs(dict_df, filename):
             'display.max_columns', None):
         pd.options.display.float_format = '{:.5f}'.format
         with open(filename, "w") as fh:
+            fh.write("%% nnTreeVB\n")
+            fh.write("%% {}\n\n".format(filename))
             for code in dict_df:
                 fh.write("## {}".format(code))
                 fh.write("\n\n")
@@ -1471,6 +1477,43 @@ def write_dict_dfs(dict_df, filename):
                 fh.write("#" * 63)
                 fh.write("\n")
                 fh.write("\n")
+
+def write_dict_dfs_to_excel(
+        dict_df, 
+        filename,
+        sheet_name='Sheet1'):
+
+    mode = 'w'
+    if_sheet_exists=None
+    if os.path.isfile(filename): 
+        mode = "a"
+        if_sheet_exists='overlay'
+
+    with pd.ExcelWriter(filename, mode=mode, 
+        if_sheet_exists=if_sheet_exists) as writer:
+        startrow = 4
+
+        for code in dict_df:
+
+            startrow +=1
+            df = dict_df[code]
+            nb_rows = len(df.index) + df.columns.nlevels
+            df.to_excel(writer, sheet_name=sheet_name,
+                    merge_cells=True,
+                    startrow=startrow)
+
+            # Write the title of the dataframe
+            text_sheet = writer.book[sheet_name]
+            text_sheet.cell(column=1, row=startrow-1,
+                    value="## "+code)
+
+            startrow += nb_rows + 3
+
+        text_sheet = writer.book[sheet_name]
+        text_sheet.cell(column=1, row=1,
+                value="%% nnTreeVB")
+        text_sheet.cell(column=1, row=2,
+                value="%% {}".format(filename))
 
 def compute_samples_statistics(
         exp_scores,
