@@ -483,8 +483,9 @@ def plot_elbos_lls_kls(
 
         if kl_fit_finite:
             ax2.set_ylim([ 
-                np.min(np.ma.masked_invalid(
-                    exp_scores[...,2,:].mean(mx))),
+                #np.min(np.ma.masked_invalid(
+                #    exp_scores[...,2,:].mean(mx))),
+                0,
                 np.max(np.ma.masked_invalid(
                     exp_scores[...,2,:].mean(mx)))])
 
