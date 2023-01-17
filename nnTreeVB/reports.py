@@ -311,7 +311,7 @@ def plot_elbo_ll_kl(
                 if l not in labels:
                     handles.append(h)
                     labels.append(l)
-        plt.legend(handles, labels, loc=legend, framealpha=1,
+        plt.legend(handles, labels, loc=legend, framealpha=0.5,
                 facecolor="white", fancybox=True)
 
     if title:
@@ -472,7 +472,7 @@ def plot_elbos_lls_kls(
         #axs[i].set_ylim([None, 0])
         #axs[i].set_ylim([-10000, 0])
         axs[i].set_ylim([np.min(np.ma.masked_invalid(
-            exp_scores[...,0,:].flatten())), 0])
+            exp_scores[...,0,:].mean(mx))), 0])
         axs[i].set_xticks([t for t in range(1, nb_iters+1) if\
                 t==1 or t % print_xtick_every==0])
         axs[i].set_xlabel("Iterations")
@@ -484,9 +484,9 @@ def plot_elbos_lls_kls(
         if kl_fit_finite:
             ax2.set_ylim([ 
                 np.min(np.ma.masked_invalid(
-                    exp_scores[...,2,:].flatten())),
+                    exp_scores[...,2,:].mean(mx))),
                 np.max(np.ma.masked_invalid(
-                    exp_scores[...,2,:].flatten()))])
+                    exp_scores[...,2,:].mean(mx)))])
 
         if i != 0:
             axs[i].set(yticklabels=[])
@@ -506,7 +506,7 @@ def plot_elbos_lls_kls(
                 if l not in labels:
                     handles.append(h)
                     labels.append(l)
-        plt.legend(handles, labels, loc=legend, framealpha=1,
+        plt.legend(handles, labels, loc=legend, framealpha=0.5,
                 facecolor="white", fancybox=True)
 
     if title:
@@ -598,7 +598,7 @@ def plot_fit_estim_distance(
                 if l not in labels:
                     handles.append(h)
                     labels.append(l)
-        plt.legend(handles, labels, loc=legend, framealpha=1,
+        plt.legend(handles, labels, loc=legend, framealpha=0.5,
                 facecolor="white", fancybox=True)
 
     if title:
@@ -696,7 +696,7 @@ def plot_fit_estim_distances(
                 if l not in labels:
                     handles.append(h)
                     labels.append(l)
-        plt.legend(handles, labels, loc=legend, framealpha=1,
+        plt.legend(handles, labels, loc=legend, framealpha=0.5,
                 facecolor="white", fancybox=True)
 
     if title:
@@ -781,7 +781,7 @@ def plot_fit_estim_correlation(
                 if l not in labels:
                     handles.append(h)
                     labels.append(l)
-        plt.legend(handles, labels, loc=legend, framealpha=1,
+        plt.legend(handles, labels, loc=legend, framealpha=0.5,
                 facecolor="white", fancybox=True)
 
     if title:
@@ -874,7 +874,7 @@ def plot_fit_estim_correlations(
                 if l not in labels:
                     handles.append(h)
                     labels.append(l)
-        plt.legend(handles, labels, loc=legend, framealpha=1,
+        plt.legend(handles, labels, loc=legend, framealpha=0.5,
                 facecolor="white", fancybox=True)
 
     if title:
@@ -1943,7 +1943,7 @@ def plotlines_from_dataframe(
 
     # keep it outside style context to control legend     
     if legend and legend.lower() not in ["none", "false"]:
-        ax.legend(loc=legend, framealpha=1,
+        ax.legend(loc=legend, framealpha=0.5,
                 facecolor="white", fancybox=True)
 
     if title:
