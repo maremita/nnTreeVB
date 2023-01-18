@@ -1213,7 +1213,8 @@ def summarize_sampled_estimates(
             if p_name == "logl" and logl_data_combins != None:
                 logl_real = True
                 col_index = pd.MultiIndex.from_product(
-                        [x_names, ['Real','Mean','STD']])
+                    [x_names, ['Real_mean', 'Real_std',
+                        'Mean','STD']])
 
             df = pd.DataFrame("-", index=row_index,
                     columns=col_index)
@@ -1238,10 +1239,13 @@ def summarize_sampled_estimates(
 
                         if logl_real and\
                             logl_data_combins[c_name] != None:
-                            df[x_names[c], "Real"].loc[
+                            logls=logl_data_combins[c_name][c]
+                            df[x_names[c], "Real_mean"].loc[
                                 c_name] = "{:.5f}".format(
-                                    logl_data_combins[c_name][
-                                        c].mean())
+                                    logls.mean())
+                            df[x_names[c], "Real_std"].loc[
+                                c_name] = "{:.5f}".format(
+                                    logls.std())
 
             probs_dict[prob_names[p_name]] = df
 
@@ -1395,7 +1399,8 @@ def summarize_sampled_estimates(
 
             elif estim_name in ["t", "k"]:
                 col_index = pd.MultiIndex.from_product(
-                        [x_names, ['Mean','STD','Real']])
+                    [x_names, ['Real_mean', 'Real_std',
+                        'Mean','STD']])
 
                 df = pd.DataFrame("", index=row_index,
                         columns=col_index)
@@ -1429,9 +1434,12 @@ def summarize_sampled_estimates(
                             df[x_names[c],"STD"].loc[
                                 c_name] = "{:.5f}".format(
                                     scores.std())
-                            df[x_names[c],"Real"].loc[
+                            df[x_names[c],"Real_mean"].loc[
                                 c_name] = "{:.5f}".format(
                                     sim_param.mean())
+                            df[x_names[c],"Real_std"].loc[
+                                c_name] = "{:.5f}".format(
+                                    sim_param.std())
 
                             k_samples.append(scores.flatten())
 
