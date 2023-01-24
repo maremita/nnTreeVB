@@ -228,7 +228,7 @@ def plot_elbo_ll_kl(
     if kl_fit_finite:
         ax2.plot(x, scores[...,2,:].mean(mx), "-",
                 color=kl_color, 
-                label="KL_qp",
+                label="KL",
                 zorder=4) # KL train
 
         ax2.fill_between(x,
@@ -268,7 +268,7 @@ def plot_elbo_ll_kl(
         if kl_val_finite:
             ax2.plot(x, scores[...,5,:].mean(mx), "-.",
                     color=kl_color_v,
-                    label="KL_qp_val", zorder=2) # KL val
+                    label="KL_val", zorder=2) # KL val
         
             ax2.fill_between(x,
                     scores[...,5,:].mean(mx)\
@@ -373,16 +373,16 @@ def plot_elbos_lls_kls(
             ax2 = axs[i].twinx()
 
         # ELBO train
-        axs[i].plot(x, scores[...,0,:].mean(mx), "-",
-                color=elbo_color,  label="ELBO", zorder=6) 
+        #axs[i].plot(x, scores[...,0,:].mean(mx), "-",
+        #        color=elbo_color,  label="ELBO", zorder=6) 
 
-        axs[i].fill_between(x,
-                scores[...,0,:].mean(mx)\
-                        -scores[...,0,:].std(mx), 
-                scores[...,0,:].mean(mx)\
-                        +scores[...,0,:].std(mx), 
-                color=elbo_color,
-                alpha=0.2, zorder=5, interpolate=True)
+        #axs[i].fill_between(x,
+        #        scores[...,0,:].mean(mx)\
+        #                -scores[...,0,:].std(mx), 
+        #        scores[...,0,:].mean(mx)\
+        #                +scores[...,0,:].std(mx), 
+        #        color=elbo_color,
+        #        alpha=0.2, zorder=5, interpolate=True)
 
         # LL train
         axs[i].plot(x, scores[...,1,:].mean(mx), "-",
@@ -399,7 +399,7 @@ def plot_elbos_lls_kls(
         if kl_fit_finite:
             # KL train
             ax2.plot(x, scores[...,2,:].mean(mx), "-",
-                    color=kl_color, label="KL_qp", zorder=4)
+                    color=kl_color, label="KL", zorder=4)
 
             ax2.fill_between(x,
                     scores[...,2,:].mean(mx)\
@@ -411,17 +411,17 @@ def plot_elbos_lls_kls(
 
         # plot validation
         if plot_validation:
-            axs[i].plot(x, scores[...,3,:].mean(mx), "-.",
-                    color=elbo_color_v,
-                    label="ELBO_val", zorder=2) # ELBO val
+            #axs[i].plot(x, scores[...,3,:].mean(mx), "-.",
+            #        color=elbo_color_v,
+            #        label="ELBO_val", zorder=2) # ELBO val
 
-            axs[i].fill_between(x,
-                    scores[...,3,:].mean(mx)\
-                            -scores[...,3,:].std(mx),
-                    scores[...,3,:].mean(mx)\
-                            +scores[...,3,:].std(mx),
-                    color=elbo_color_v,
-                    alpha=0.1, zorder=1, interpolate=True)
+            #axs[i].fill_between(x,
+            #        scores[...,3,:].mean(mx)\
+            #                -scores[...,3,:].std(mx),
+            #        scores[...,3,:].mean(mx)\
+            #                +scores[...,3,:].std(mx),
+            #        color=elbo_color_v,
+            #        alpha=0.1, zorder=1, interpolate=True)
 
             axs[i].plot(x, scores[...,4,:].mean(mx), "-.",
                     color=ll_color_v,
@@ -438,8 +438,8 @@ def plot_elbos_lls_kls(
             if kl_fit_finite:
                 ax2.plot(x, scores[...,5,:].mean(mx), "-.", 
                         color=kl_color_v,
-                        label="KL_qp_val", zorder=2) # KL val
-                
+                        label="KL_val", zorder=2) # KL val
+ 
                 ax2.fill_between(x,
                         scores[...,5,:].mean(mx)\
                                 -scores[...,5,:].std(mx),
@@ -457,7 +457,7 @@ def plot_elbos_lls_kls(
             sl = lines[i].std(0)
 
             axs[i].plot(x, np.zeros_like(x)+ml,
-                    label="Real LogL",
+                    #label="Real LogL",
                     color=line_color, linestyle='-')
             axs[i].fill_between(x, ml-sl, ml+sl,
                         color= line_color,
@@ -487,12 +487,15 @@ def plot_elbos_lls_kls(
                 #    exp_scores[...,2,:].mean(mx))),
                 0,
                 np.max(np.ma.masked_invalid(
-                    exp_scores[...,2,:].mean(mx)))])
+                    exp_scores[...,2,:].mean(mx)+
+                    exp_scores[...,2,:].std(mx)
+                    ))])
 
         if i != 0:
             axs[i].set(yticklabels=[])
         else:
-            axs[i].set_ylabel("ELBO and Log Likelihood")
+            #axs[i].set_ylabel("ELBO and Log Likelihood")
+            axs[i].set_ylabel("Log likelihood")
 
         if kl_fit_finite:
             if i != nb_evals - 1:
