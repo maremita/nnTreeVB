@@ -1193,6 +1193,7 @@ def summarize_sampled_estimates(
 
     probs_dict = dict()
     estim_dict = dict()
+    excel_dict = dict()
     row_index = [c_name for c_name in combins]
 
     unique_names = []
@@ -1208,17 +1209,27 @@ def summarize_sampled_estimates(
     for p_name in prob_names:
         if p_name in unique_names:
             col_index = pd.MultiIndex.from_product(
-                    [x_names, ['Mean','STD']])
+                    [x_names, ['Mean','Std']])
+            #
+            col_index_xls = pd.MultiIndex.from_product(
+                    [x_names, ['Mean(Std)']])
  
             logl_real = False
             if p_name == "logl" and logl_data_combins != None:
                 logl_real = True
                 col_index = pd.MultiIndex.from_product(
                     [x_names, ['Real_mean', 'Real_std',
-                        'Mean','STD']])
+                        'Mean','Std']])
+                #
+                col_index_xls = pd.MultiIndex.from_product(
+                    [x_names, ['Real', 'Mean(Std)']])
 
             df = pd.DataFrame("-", index=row_index,
                     columns=col_index)
+
+            # Dataframe for excel file
+            df_xls = pd.DataFrame("-", index=row_index,
+                    columns=col_index_xls)
 
             for c_name in combins:
                 for c, exp_scores in \
@@ -1234,8 +1245,13 @@ def summarize_sampled_estimates(
                         df[x_names[c], "Mean"].loc[c_name] =\
                             "{:.5f}".format(
                                 scores.mean().item())
-                        df[x_names[c], "STD"].loc[c_name] =\
+                        df[x_names[c], "Std"].loc[c_name] =\
                             "{:.5f}".format(
+                                scores.std().item())
+
+                        df_xls[x_names[c], "Mean(Std)"].loc[
+                            c_name] ="{:.4f}({:.2f})".format(
+                                scores.mean().item(),
                                 scores.std().item())
 
                         if logl_real and\
@@ -1248,28 +1264,44 @@ def summarize_sampled_estimates(
                                 c_name] = "{:.5f}".format(
                                     logls.std())
 
+                            df_xls[x_names[c], "Real"].loc[
+                                c_name] =\
+                                    "{:.4f}({:.2f})".format(
+                                        logls.mean(),
+                                        logls.std())
+
             probs_dict[prob_names[p_name]] = df
+            excel_dict[prob_names[p_name]] = df_xls
 
     write_dict_dfs(probs_dict, out_file+"_probs.txt")
-    write_dict_dfs_to_excel(probs_dict, out_file+".xlsx",
+    write_dict_dfs_to_excel(excel_dict, out_file+".xlsx",
             sheet_name="probs")
-
+ 
+    excel_dict = dict() # flush data for new estimate
     for estim_name in estim_names:
         if estim_name in unique_names:
             if estim_name in ["b", "r", "f"]:
 
                 ## Dataframe for estimate statistics
                 col_index = pd.MultiIndex.from_product(
-                    [x_names, ['dists', 'scaled_dists',
-                        'corrs','pvals'], ['Mean', 'STD']])
+                    [x_names, ['Dist', 'Scaled_dist',
+                        'Corr','Pvalue'], ['Mean', 'Std']])
 
                 df = pd.DataFrame("-", index=row_index,
                         columns=col_index)
 
+                # Datafrane for excel file
+                # Dist here is scaled_dist
+                col_index_xls = pd.MultiIndex.from_product(
+                    [x_names, ['Dist', 'Corr']])
+
+                df_xls = pd.DataFrame("-", index=row_index,
+                        columns=col_index_xls)
+
                 ## Dataframe for Kruskal tests
                 col_index_k = pd.MultiIndex.from_product(
-                    [['dists', 'scaled_dists', 'corrs',],
-                        ['kruskal', 'pvalue', 'nb_groups']])
+                    [['Dist', 'Scaled_dist', 'Corr',],
+                        ['Kruskal', 'Pvalue', 'Nb_groups']])
 
                 df_k = pd.DataFrame("-", index=row_index,
                         columns=col_index_k)
@@ -1314,10 +1346,10 @@ def summarize_sampled_estimates(
                                     nb_data,1,1,-1) - scores,
                                 axis=-1)
 
-                            df[x_names[c],"dists", "Mean"].loc[
+                            df[x_names[c],"Dist", "Mean"].loc[
                                 c_name] = "{:.5f}".format(
                                     dists.mean())
-                            df[x_names[c],"dists", "STD"].loc[
+                            df[x_names[c],"Dist", "Std"].loc[
                                 c_name] = "{:.5f}".format(
                                     dists.std())
 
@@ -1326,90 +1358,110 @@ def summarize_sampled_estimates(
                             # Scaled distance within range 0,1
                             scaled_dists = 1-(1/(1+dists))
 
-                            df[x_names[c],"scaled_dists",
+                            df[x_names[c],"Scaled_dist",
                                 "Mean"].loc[c_name] =\
                                     "{:.5f}".format(
                                         scaled_dists.mean())
-                            df[x_names[c],"scaled_dists",
-                                "STD"].loc[c_name]=\
+                            df[x_names[c],"Scaled_dist",
+                                "Std"].loc[c_name]=\
                                     "{:.5f}".format(
+                                        scaled_dists.std())
+                            
+                            df_xls[x_names[c], "Dist"].loc[
+                                c_name] =\
+                                    "{:.4f}({:.2f})".format(
+                                        scaled_dists.mean(),
                                         scaled_dists.std())
 
                             k_dists01.append(
                                     scaled_dists.flatten())
-                            
+
                             # correlation
                             corrs, pvals = compute_corr(
                                 sim_param, scores) 
                             #print("corrs", corrs.shape)
                             #[nb_data, nb_fit_reps, nb_samples]
 
-                            df[x_names[c],"corrs", "Mean"].loc[
+                            df[x_names[c],"Corr", "Mean"].loc[
                                 c_name] = "{:.5f}".format(
                                     corrs.mean())
-                            df[x_names[c],"corrs", "STD"].loc[
+                            df[x_names[c],"Corr", "Std"].loc[
                                 c_name] = "{:.5f}".format(
                                     corrs.std())
-                            df[x_names[c],"pvals","Mean"].loc[
+                            df[x_names[c],"Pvalue","Mean"].loc[
                                 c_name] = "{:.5e}".format(
                                     pvals.mean())
-                            df[x_names[c],"pvals","STD"].loc[
+                            df[x_names[c],"Pvalue","Std"].loc[
                                 c_name] = "{:.5e}".format(
                                     pvals.std())
+
+                            df_xls[x_names[c], "Corr"].loc[
+                                c_name] =\
+                                    "{:.4f}({:.2f})".format(
+                                        corrs.mean(),
+                                        corrs.std())
 
                             k_corrs.append(corrs.flatten())
 
                             #k_samples.append(scores.flatten())
 
                     # Compute Kruskal tests and populate df_k
-                    df_k["dists", "nb_groups"].loc[
+                    df_k["Dist", "Nb_groups"].loc[
                         c_name] = "{}".format(len(k_dists))
                     if len(k_dists) >= 2:
                         kdst = kruskal(*k_dists)
-                        df_k["dists","kruskal"].loc[
+                        df_k["Dist","Kruskal"].loc[
                             c_name] = "{:.5f}".format(kdst[0])
-                        df_k["dists","pvalue"].loc[
+                        df_k["Dist","Pvalue"].loc[
                             c_name] = "{:.5e}".format(kdst[1])
 
-                    df_k["scaled_dists", "nb_groups"].loc[
+                    df_k["Scaled_dist", "Nb_groups"].loc[
                         c_name] = "{}".format(len(k_dists01))
                     if len(k_dists01) >= 2:
                         kd01 = kruskal(*k_dists01)
-                        df_k["scaled_dists","kruskal"].loc[
+                        df_k["Scaled_dist","Kruskal"].loc[
                             c_name] = "{:.5f}".format(kd01[0])
-                        df_k["scaled_dists","pvalue"].loc[
+                        df_k["Scaled_dist","Pvalue"].loc[
                             c_name] = "{:.5e}".format(kd01[1])
 
-                    df_k["corrs", "nb_groups"].loc[
+                    df_k["Corr", "Nb_groups"].loc[
                         c_name] = "{}".format(len(k_corrs))
                     if len(k_corrs) >= 2:
                         kcor = kruskal(*k_corrs)
-                        df_k["corrs","kruskal"].loc[
+                        df_k["Corr","Kruskal"].loc[
                             c_name] = "{:.5f}".format(kcor[0])
-                        df_k["corrs","pvalue"].loc[
+                        df_k["Corr","Pvalue"].loc[
                             c_name] = "{:.5e}".format(kcor[1])
 
                     #df_k["samples", "nb_groups"].loc[
                     #    c_name] = "{}".format(len(k_samples))
                     #if len(k_samples) >= 2:
                     #    ksmp = kruskal(*k_samples)
-                    #    df_k["samples","kruskal"].loc[
+                    #    df_k["Samples","Kruskal"].loc[
                     #        c_name] = "{:.5f}".format(ksmp[0])
-                    #    df_k["samples","pvalue"].loc[
+                    #    df_k["Samples","Pvalue"].loc[
                     #        c_name] = "{:.5e}".format(ksmp[1])
 
             elif estim_name in ["t", "k"]:
                 col_index = pd.MultiIndex.from_product(
                     [x_names, ['Real_mean', 'Real_std',
-                        'Mean','STD']])
+                        'Mean','Std']])
 
                 df = pd.DataFrame("", index=row_index,
                         columns=col_index)
 
+                # Datafrane for excel file
+                # Dist here is scaled_dist
+                col_index_xls = pd.MultiIndex.from_product(
+                    [x_names, ['Real', 'Mean(Std)']])
+
+                df_xls = pd.DataFrame("-", index=row_index,
+                        columns=col_index_xls)
+
                 ## Dataframe for Kruskal tests
                 col_index_k = pd.MultiIndex.from_product(
-                    [['samples'], ['kruskal', 'pvalue',
-                        "nb_groups"]])
+                    [['Samples'], ['Kruskal', 'Pvalue',
+                        "Nb_groups"]])
 
                 df_k = pd.DataFrame("-", index=row_index,
                         columns=col_index_k)
@@ -1421,20 +1473,29 @@ def summarize_sampled_estimates(
                     for c, exp_scores in \
                             enumerate(sample_combins[c_name]):
                         if estim_name in exp_scores[0]:
+                            #
                             scores = np.array([exp_scores[d][
                                 estim_name] 
                                 for d in range(nb_data)])
                             #print(estim_name, scores.shape)
 
-                            sim_param = sim_param_exps[
-                                exp_names[c]][estim_name]
-
                             df[x_names[c],"Mean"].loc[
                                 c_name] = "{:.5f}".format(
                                     scores.mean())
-                            df[x_names[c],"STD"].loc[
+                            df[x_names[c],"Std"].loc[
                                 c_name] = "{:.5f}".format(
                                     scores.std())
+
+                            df_xls[x_names[c],
+                                "Mean(Std)"].loc[c_name] =\
+                                    "{:.4f}({:.2f})".format(
+                                        scores.mean(),
+                                        scores.std())
+
+                            #
+                            sim_param = sim_param_exps[
+                                exp_names[c]][estim_name]
+
                             df[x_names[c],"Real_mean"].loc[
                                 c_name] = "{:.5f}".format(
                                     sim_param.mean())
@@ -1442,23 +1503,30 @@ def summarize_sampled_estimates(
                                 c_name] = "{:.5f}".format(
                                     sim_param.std())
 
+                            df_xls[x_names[c], "Real"].loc[
+                                c_name] =\
+                                    "{:.4f}({:.2f})".format(
+                                        sim_param.mean(),
+                                        sim_param.std())
+
                             k_samples.append(scores.flatten())
 
-                    df_k["samples", "nb_groups"].loc[
+                    df_k["Samples", "Nb_groups"].loc[
                         c_name] = "{}".format(len(k_samples))
                     if len(k_samples) >= 2:
                         ksmp = kruskal(*k_samples)
-                        df_k["samples","kruskal"].loc[
+                        df_k["Samples","Kruskal"].loc[
                             c_name] = "{:.5f}".format(ksmp[0])
-                        df_k["samples","pvalue"].loc[
+                        df_k["Samples","Pvalue"].loc[
                             c_name] = "{:.5e}".format(ksmp[1])
 
             estim_dict[estim_names[estim_name]] = df
             estim_dict[estim_names[estim_name]+\
                     ": Kruskal-Wallis tests"] = df_k
+            excel_dict[estim_names[estim_name]] = df_xls
 
     write_dict_dfs(estim_dict, out_file+"_stats.txt")
-    write_dict_dfs_to_excel(estim_dict, out_file+".xlsx",
+    write_dict_dfs_to_excel(excel_dict, out_file+".xlsx",
             sheet_name="stats")
 
 def write_dict_dfs(dict_df, filename):

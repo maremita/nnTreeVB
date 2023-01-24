@@ -308,11 +308,11 @@ if __name__ == '__main__':
         #print(sample_combins.keys())
         
         output_samples = os.path.join(output_sum, 
-                "{}".format(eval_code), "sampling")
+            "{}".format(eval_code), "sampling")
         makedirs(output_samples, mode=0o700, exist_ok=True)
 
         out_file = os.path.join(output_samples,
-                "{}_samples".format(eval_code))
+            "{}_{}".format(jobs_code, eval_code))
 
         summarize_sampled_estimates(
             sample_combins,
