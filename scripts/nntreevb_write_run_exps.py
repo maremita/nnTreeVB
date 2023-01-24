@@ -7,6 +7,7 @@ import sys
 import os
 import os.path
 from os import makedirs
+from shutil import copyfile
 import copy
 import configparser
 from datetime import datetime
@@ -129,6 +130,10 @@ if __name__ == '__main__':
             jobs_code)
     makedirs(job_dir, mode=0o700, exist_ok=True)
 
+    ## Copy original config_file to output_dir
+    copyfile(config_file, os.path.join(output_dir,
+        jobs_code+".ini"))
+
     ## Update options of config file
     ## #############################
     config.set("io", "output_path", output_dir)
@@ -164,6 +169,7 @@ if __name__ == '__main__':
     eval_comb_file = os.path.join(output_dir,
             "eval_combinations.txt")
 
+    # Write combinations into a file
     with open(eval_comb_file, "w") as fh:
         json.dump(eval_dict, fh, indent=2)
 
@@ -199,10 +205,10 @@ if __name__ == '__main__':
             cfg_eval.set("io", "nwk_file", tree_file)
 
         # write it on a file
-        config_file = os.path.join(config_dir,
+        conf_file = os.path.join(config_dir,
                 "{}.ini".format(exp_name))
 
-        with open (config_file, "w") as fh:
+        with open (conf_file, "w") as fh:
             cfg_eval.write(fh)
 
         if run_slurm:
@@ -227,7 +233,7 @@ if __name__ == '__main__':
                             account,
                             mail_user,
                             exp_name,
-                            program, config_file, seed,
+                            program, conf_file, seed,
                             set_gpu,
                             cpus_per_task,
                             mem,
@@ -253,7 +259,7 @@ if __name__ == '__main__':
                     exp_name+".out")
 
             cmd = "{} -c {} -s {} 2>{} >{} &".format(program,
-                    config_file, seed, s_error, s_output)
+                    conf_file, seed, s_error, s_output)
 
         res_file = os.path.join(output_path,
                 "{}_results.pkl".format(exp_name))

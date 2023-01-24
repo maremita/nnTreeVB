@@ -16,6 +16,7 @@ from nnTreeVB.checks import check_verbose
 import sys
 import os.path
 from os import makedirs
+from shutil import copyfile
 import configparser
 from datetime import datetime
 import json
@@ -121,6 +122,12 @@ if __name__ == '__main__':
             "summarize_{}".format(now_str))
             #"summarize")
     makedirs(output_sum, mode=0o700, exist_ok=True)
+
+    ## Copy original config_file to output_sum
+    ## In case if some eval cases were removed from
+    ## the original eval schema
+    copyfile(config_file, os.path.join(output_sum,
+        jobs_code+".ini"))
 
     #
     eval_combins = dictLists2combinations(evaluations)
