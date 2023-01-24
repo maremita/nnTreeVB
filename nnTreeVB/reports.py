@@ -1284,22 +1284,39 @@ def summarize_sampled_estimates(
     for estim_name in estim_names:
         if estim_name in unique_names:
             if estim_name in ["b", "r", "f"]:
+                if estim_name == "b":
+                    # Segregate metrics by external and 
+                    # internal branches
 
-                ## Dataframe for estimate statistics
-                col_index = pd.MultiIndex.from_product(
-                    [x_names, ['Dist', 'Scaled_dist',
-                        'Corr','Pvalue'], ['Mean', 'Std']])
+                    ## Dataframe for estimate statistics
+                    col_index = pd.MultiIndex.from_product(
+                        [x_names, ['All', 'Ext', 'Int'],
+                            ['Dist', 'Scaled_dist', 'Corr',
+                                'Pvalue'], ['Mean', 'Std']])
 
-                df = pd.DataFrame("-", index=row_index,
-                        columns=col_index)
+                    # Datafrane for excel file
+                    # Dist here is scaled_dist
+                    col_index_xls = pd.MultiIndex.from_product(
+                        [x_names, ['All', 'Ext', 'Int'],
+                            ['Dist', 'Corr']])
 
-                # Datafrane for excel file
-                # Dist here is scaled_dist
-                col_index_xls = pd.MultiIndex.from_product(
-                    [x_names, ['Dist', 'Corr']])
+                else:
+                    # r and f estimates
+                    ## Dataframe for estimate statistics
+                    col_index = pd.MultiIndex.from_product(
+                        [x_names, ['Dist', 'Scaled_dist',
+                            'Corr','Pvalue'], ['Mean', 'Std']])
+
+                    # Datafrane for excel file
+                    # Dist here is scaled_dist
+                    col_index_xls = pd.MultiIndex.from_product(
+                        [x_names, ['Dist', 'Corr']])
 
                 df_xls = pd.DataFrame("-", index=row_index,
                         columns=col_index_xls)
+
+                df = pd.DataFrame("-", index=row_index,
+                        columns=col_index)
 
                 ## Dataframe for Kruskal tests
                 col_index_k = pd.MultiIndex.from_product(
@@ -1343,38 +1360,17 @@ def summarize_sampled_estimates(
                             #    sim_param.shape))
                             #[nb_data, estim shape]
 
+                            ## Compute metrics
                             # euclidean distance
                             dists = np.linalg.norm(
                                 sim_param.reshape(
                                     nb_data,1,1,-1) - scores,
                                 axis=-1)
 
-                            df[x_names[c],"Dist", "Mean"].loc[
-                                c_name] = "{:.5f}".format(
-                                    dists.mean())
-                            df[x_names[c],"Dist", "Std"].loc[
-                                c_name] = "{:.5f}".format(
-                                    dists.std())
-
                             k_dists.append(dists.flatten())
 
                             # Scaled distance within range 0,1
                             scaled_dists = 1-(1/(1+dists))
-
-                            df[x_names[c],"Scaled_dist",
-                                "Mean"].loc[c_name] =\
-                                    "{:.5f}".format(
-                                        scaled_dists.mean())
-                            df[x_names[c],"Scaled_dist",
-                                "Std"].loc[c_name]=\
-                                    "{:.5f}".format(
-                                        scaled_dists.std())
-                            
-                            df_xls[x_names[c], "Dist"].loc[
-                                c_name] =\
-                                    "{:.4f}({:.2f})".format(
-                                        scaled_dists.mean(),
-                                        scaled_dists.std())
 
                             k_dists01.append(
                                     scaled_dists.flatten())
@@ -1385,28 +1381,256 @@ def summarize_sampled_estimates(
                             #print("corrs", corrs.shape)
                             #[nb_data, nb_fit_reps, nb_samples]
 
-                            df[x_names[c],"Corr", "Mean"].loc[
-                                c_name] = "{:.5f}".format(
-                                    corrs.mean())
-                            df[x_names[c],"Corr", "Std"].loc[
-                                c_name] = "{:.5f}".format(
-                                    corrs.std())
-                            df[x_names[c],"Pvalue","Mean"].loc[
-                                c_name] = "{:.5e}".format(
-                                    pvals.mean())
-                            df[x_names[c],"Pvalue","Std"].loc[
-                                c_name] = "{:.5e}".format(
-                                    pvals.std())
+                            k_corrs.append(corrs.flatten())
 
-                            df_xls[x_names[c], "Corr"].loc[
-                                c_name] =\
+                            #k_samples.append(scores.flatten())
+
+                            if estim_name == "b":
+                                # Unrooted trees
+                                # number of all branches
+                                nb_all = scores.shape[-1]
+                                # nb of external branches
+                                nb_ext = int((nb_all+3)/2)
+
+                                sm_ext = sim_param[:, :nb_ext]
+                                sm_int = sim_param[:, nb_ext:]
+
+                                sc_ext = scores[..., :nb_ext]
+                                sc_int = scores[..., nb_ext:]
+
+                                #
+                                dist_ext = np.linalg.norm(
+                                    sm_ext.reshape(
+                                        nb_data,1,1,-1)-sc_ext,
+                                    axis=-1)
+                                sdist_ext = 1-(1/(1+dist_ext))
+ 
+                                dist_int = np.linalg.norm(
+                                    sm_int.reshape(
+                                        nb_data,1,1,-1)-sc_int,
+                                    axis=-1)
+                                sdist_int = 1-(1/(1+dist_int))
+
+                                corr_ext,pval_ext=compute_corr(
+                                    sm_ext, sc_ext)
+                                corr_int,pval_int=compute_corr(
+                                    sm_int, sc_int)
+
+                            # Log metric results in dfs
+                            if estim_name == "b":
+
+                                # Euclidean distance
+                                # All branches
+                                df[x_names[c], "All", "Dist", 
+                                    "Mean"].loc[c_name] =\
+                                        "{:.5f}".format(
+                                            dists.mean())
+                                df[x_names[c], "All", "Dist",
+                                    "Std"].loc[c_name] =\
+                                        "{:.5f}".format(
+                                            dists.std())
+
+                                # External branches
+                                df[x_names[c], "Ext", "Dist", 
+                                    "Mean"].loc[c_name] =\
+                                        "{:.5f}".format(
+                                            dist_ext.mean())
+                                df[x_names[c], "Ext", "Dist",
+                                    "Std"].loc[c_name] =\
+                                        "{:.5f}".format(
+                                            dist_ext.std())
+
+                                # Internal branches
+                                df[x_names[c], "Int", "Dist", 
+                                    "Mean"].loc[c_name] =\
+                                        "{:.5f}".format(
+                                            dist_int.mean())
+                                df[x_names[c], "Int", "Dist",
+                                    "Std"].loc[c_name] =\
+                                        "{:.5f}".format(
+                                            dist_int.std())
+
+                                # Scaled distance within range
+                                # 0,1
+                                # All branches
+                                df[x_names[c], "All",
+                                    "Scaled_dist", "Mean"].loc[
+                                        c_name] =\
+                                        "{:.5f}".format(
+                                        scaled_dists.mean())
+                                df[x_names[c], "All", 
+                                    "Scaled_dist", "Std"].loc[
+                                        c_name]=\
+                                        "{:.5f}".format(
+                                            scaled_dists.std())
+ 
+                                df_xls[x_names[c], "All",
+                                    "Dist"].loc[c_name]=\
+                                    "{:.4f}({:.2f})".format(
+                                        scaled_dists.mean(),
+                                        scaled_dists.std())
+
+                                # External branches
+                                df[x_names[c], "Ext",
+                                    "Scaled_dist", "Mean"].loc[
+                                        c_name] =\
+                                        "{:.5f}".format(
+                                        sdist_ext.mean())
+                                df[x_names[c], "Ext", 
+                                    "Scaled_dist", "Std"].loc[
+                                        c_name]=\
+                                        "{:.5f}".format(
+                                            sdist_ext.std())
+
+                                df_xls[x_names[c], "Ext",
+                                    "Dist"].loc[c_name]=\
+                                    "{:.4f}({:.2f})".format(
+                                        sdist_ext.mean(),
+                                        sdist_ext.std())
+
+                                # Internal branches
+                                df[x_names[c], "Int",
+                                    "Scaled_dist", "Mean"].loc[
+                                        c_name] =\
+                                        "{:.5f}".format(
+                                        sdist_int.mean())
+                                df[x_names[c], "Int", 
+                                    "Scaled_dist", "Std"].loc[
+                                        c_name]=\
+                                        "{:.5f}".format(
+                                            sdist_int.std())
+
+                                df_xls[x_names[c], "Int",
+                                    "Dist"].loc[c_name]=\
+                                    "{:.4f}({:.2f})".format(
+                                        sdist_int.mean(),
+                                        sdist_int.std())
+
+                                # Correlation
+                                # All branches
+                                df[x_names[c], "All", "Corr",
+                                    "Mean"].loc[c_name] =\
+                                        "{:.5f}".format(
+                                            corrs.mean())
+                                df[x_names[c], "All", "Corr",
+                                    "Std"].loc[c_name] =\
+                                        "{:.5f}".format(
+                                            corrs.std())
+                                df[x_names[c], "All", "Pvalue",
+                                    "Mean"].loc[c_name] =\
+                                        "{:.5e}".format(
+                                            pvals.mean())
+                                df[x_names[c], "All", "Pvalue",
+                                    "Std"].loc[c_name] =\
+                                        "{:.5e}".format(
+                                            pvals.std())
+
+                                df_xls[x_names[c], "All",
+                                    "Corr"].loc[c_name] =\
                                     "{:.4f}({:.2f})".format(
                                         corrs.mean(),
                                         corrs.std())
 
-                            k_corrs.append(corrs.flatten())
+                                # External branches
+                                df[x_names[c], "Ext", "Corr",
+                                    "Mean"].loc[c_name] =\
+                                        "{:.5f}".format(
+                                            corr_ext.mean())
+                                df[x_names[c], "Ext", "Corr",
+                                    "Std"].loc[c_name] =\
+                                        "{:.5f}".format(
+                                            corr_ext.std())
+                                df[x_names[c], "Ext", "Pvalue",
+                                    "Mean"].loc[c_name] =\
+                                        "{:.5e}".format(
+                                            pval_ext.mean())
+                                df[x_names[c], "Ext", "Pvalue",
+                                    "Std"].loc[c_name] =\
+                                        "{:.5e}".format(
+                                            pval_ext.std())
 
-                            #k_samples.append(scores.flatten())
+                                df_xls[x_names[c], "Ext",
+                                    "Corr"].loc[c_name] =\
+                                    "{:.4f}({:.2f})".format(
+                                        corr_ext.mean(),
+                                        corr_ext.std())
+
+                                # Internal branches
+                                df[x_names[c], "Int", "Corr",
+                                    "Mean"].loc[c_name] =\
+                                        "{:.5f}".format(
+                                            corr_int.mean())
+                                df[x_names[c], "Int", "Corr",
+                                    "Std"].loc[c_name] =\
+                                        "{:.5f}".format(
+                                            corr_int.std())
+                                df[x_names[c], "Int", "Pvalue",
+                                    "Mean"].loc[c_name] =\
+                                        "{:.5e}".format(
+                                            pval_int.mean())
+                                df[x_names[c], "Int", "Pvalue",
+                                    "Std"].loc[c_name] =\
+                                        "{:.5e}".format(
+                                            pval_int.std())
+
+                                df_xls[x_names[c], "Int",
+                                    "Corr"].loc[c_name] =\
+                                    "{:.4f}({:.2f})".format(
+                                        corr_int.mean(),
+                                        corr_int.std())
+
+                            else:
+                                # r and f
+                                # euclidean distance
+                                df[x_names[c], "Dist", 
+                                    "Mean"].loc[c_name] =\
+                                        "{:.5f}".format(
+                                            dists.mean())
+                                df[x_names[c], "Dist",
+                                    "Std"].loc[c_name] =\
+                                        "{:.5f}".format(
+                                            dists.std())
+
+                                # Scaled distance within range
+                                # 0,1
+                                df[x_names[c], "Scaled_dist",
+                                    "Mean"].loc[c_name] =\
+                                        "{:.5f}".format(
+                                        scaled_dists.mean())
+                                df[x_names[c], "Scaled_dist",
+                                    "Std"].loc[c_name]=\
+                                        "{:.5f}".format(
+                                            scaled_dists.std())
+                                
+                                df_xls[x_names[c], "Dist"].loc[
+                                    c_name]=\
+                                    "{:.4f}({:.2f})".format(
+                                        scaled_dists.mean(),
+                                        scaled_dists.std())
+
+                                # correlation
+                                df[x_names[c], "Corr",
+                                    "Mean"].loc[c_name] =\
+                                        "{:.5f}".format(
+                                            corrs.mean())
+                                df[x_names[c],"Corr",
+                                    "Std"].loc[c_name] =\
+                                        "{:.5f}".format(
+                                            corrs.std())
+                                df[x_names[c], "Pvalue",
+                                    "Mean"].loc[c_name] =\
+                                        "{:.5e}".format(
+                                            pvals.mean())
+                                df[x_names[c], "Pvalue",
+                                    "Std"].loc[c_name] =\
+                                        "{:.5e}".format(
+                                            pvals.std())
+
+                                df_xls[x_names[c], "Corr"].loc[
+                                    c_name] =\
+                                    "{:.4f}({:.2f})".format(
+                                        corrs.mean(),
+                                        corrs.std())
 
                     # Compute Kruskal tests and populate df_k
                     df_k["Dist", "Nb_groups"].loc[
