@@ -328,12 +328,26 @@ def plot_elbos_lls_kls(
         x_names,
         out_file,
         lines=None,
+        y_limits={},
         sizefont=14,
         usetex=False,
         print_xtick_every=20,
         title=None,
         legend='best',
         plot_validation=False):
+
+    # Process y limits
+    y_def_lims = {
+            "Logls": [None, 0.01],
+            "Kls": [-0.01, None],
+            }
+
+    y_lims = {}
+    for y in y_def_lims:
+        if y in y_limits:
+            y_lims[y] = y_limits[y]
+        else:
+            y_lims[y] = y_def_lims[y]
 
     fig_format= "png"
     fig_dpi = 300
@@ -469,10 +483,6 @@ def plot_elbos_lls_kls(
 
         #axs[i].set_title(x_names[i].split("-")[1])
         axs[i].set_title(x_names[i])
-        #axs[i].set_ylim([None, 0])
-        #axs[i].set_ylim([-10000, 0])
-        axs[i].set_ylim([np.min(np.ma.masked_invalid(
-            exp_scores[...,0,:].mean(mx))), 0])
         axs[i].set_xticks([t for t in range(1, nb_iters+1) if\
                 t==1 or t % print_xtick_every==0])
         axs[i].set_xlabel("Iterations")
@@ -481,15 +491,31 @@ def plot_elbos_lls_kls(
                 alpha=0.1)
         axs[i].minorticks_on()
 
+        yl_ll_min = y_lims["Logls"][0]
+        yl_ll_max = y_lims["Logls"][1]
+
+        if yl_ll_min == None:
+            yl_ll_min = np.min(np.ma.masked_invalid(
+                exp_scores[...,1,:].mean(mx)))
+        if yl_ll_max == None:
+            yl_ll_max = 0.01
+
+        axs[i].set_ylim([yl_ll_min, yl_ll_max])
+
         if kl_fit_finite:
-            ax2.set_ylim([ 
+            yl_kl_min = y_lims["Kls"][0]
+            yl_kl_max = y_lims["Kls"][1]
+
+            if yl_kl_min == None:
                 #np.min(np.ma.masked_invalid(
                 #    exp_scores[...,2,:].mean(mx))),
-                0,
-                np.max(np.ma.masked_invalid(
+                yl_kl_min = -0.01 
+            if yl_kl_max == None:
+                yl_kl_max = np.max(np.ma.masked_invalid(
                     exp_scores[...,2,:].mean(mx)+
-                    exp_scores[...,2,:].std(mx)
-                    ))])
+                    exp_scores[...,2,:].std(mx)))
+
+            ax2.set_ylim([yl_kl_min, yl_kl_max])
 
         if i != 0:
             axs[i].set(yticklabels=[])

@@ -89,6 +89,12 @@ if __name__ == '__main__':
 
     # y limits
     y_limits = dict()
+    #
+    y_limits["Logls"] = str2list(config.get("plotting",
+        "ylim_logls", fallback="None,0.01"), cast=float)
+    y_limits["Kls"] = str2list(config.get("plotting",
+        "ylim_kls", fallback="-0.01,None"), cast=float)
+    #
     y_limits["Dists"] = str2list(config.get("plotting",
         "ylim_dists", fallback="-0.01,None"), cast=float)
     y_limits["Scaled_dists"]= str2list(config.get("plotting",
@@ -267,6 +273,7 @@ if __name__ == '__main__':
                 out_file=os.path.join(output_fit,
                     "{}_estim_probs".format(combin)),
                 lines=logl_data_combins[combin],
+                y_limits=y_limits,
                 title=None,
                 legend=legends["Elbos"],
                 #
