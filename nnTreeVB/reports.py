@@ -50,9 +50,9 @@ freqs_list = ["A", "G", "C", "T"]
 
 stats_list = ['Dists','Scaled_dists','Corrs','Ratios']
 
-line_color = "#c13e4c"
+line_color = "#226E9C"  # darker blue #c13e4c # darkred
 elbo_color = "#3EC1B3"  # green
-ll_color =   "#226E9C"  # darker blue
+ll_color =   "#2B8CC6"  # blue
 kl_color =   "#7C1D69"  # pink
 
 elbo_color_v = "#6BE619"
@@ -129,7 +129,7 @@ def plot_weights_grads_epochs(
                 alpha=0.2)
 
         axs[ind].grid(zorder=-1)
-        axs[ind].set_ylabel(param)
+        axs[ind].set_ylabel(param, fontsize=sizefont)
         #axs[ind].legend()
 
         # gradients
@@ -145,14 +145,16 @@ def plot_weights_grads_epochs(
 
         axs[ind+1].grid(zorder=-1)
         #axs[ind+1].legend()
-        
+ 
         if ind < 2:
             axs[ind].set_title("Parameters")
             axs[ind+1].set_title("Gradients")
 
         if ind >= nb_params-1:
-            axs[ind].set_xlabel("Iterations")
-            axs[ind+1].set_xlabel("Iterations")
+            axs[ind].set_xlabel("Iterations",
+                    fontsize=sizefont)
+            axs[ind+1].set_xlabel("Iterations",
+                    fontsize=sizefont)
 
         ind +=2
 
@@ -304,7 +306,7 @@ def plot_elbo_ll_kl(
     ax.grid(zorder=-1, visible=True, which='minor', alpha=0.1)
     ax.minorticks_on()
 
-    if legend:
+    if legend and legend.lower() != 'none':
         handles,labels = [],[]
         for ax in f.axes:
             for h,l in zip(*ax.get_legend_handles_labels()):
@@ -329,7 +331,7 @@ def plot_elbos_lls_kls(
         out_file,
         lines=None,
         y_limits={},
-        sizefont=14,
+        sizefont=16,
         usetex=False,
         print_xtick_every=20,
         title=None,
@@ -360,11 +362,11 @@ def plot_elbos_lls_kls(
     nb_evals = len(exp_scores)
 
     f, axs = plt.subplots(1, nb_evals,
-            figsize=(7*nb_evals, 5))
+            figsize=(7*nb_evals, 4.5))
 
     if nb_evals == 1: axs = [axs]
 
-    plt.rcParams.update({'font.size':sizefont, 
+    plt.rcParams.update({'font.size':sizefont,
         'text.usetex':usetex})
     plt.subplots_adjust(wspace=0.07, hspace=0.1)
 
@@ -462,10 +464,6 @@ def plot_elbos_lls_kls(
                         color= kl_color_v,
                         alpha=0.1, zorder=1, interpolate=True)
 
-        #if lines:
-        #    axs[i].axhline(y=lines[i], color=line_color,
-        #            linestyle='-')
-
         if lines is not None:
             ml = lines[i].mean(0)
             sl = lines[i].std(0)
@@ -477,20 +475,27 @@ def plot_elbos_lls_kls(
                         color= line_color,
                         alpha=0.1, zorder=0, interpolate=True)
 
-        #axs[i].set_zorder(ax2.get_zorder()+1)
         if kl_fit_finite or kl_val_finite:
             axs[i].set_frame_on(False)
 
         #axs[i].set_title(x_names[i].split("-")[1])
-        axs[i].set_title(x_names[i])
+        axs[i].set_title(x_names[i], fontsize=sizefont-2)
+
+        # Set xticks
         axs[i].set_xticks([t for t in range(1, nb_iters+1) if\
                 t==1 or t % print_xtick_every==0])
-        axs[i].set_xlabel("Iterations")
-        axs[i].grid(zorder=-2)
-        axs[i].grid(zorder=-2, visible=True, which='minor',
-                alpha=0.1)
         axs[i].minorticks_on()
 
+        axs[i].tick_params(labelsize=sizefont)
+        if kl_fit_finite:
+            ax2.tick_params(labelsize=sizefont)
+
+        # Set grid
+        axs[i].grid(zorder=-2, visible=True, which='major')
+        axs[i].grid(zorder=-2, visible=True, which='minor',
+                alpha=0.2)
+
+        # Set y limits
         yl_ll_min = y_lims["Logls"][0]
         yl_ll_max = y_lims["Logls"][1]
 
@@ -517,19 +522,26 @@ def plot_elbos_lls_kls(
 
             ax2.set_ylim([yl_kl_min, yl_kl_max])
 
+        # Set yticks and axes labels
+        axs[i].set_xlabel("Iterations", fontsize=sizefont)
+
         if i != 0:
             axs[i].set(yticklabels=[])
         else:
             #axs[i].set_ylabel("ELBO and Log Likelihood")
-            axs[i].set_ylabel("Log likelihood")
+            axs[i].set_ylabel("Log likelihood",
+                    fontsize=sizefont, color=ll_color, 
+                    fontweight='medium')
 
         if kl_fit_finite:
             if i != nb_evals - 1:
                 ax2.set(yticklabels=[])
             else:
-                ax2.set_ylabel("KL(q|prior)")
+                ax2.set_ylabel("KL(q|prior)",
+                        fontsize=sizefont, color=kl_color,
+                        fontweight='medium')
 
-    if legend:
+    if legend and legend.lower() != 'none':
         handles,labels = [],[]
         for ax in f.axes:
             for h,l in zip(*ax.get_legend_handles_labels()):
@@ -537,7 +549,8 @@ def plot_elbos_lls_kls(
                     handles.append(h)
                     labels.append(l)
         plt.legend(handles, labels, loc=legend, framealpha=0.5,
-                facecolor="white", fancybox=True)
+                facecolor="white", fancybox=True,
+                fontsize=sizefont-2)
 
     if title:
         plt.suptitle(title)
@@ -621,7 +634,7 @@ def plot_fit_estim_distance(
     ax.grid(zorder=-1, visible=True, which='minor', alpha=0.1)
     ax.minorticks_on()
 
-    if legend:
+    if legend and legend.lower() != 'none':
         handles,labels = [],[]
         for ax in f.axes:
             for h,l in zip(*ax.get_legend_handles_labels()):
@@ -719,7 +732,7 @@ def plot_fit_estim_distances(
         else:
             axs[i].set_ylabel("Euclidean distance")
 
-    if legend:
+    if legend and legend.lower() != 'none':
         handles,labels = [],[]
         for ax in f.axes:
             for h,l in zip(*ax.get_legend_handles_labels()):
@@ -804,7 +817,7 @@ def plot_fit_estim_correlation(
     ax.grid(zorder=-1, visible=True, which='minor', alpha=0.1)
     ax.minorticks_on()
 
-    if legend:
+    if legend and legend.lower() != 'none':
         handles,labels = [],[]
         for ax in f.axes:
             for h,l in zip(*ax.get_legend_handles_labels()):
@@ -897,7 +910,7 @@ def plot_fit_estim_correlations(
         else:
             axs[i].set_ylabel("Correlation coefficient")
 
-    if legend:
+    if legend and legend.lower() != 'none':
         handles,labels = [],[]
         for ax in f.axes:
             for h,l in zip(*ax.get_legend_handles_labels()):
