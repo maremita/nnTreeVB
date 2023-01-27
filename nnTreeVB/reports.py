@@ -493,7 +493,7 @@ def plot_elbos_lls_kls(
         # Set grid
         axs[i].grid(zorder=-2, visible=True, which='major')
         axs[i].grid(zorder=-2, visible=True, which='minor',
-                alpha=0.2)
+                alpha=0.1)
 
         # Set y limits
         yl_ll_min = y_lims["Logls"][0]
