@@ -479,7 +479,12 @@ def plot_elbos_lls_kls(
             axs[i].set_frame_on(False)
 
         #axs[i].set_title(x_names[i].split("-")[1])
-        axs[i].set_title(x_names[i], fontsize=sizefont-2)
+        subtitle = x_names[i]
+        # for learned prior model paper
+        if subtitle == "bp-exp+m01": subtitle = "VP-FDP"
+        elif subtitle == "bp-exp+uni+l": subtitle = "VP-LDP"
+        elif subtitle == "bp-exp+nn+l": subtitle = "VP-NDP"
+        axs[i].set_title(subtitle, fontsize=sizefont)
 
         # Set xticks
         axs[i].set_xticks([t for t in range(1, nb_iters+1) if\
