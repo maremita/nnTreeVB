@@ -2045,24 +2045,29 @@ def violinplot_samples_statistics(
 
 def violinplot_from_dataframe(
         df,
-        out_file,
+        out_file=False,
         color="#2a9d8f",
-        y_limit=[0, None],
+        y_limit=[None, None],
         sizefont=14,
         usetex=False,
-        title=None):
+        title=None,
+        line=False):
 
     fig_format= "png"
     fig_dpi = 300
 
-    fig_file = out_file+"."+fig_format
+    if out_file:
+        fig_file = out_file+"."+fig_format
 
     with plt.style.context('seaborn-darkgrid'):
         f, ax = plt.subplots(figsize=(8, 5))
         plt.rcParams.update({'font.size':sizefont,
             'text.usetex':usetex})
 
-        sns.violinplot(data=df, color=color, saturation=1.)
+        g = sns.violinplot(data=df, color=color, saturation=1.)
+
+        if isinstance(line, (int, float)):
+            g.axhline(line, color=line_color)
 
         # Rotate labels if they are too long
         nb_cols = len(df.columns)
@@ -2075,11 +2080,13 @@ def violinplot_from_dataframe(
         if title:
             plt.suptitle(title)
 
-        plt.savefig(fig_file, bbox_inches="tight", 
-                format=fig_format, dpi=fig_dpi)
+        if out_file:
+            plt.savefig(fig_file, bbox_inches="tight", 
+                    format=fig_format, dpi=fig_dpi)
+        else:
+            plt.show()
 
         plt.close(f)
-
 
 def plot_grouped_statistics(
         metric_scores, # dict

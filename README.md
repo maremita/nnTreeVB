@@ -1,7 +1,9 @@
-# nnTreeVB: a Neural Network-based Variational Bayesian Model for Phylogenetic Parameter Estimation
+# nnTreeVB: a Neural Network-based Variational Bayesian Framework for Phylogenetic Parameter Estimation
 
 #### *Prior Density Learning in VBPPI* paper
-The configuration files of the experiments performed in the paper [**Prior Density Learning in Variational Bayesian Phylogenetic Parameters Inference**](https://arxiv.org/abs/2302.02522) can be found from this link [https://github.com/maremita/nnTreeVB_Exp/tree/main/exp_learn_priors](https://github.com/maremita/nnTreeVB_Exp/tree/main/exp_learn_priors).
+The configuration files of the experiments performed in the paper [Prior Density Learning in Variational Bayesian Phylogenetic Parameters Inference](https://arxiv.org/abs/2302.02522) can be found in the repository [nnTreeVB\_Exp](https://github.com/maremita/nnTreeVB_Exp/tree/main/exp_learn_priors).
+
+[nntreevb\_learn\_prior.ipynb](https://github.com/maremita/nnTreeVB/blob/main/notebooks/nntreevb_learn_prior.ipynb) is an example of using `nnTreeVB` to learn prior densities of branch lengths with a JC69 substitution model. 
 
 #### Disclaimer
 **nnTreeVB** is actively in the development phase. The names of the different package entities and the default values are subject to change.
@@ -44,7 +46,7 @@ This is an example of how to use `nnTreeVB` to fit an `nnTreeVB_GTR` to estimate
 ```
 
 ## Experiments
-
+Experiments for the assessment of `nnTreeVB` can be found in the project [nnTreeVB\_Exp](https://github.com/maremita/nnTreeVB_Exp/).
 
 ## How to cite
 I am preparing the main `nnTreeVB` manuscript. In the meantime, if you want to refer to the framework, you can cite this preprint:
