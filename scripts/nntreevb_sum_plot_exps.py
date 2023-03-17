@@ -6,9 +6,12 @@ from nnTreeVB.reports import aggregate_sampled_estimates
 from nnTreeVB.reports import summarize_sampled_estimates
 from nnTreeVB.reports import plot_elbos_lls_kls
 from nnTreeVB.reports import plot_fit_estim_statistics
+from nnTreeVB.reports import compute_estim_stats
+from nnTreeVB.reports import summarize_fittimes
 from nnTreeVB.reports import compute_samples_statistics
 from nnTreeVB.reports import violinplot_samples_statistics
 from nnTreeVB.reports import plot_grouped_statistics
+from nnTreeVB.reports import write_dict_dfs_to_excel
 from nnTreeVB.utils import dictLists2combinations
 from nnTreeVB.utils import str2list
 from nnTreeVB.checks import check_verbose
@@ -24,6 +27,7 @@ import argparse
 from collections import defaultdict
 
 import numpy as np
+import pandas as pd
 from nnTreeVB.utils import load
 
 from joblib import Parallel, delayed
@@ -155,6 +159,9 @@ if __name__ == '__main__':
     real_param_exps = dict()
     samples_exps = dict()
     metrics_exps = dict()
+    fittime_exps = dict()
+    fittime_df = pd.DataFrame(
+            columns=["mean", "std", "min", "max"])
 
     for ind, eval_combin in enumerate(eval_combins):
         exp_name = name_combins[ind]
@@ -178,6 +185,17 @@ if __name__ == '__main__':
         if "real_params" in result_data:
             real_param_exps[exp_name] =\
                     result_data["real_params"]
+
+        # Fit time
+        fittime_exps[exp_name] = np.array(
+            [[rep["total_fit_time"]
+                for rep in d ]
+                for d in rep_results]).flatten()
+
+        fittime_df.loc[exp_name] = compute_estim_stats(
+                fittime_exps[exp_name],
+                stats=["mean", "std", "min", "max"])
+
         # 
         if save_fit_history:
             prob_scores = [[rep["fit_probs"] for rep in d]\
@@ -204,6 +222,19 @@ if __name__ == '__main__':
         metrics_exps[exp_name] = compute_samples_statistics(
                 samples_exps[exp_name],
                 real_param_exps[exp_name])
+
+    # format floats for times
+    cols = ["mean", "min", "max"]
+    fittime_df[cols] = fittime_df[cols].applymap(
+            lambda x: '{0:.4f}'.format(x))
+    fittime_df[['std']] = fittime_df[['std']].applymap(
+            lambda x: '{0:.2f}'.format(x))
+
+    write_dict_dfs_to_excel({"Total fit times":fittime_df},
+            os.path.join(output_sum,
+                jobs_code+"_fittimes.xlsx"),
+            sheet_name="Total fit times")
+    #print(fittime_df)
 
     for ind, eval_code in enumerate(eval_codes):
         print("\nSummarizing {} results".format(eval_code),
@@ -249,14 +280,28 @@ if __name__ == '__main__':
         lvs = list(logl_data_combins.values())
         if lvs.count(None) == len(lvs): logl_data_combins=None
 
+        print("\tSummarizing total fit times...", flush=True)
+        fittime_combins = {c:[fittime_exps[x] for x in\
+                combins[c]] for c in combins}
+        #print(fittime_combins.keys())
+ 
+        output_fit = os.path.join(output_sum, 
+                eval_code, "fitting")
+        makedirs(output_fit, mode=0o700, exist_ok=True)
+
+        out_fittimes = os.path.join(output_fit,
+            "{}_{}".format(jobs_code, eval_code))
+
+        summarize_fittimes(
+            fittime_combins,
+            combins,
+            x_names,
+            out_fittimes)
+
         parallel = Parallel(n_jobs=nb_parallel, 
                 prefer="processes", verbose=verbose)
 
         if save_fit_history:
-            output_fit = os.path.join(output_sum, 
-                    eval_code,"fitting")
-            makedirs(output_fit, mode=0o700, exist_ok=True)
-
             # Get the prob results for each case
             prob_combins = {c:[prob_exps[x] for x in\
                     combins[c]] for c in combins}

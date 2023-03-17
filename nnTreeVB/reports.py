@@ -1224,6 +1224,56 @@ def report_sampled_estimates(
     with open(out_file, "w") as fh:
         fh.write(chaine)
 
+def summarize_fittimes(
+        fittime_combins,
+        combins,
+        x_names,
+        out_file):
+
+    fittime_dict = dict()
+    row_index = [c_name for c_name in combins]
+ 
+    col_index = pd.MultiIndex.from_product(
+            [x_names+['All'], ["Mean(Std)", "Min", "Max"]])
+
+    df = pd.DataFrame("-", index=row_index,
+            columns=col_index)
+
+    for c_name in combins:
+        all_scores = np.array([])
+        for c, exp_scores in enumerate(
+            fittime_combins[c_name]):
+                all_scores = np.concatenate(
+                    (all_scores, exp_scores))
+
+                df[x_names[c], "Mean(Std)"].loc[c_name] =\
+                    "{:.4f}({:.2f})".format(
+                        exp_scores.mean().item(),
+                        exp_scores.std().item())
+                df[x_names[c], "Min"].loc[c_name] =\
+                    "{:.4f}".format(
+                        exp_scores.min().item())
+                df[x_names[c], "Max"].loc[c_name] =\
+                    "{:.4f}".format(
+                        exp_scores.max().item())
+
+        df["All", "Mean(Std)"].loc[c_name] =\
+            "{:.4f}({:.2f})".format(
+                all_scores.mean().item(),
+                all_scores.std().item())
+        df["All", "Min"].loc[c_name] =\
+            "{:.4f}".format(
+                all_scores.min().item())
+        df["All", "Max"].loc[c_name] =\
+            "{:.4f}".format(
+                all_scores.max().item())
+
+    fittime_dict["Total fit times"] = df
+
+    #write_dict_dfs(fittime_dict, out_file+"_fittimes.txt")
+    write_dict_dfs_to_excel(fittime_dict, out_file+"_fittimes.xlsx",
+            sheet_name="Total fit times")
+
 def summarize_sampled_estimates(
         sample_combins,
         combins,
@@ -1857,6 +1907,20 @@ def write_dict_dfs_to_excel(
                 value="%% nnTreeVB")
         text_sheet.cell(column=1, row=2,
                 value="%% {}".format(filename))
+
+# not used
+def compute_fit_time_statistics(
+        rep_results):
+
+    # a flattened np array of np_data x np_fits values
+    time_reps = np.array([[rep["total_fit_time"] for rep in d ] 
+        for d in rep_results]).flatten()
+
+    # a dictionary
+    time_stats = compute_estim_stats(time_reps,
+            stats=["mean", "var", "min", "max"])
+
+    return time_stats
 
 def compute_samples_statistics(
         exp_scores,
