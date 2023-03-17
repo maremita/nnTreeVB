@@ -492,7 +492,10 @@ def compute_estim_stats(
 
     if "var" in stats:
         res_stats["var"] = np.var(sample, axis=axis)
-    
+
+    if "std" in stats:
+        res_stats["std"] = np.std(sample, axis=axis)
+
     if "min" in stats:
         res_stats["min"] = np.min(sample, axis=axis)
     
