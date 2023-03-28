@@ -1,6 +1,6 @@
 #
-*/sim.fasta
-*/sim.nw
+notebooks/*.fasta
+notebooks/*.nw
 .DS_Store
 results/
 exps/

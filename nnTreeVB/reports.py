@@ -2110,15 +2110,18 @@ def violinplot_samples_statistics(
 def violinplot_from_dataframe(
         df,
         out_file=False,
-        color="#2a9d8f",
+        color=None, #"#2a9d8f"
         y_limit=[None, None],
-        sizefont=14,
+        sizefont=16,
         usetex=False,
         title=None,
-        line=False):
-
-    fig_format= "png"
-    fig_dpi = 300
+        line=False,
+        xlabel=None,
+        ylabel=None,
+        xticks_rotation=45, # rotate if they are too long
+        fig_format="png",
+        fig_dpi=300,
+        **kwargs):
 
     if out_file:
         fig_file = out_file+"."+fig_format
@@ -2128,16 +2131,28 @@ def violinplot_from_dataframe(
         plt.rcParams.update({'font.size':sizefont,
             'text.usetex':usetex})
 
-        g = sns.violinplot(data=df, color=color, saturation=1.)
+        g = sns.violinplot(
+                data=df,
+                color=color,
+                saturation=1.,
+                **kwargs)
+
+        g.tick_params(labelsize=sizefont-1)
 
         if isinstance(line, (int, float)):
             g.axhline(line, color=line_color)
 
+        if xlabel:
+            g.set_xlabel(xlabel, fontsize=sizefont)
+
+        if ylabel:
+            g.set_ylabel(ylabel, fontsize=sizefont)
+
         # Rotate labels if they are too long
         nb_cols = len(df.columns)
         max_len = max([len(c) for c in df.columns])
-        if nb_cols >=5 and max_len >=10:
-            plt.xticks(rotation=45)
+        if xticks_rotation and nb_cols >=5 and max_len >=10:
+            plt.xticks(rotation=xticks_rotation)
 
         plt.ylim(*y_limit)
 
