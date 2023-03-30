@@ -50,7 +50,7 @@ freqs_list = ["A", "G", "C", "T"]
 
 stats_list = ['Dists','Scaled_dists','Corrs','Ratios']
 
-line_color = "#226E9C"  # darker blue #c13e4c # darkred
+line_color = "orangered"# "#226E9C"  # darker blue #c13e4c # darkred
 elbo_color = "#3EC1B3"  # green
 ll_color =   "#2B8CC6"  # blue
 kl_color =   "#7C1D69"  # pink
@@ -2119,6 +2119,7 @@ def violinplot_from_dataframe(
         xlabel=None,
         ylabel=None,
         xticks_rotation=45, # rotate if they are too long
+        fig_size=(8,5),
         fig_format="png",
         fig_dpi=300,
         **kwargs):
@@ -2127,7 +2128,7 @@ def violinplot_from_dataframe(
         fig_file = out_file+"."+fig_format
 
     with plt.style.context('seaborn-darkgrid'):
-        f, ax = plt.subplots(figsize=(8, 5))
+        f, ax = plt.subplots(figsize=fig_size)
         plt.rcParams.update({'font.size':sizefont,
             'text.usetex':usetex})
 
@@ -2140,7 +2141,8 @@ def violinplot_from_dataframe(
         g.tick_params(labelsize=sizefont-1)
 
         if isinstance(line, (int, float)):
-            g.axhline(line, color=line_color)
+            g.axhline(line, color=line_color, 
+                    linestyle="--", linewidth=2)
 
         if xlabel:
             g.set_xlabel(xlabel, fontsize=sizefont)
