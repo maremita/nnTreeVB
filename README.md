@@ -52,11 +52,17 @@ Experiments for the assessment of `nnTreeVB` can be found in the project [nnTree
 I am preparing the main `nnTreeVB` manuscript. In the meantime, if you want to refer to the framework, you can cite this preprint:
 
 ```
-@article{remita2023learn_vbprior,
-  title={Prior Density Learning in Variational Bayesian Phylogenetic Parameters Inference},
-  author={Remita, Amine M and Diallo, Golrokh Kiani Vitae, Abdoulaye Banir{\'e}},
-  journal={arXiv preprint arXiv:2302.02522},
-  year={2023}
+@InProceedings{remita2023learn_vbprior,
+	author={Remita, Amine M. and Vitae, Golrokh and Diallo, Abdoulaye Banir{\'e}},
+	editor={Jahn, Katharina and Vina{\v{r}}, Tom{\'a}{\v{s}}},
+	title={Prior Density Learning in Variational Bayesian Phylogenetic Parameters Inference},
+	booktitle={Comparative Genomics},
+	year={2023},
+	publisher={Springer Nature Switzerland},
+	address={Cham},
+	pages={112--130},
+	isbn={978-3-031-36911-7},
+	doi={10.1007/978-3-031-36911-7_8}
 }
 ```
 
